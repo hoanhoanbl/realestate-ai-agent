@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16
+    container_name: realestate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: realestate-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+      TZ: Asia/Ho_Chi_Minh
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+      # Trong container, backend duoc goi bang ten service, khong dung localhost
+      BACKEND_URL: http://backend:8080
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # Bo comment khoi nay sau khi chon stack va tao thu muc backend/ (co Dockerfile)
+  # backend:
+  #   build: ./backend
+  #   container_name: realestate-backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     DB_HOST: db
+  #     DB_PORT: 5432
+  #     DB_NAME: ${DB_NAME}
+  #     DB_USER: ${DB_USER}
+  #     DB_PASSWORD: ${DB_PASSWORD}
+  #     N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
+  #     WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+volumes:
+  db_data:
+  n8n_data:

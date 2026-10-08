@@ -63,4 +63,21 @@ export class LeadsService {
 
     return this.leadRepository.save(lead);
   }
+
+  async updateAutomationStatus(
+    id: number,
+    data: {
+      status: string;
+      error?: string;
+    },
+  ): Promise<Lead> {
+    const lead = await this.findOne(id);
+
+    lead.automationStatus = data.status;
+    if (data.error !== undefined) {
+      lead.automationError = data.error;
+    }
+
+    return this.leadRepository.save(lead);
+  }
 }

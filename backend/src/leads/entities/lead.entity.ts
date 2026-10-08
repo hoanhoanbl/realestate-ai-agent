@@ -46,6 +46,12 @@ export class Lead {
   @Column({ name: 'automation_status', type: 'varchar', length: 20, default: 'PENDING' })
   automationStatus: string;
 
+  @Column({ name: 'automation_error', type: 'text', nullable: true })
+  automationError: string | null;
+
+  @Column({ name: 'event_id', type: 'varchar', length: 100, nullable: true })
+  eventId: string | null;
+
   @Column({ type: 'varchar', length: 50, default: 'NEW' })
   status: string;
 

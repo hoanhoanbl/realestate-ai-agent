@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -13,7 +14,7 @@ export class UpdateAiResultDto {
   @Max(100)
   score: number;
 
-  @IsString()
+  @IsIn(['HOT', 'WARM', 'COLD'])
   level: string;
 
   @IsOptional()

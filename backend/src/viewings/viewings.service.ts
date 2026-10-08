@@ -39,10 +39,21 @@ export class ViewingsService {
       throw new NotFoundException(`Property with id ${propertyId} not found`);
     }
 
-    const viewingDate = new Date(viewingTime);
+    // Ensure VN timezone (+07:00) if no timezone offset or Z suffix is present
+    let normalizedViewingTime = viewingTime.trim();
+    if (
+      !normalizedViewingTime.endsWith('Z') &&
+      !/[+-]\d{2}:?\d{2}$/.test(normalizedViewingTime)
+    ) {
+      normalizedViewingTime = `${normalizedViewingTime}+07:00`;
+    }
+
+    const viewingDate = new Date(normalizedViewingTime);
     if (Number.isNaN(viewingDate.getTime())) {
       throw new BadRequestException('Invalid viewingTime format');
     }
+
+    const eventId = crypto.randomUUID();
 
     const lead = this.leadRepository.create({
       name,
@@ -50,6 +61,7 @@ export class ViewingsService {
       phone,
       budget,
       needs: needs || null,
+      eventId,
       status: 'NEW',
       automationStatus: 'PENDING',
     });
@@ -64,7 +76,7 @@ export class ViewingsService {
     const savedViewing = await this.viewingRepository.save(viewing);
 
     // Call n8n webhook asynchronously so lead/viewing saving isn't blocked by n8n failure
-    this.triggerN8nWebhook(savedLead, propertyId, viewingTime).catch((err) => {
+    this.triggerN8nWebhook(savedLead, propertyId, normalizedViewingTime).catch((err) => {
       this.logger.error(`Error triggering n8n webhook: ${err.message}`);
     });
 
@@ -83,7 +95,7 @@ export class ViewingsService {
 
     const payload = {
       event: 'viewing_requested',
-      eventId: crypto.randomUUID(),
+      eventId: lead.eventId || crypto.randomUUID(),
       leadId: lead.id,
       name: lead.name,
       email: lead.email,

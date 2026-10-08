@@ -15,7 +15,7 @@ export class Viewing {
   @Column()
   lead_id: number;
 
-  @Column()
+  @Column({ type: 'timestamptz', nullable: true })
   viewing_time: Date;
 
   @Column()

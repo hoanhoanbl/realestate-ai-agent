@@ -11,6 +11,7 @@ import {
 import { LeadsService } from './leads.service';
 import { Lead } from './entities/lead.entity';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
+import { UpdateAutomationStatusDto } from './dto/update-automation-status.dto';
 
 @Controller('leads')
 export class LeadsController {
@@ -45,6 +46,24 @@ export class LeadsController {
     }
 
     return this.leadsService.updateAiResult(
+      Number(id),
+      data,
+    );
+  }
+
+  @Put(':id/automation-status')
+  updateAutomationStatus(
+    @Param('id') id: string,
+    @Body() data: UpdateAutomationStatusDto,
+    @Headers('x-webhook-secret') webhookSecret?: string,
+  ): Promise<Lead> {
+    const expectedSecret = process.env.WEBHOOK_SECRET;
+
+    if (!webhookSecret || webhookSecret !== expectedSecret) {
+      throw new UnauthorizedException('Invalid webhook secret');
+    }
+
+    return this.leadsService.updateAutomationStatus(
       Number(id),
       data,
     );

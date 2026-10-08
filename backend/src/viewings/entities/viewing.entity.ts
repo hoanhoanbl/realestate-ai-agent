@@ -9,14 +9,14 @@ export class Viewing {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  property_id: number;
+  @Column({ name: 'property_id' })
+  propertyId: number;
 
-  @Column()
-  lead_id: number;
+  @Column({ name: 'lead_id' })
+  leadId: number;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  viewing_time: Date;
+  @Column({ name: 'viewing_time', type: 'timestamptz', nullable: true })
+  viewingTime: Date;
 
   @Column()
   status: string;

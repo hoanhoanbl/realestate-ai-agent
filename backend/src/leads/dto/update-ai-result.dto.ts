@@ -31,5 +31,5 @@ export class UpdateAiResultDto {
 
   @IsOptional()
   @IsBoolean()
-  telegramNotified?: boolean;
+  staffNotified?: boolean;
 }

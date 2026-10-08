@@ -54,6 +54,18 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build: ./web
+    container_name: realestate-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8081/api
+    depends_on:
+      - backend
+
 volumes:
   db_data:
   n8n_data:
+

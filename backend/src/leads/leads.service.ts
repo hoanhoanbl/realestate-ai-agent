@@ -48,7 +48,7 @@ export class LeadsService {
       reason?: string;
       aiReply?: string;
       emailSent?: boolean;
-      telegramNotified?: boolean;
+      staffNotified?: boolean;
     },
   ): Promise<Lead> {
     const lead = await this.findOne(id);
@@ -58,7 +58,7 @@ export class LeadsService {
     if (data.reason !== undefined) lead.reason = data.reason;
     if (data.aiReply !== undefined) lead.aiReply = data.aiReply;
     if (data.emailSent !== undefined) lead.emailSent = data.emailSent;
-    if (data.telegramNotified !== undefined) lead.telegramNotified = data.telegramNotified;
+    if (data.staffNotified !== undefined) lead.staffNotified = data.staffNotified;
     lead.automationStatus = 'COMPLETED';
 
     return this.leadRepository.save(lead);

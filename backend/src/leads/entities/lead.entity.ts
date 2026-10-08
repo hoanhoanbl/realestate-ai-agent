@@ -40,8 +40,8 @@ export class Lead {
   @Column({ name: 'email_sent', type: 'boolean', nullable: true })
   emailSent: boolean | null;
 
-  @Column({ name: 'telegram_notified', type: 'boolean', nullable: true })
-  telegramNotified: boolean | null;
+  @Column({ name: 'staff_notified', type: 'boolean', nullable: true })
+  staffNotified: boolean | null;
 
   @Column({ name: 'automation_status', type: 'varchar', length: 20, default: 'PENDING' })
   automationStatus: string;

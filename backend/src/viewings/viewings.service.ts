@@ -68,9 +68,9 @@ export class ViewingsService {
     const savedLead = await this.leadRepository.save(lead);
 
     const viewing = this.viewingRepository.create({
-      property_id: propertyId,
-      lead_id: savedLead.id,
-      viewing_time: viewingDate,
+      propertyId,
+      leadId: savedLead.id,
+      viewingTime: viewingDate,
       status: 'NEW',
     });
     const savedViewing = await this.viewingRepository.save(viewing);

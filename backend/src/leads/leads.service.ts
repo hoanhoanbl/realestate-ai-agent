@@ -55,6 +55,11 @@ export class LeadsService {
 
     lead.score = data.score;
     lead.level = data.level;
+    if (data.reason !== undefined) lead.reason = data.reason;
+    if (data.aiReply !== undefined) lead.aiReply = data.aiReply;
+    if (data.emailSent !== undefined) lead.emailSent = data.emailSent;
+    if (data.telegramNotified !== undefined) lead.telegramNotified = data.telegramNotified;
+    lead.automationStatus = 'COMPLETED';
 
     return this.leadRepository.save(lead);
   }

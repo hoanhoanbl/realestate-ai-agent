@@ -107,7 +107,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "=http://host.docker.internal:3000/api/leads/{{ $('Webhook').first().json.body.leadId }}/ai-result",
+        "url": "=http://host.docker.internal:8081/api/leads/{{ $('Webhook').first().json.body.leadId }}/ai-result",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -130,7 +130,6 @@
           "name": "Header Auth account"
         }
       },
-      "disabled": true,
       "onError": "continueErrorOutput"
     },
     {
@@ -215,12 +214,20 @@
       ]
     }
   },
+<<<<<<< HEAD
   "active": false,
+=======
+  "active": true,
+>>>>>>> origin/main
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
+<<<<<<< HEAD
   "versionId": "11dab3ac-a668-4dfe-9bfb-1a41b391e25f",
+=======
+  "versionId": "a066259a-3e3b-4c74-ba68-16ce285e2e18",
+>>>>>>> origin/main
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "35c254a187a51902ea860f77ce23479e44ddbd540cdece0ac93c8f7d6b1e859b"

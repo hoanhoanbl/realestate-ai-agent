@@ -103,6 +103,46 @@
           "name": "SMTP account"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://host.docker.internal:3000/api/leads/{{ $('Webhook').first().json.body.leadId }}/ai-result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"score\": $('Basic LLM Chain').first().json.output.score,\n  \"level\": $('Basic LLM Chain').first().json.output.level,\n  \"reason\": $('Basic LLM Chain').first().json.output.reason,\n  \"aiReply\": $('Basic LLM Chain').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"telegramNotified\": false\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        688,
+        0
+      ],
+      "id": "1814f685-a12f-49f4-aece-f758aeeec261",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "disabled": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        864,
+        112
+      ],
+      "id": "20748b55-d231-43ca-8be2-0ac8a6781c96",
+      "name": "Callback failed"
     }
   ],
   "pinData": {},
@@ -153,7 +193,25 @@
     },
     "Send an Email": {
       "main": [
-        []
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Callback failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -162,7 +220,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "e4e63001-6a9c-4a03-86a8-5378c87144cf",
+  "versionId": "11dab3ac-a668-4dfe-9bfb-1a41b391e25f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "35c254a187a51902ea860f77ce23479e44ddbd540cdece0ac93c8f7d6b1e859b"

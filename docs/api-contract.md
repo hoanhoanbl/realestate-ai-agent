@@ -71,13 +71,13 @@ Chung cho moi callback:
   "reason": "Ngan sach ro rang, co lich xem nha cu the",
   "aiReply": "Noi dung email xac nhan da soan",
   "emailSent": true,
-  "telegramNotified": true
+  "staffNotified": true
 }
 ```
 
 - `level`: `HOT` | `WARM` | `COLD` (HOT khi score >= 70, WARM 40-69, COLD < 40)
 - `score`: so nguyen 0-100
-- `telegramNotified`: `true` neu da thong bao nhan vien (Telegram hoac email nhan vien); `false` neu khong gui. Giu ten truong nay du kenh thong bao co doi.
+- `staffNotified`: `true` neu da thong bao nhan vien (hien tai bang email nhan vien, chi gui cho lead HOT); `false` neu khong gui. (Truoc day ten la `telegramNotified`, da doi vi khong dung Telegram.)
 - Backend luu cac truong tren va dat `automationStatus = COMPLETED`.
 
 ### 2.2. Bao loi (n8n hong giua chung) — **can Backend them**
@@ -133,7 +133,7 @@ Request:
 | Bang | Truong chinh |
 |---|---|
 | `properties` | id, name, address, price, area, type, status |
-| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, telegramNotified, status, automationStatus, createdAt |
+| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, createdAt |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
 
 Luu y: hien `POST /api/viewings` tra doi tuong `viewing` voi khoa snake_case (`property_id`, `lead_id`, `viewing_time`), trong khi `lead` da la camelCase. Backend nen doi `viewing` sang camelCase cho dong nhat; truoc khi doi, web dung ten snake_case.

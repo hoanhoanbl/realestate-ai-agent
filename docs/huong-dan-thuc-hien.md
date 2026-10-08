@@ -89,7 +89,7 @@ Node **HTTP Request**:
 - URL: `http://host.docker.internal:8081/api/leads/{{ $('Webhook').item.json.body.leadId }}/ai-result`
   (n8n chạy trong Docker, backend chạy trên máy thật khi đang code. Khi backend vào Docker Compose thì đổi thành `http://backend:8081/...`.)
 - Header: `X-Webhook-Secret` = giá trị secret
-- Body JSON: `score`, `level`, `reason`, `aiReply`, `emailSent`, `telegramNotified` theo `api-contract.md`.
+- Body JSON: `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` theo `api-contract.md`.
 
 Chưa có backend thì tạm tắt node này (Deactivate).
 

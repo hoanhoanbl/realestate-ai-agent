@@ -34,25 +34,38 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
 
-  # Bo comment khoi nay sau khi chon stack va tao thu muc backend/ (co Dockerfile)
-  # backend:
-  #   build: ./backend
-  #   container_name: realestate-backend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     DB_HOST: db
-  #     DB_PORT: 5432
-  #     DB_NAME: ${DB_NAME}
-  #     DB_USER: ${DB_USER}
-  #     DB_PASSWORD: ${DB_PASSWORD}
-  #     N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
-  #     WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+  backend:
+    build: ./backend
+    container_name: realestate-backend
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PORT: 8081
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    container_name: realestate-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8081/api
+    depends_on:
+      - backend
 
 volumes:
   db_data:
   n8n_data:
+

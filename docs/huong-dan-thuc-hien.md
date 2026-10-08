@@ -236,18 +236,30 @@ cd web
 npx create-next-app@latest . --typescript --app --use-npm
 ```
 
-Các trang cần có:
+Các trang cần có và người phụ trách:
 
-1. **Form đăng ký xem nhà:** tên, email, SĐT, ngân sách, nhu cầu, chọn bất động sản, giờ xem. Gọi `POST /api/viewings`.
-2. **Danh sách khách:** bảng, lọc HOT/WARM/COLD, thấy điểm và lý do AI.
-3. **Dashboard:** số lead theo mức, gọi `GET /api/stats`.
+| Trang | Làm gì | Người làm |
+|---|---|---|
+| Khung dự án và `web/lib/api.ts` | Khởi tạo Next.js, hàm gọi API dùng chung | Bạn n8n (làm trước, push sớm) |
+| **Form đăng ký xem nhà** | Tên, email, SĐT, ngân sách, nhu cầu, chọn bất động sản (`GET /api/properties`), giờ xem. Gọi `POST /api/viewings` | Bạn n8n |
+| **Danh sách khách** | Bảng, lọc HOT/WARM/COLD, thấy điểm, mức, lý do AI, trạng thái xử lý (`automationStatus`). Gọi `GET /api/leads` | Bạn n8n |
+| **Dashboard** | Số lead theo mức, gọi `GET /api/stats` (trả `{ total, hot, warm, cold }`) | Bạn backend (nếu xong việc backend), nếu không thì bạn n8n |
+
+Quy tắc chia để không xung đột git: mỗi trang nằm trong thư mục riêng (`web/app/...`), mỗi người chỉ sửa trang của mình. Bạn backend chỉ đụng `web/Dockerfile` và `docker-compose.yml`.
+
+Lưu ý khi viết web (đã chốt với backend):
+
+- `price` và `area` của bất động sản trả về dạng **chuỗi**, cần ép sang số khi hiển thị.
+- `score`, `level`, `reason` là `null` khi chưa chấm xong (`automationStatus = PENDING`). `FAILED` nghĩa là xử lý lỗi.
+- Đối tượng `viewing` trong phản hồi `POST /api/viewings` dùng khoá snake_case cho tới khi backend đổi sang camelCase.
+- Backend đã bật CORS.
 
 Địa chỉ API đặt trong `web/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8081/api` (backend chạy cổng 8081, Next.js giữ cổng mặc định 3000, không bị trùng).
 
 ## C2. Docker Compose (thứ Sáu)
 
-1. Thêm `backend/Dockerfile` và `web/Dockerfile`.
-2. Bỏ comment khối `backend` trong `docker-compose.yml`, thêm khối `web`.
+1. `backend/Dockerfile` đã có. Bạn backend thêm `web/Dockerfile` (khi web đã chạy được).
+2. Khối `backend` trong `docker-compose.yml` đã bật. Bạn backend thêm khối `web`.
 3. Đổi URL gọi nhau theo tên service: backend gọi `http://n8n:5678/...`, n8n gọi `http://backend:8081/...` (đúng cổng backend).
 4. Chạy `docker compose up -d --build` và thử lại toàn bộ luồng.
 
@@ -256,18 +268,18 @@ Các trang cần có:
 | Ngày | Bạn n8n | Bạn backend |
 |---|---|---|
 | Thứ Tư 7/10 | A1 đến A3 (Webhook, AI, email) | B1 đến B4 (NestJS, DB, API) |
-| Thứ Năm 8/10 | A4 đến A6 (Telegram, nối backend, retry), bắt đầu web | B5, B6 (gọi webhook, test), bắt đầu web |
-| Thứ Sáu 9/10 | Web, Docker, quay video dự phòng | Web, Docker, slide |
-| Thứ Bảy 10/10 | Chạy thử một lần, rồi demo | |
+| Thứ Năm 8/10 | Xong workflow: thông báo nhân viên (email) và email HTML. Khởi tạo Next.js, làm form đăng ký | B5, B6 (gọi webhook, test), đổi `staffNotified`, endpoint `automation-status`, Dockerfile backend |
+| Thứ Sáu 9/10 | Trang danh sách khách, làm đẹp, nhánh lỗi n8n gọi `automation-status`, quay video dự phòng | Dashboard, `web/Dockerfile` và khối `web` trong compose, dọn DB, slide |
+| Thứ Bảy 10/10 | Chạy thử một lần, rồi demo | Chạy thử một lần, rồi demo |
 
-Nếu thiếu thời gian, bỏ theo thứ tự: Docker cho web, dashboard, Telegram. Giữ lại: form, backend lưu DB, n8n chấm điểm AI, email, gọi ngược cập nhật.
+Nếu thiếu thời gian, bỏ theo thứ tự: Docker cho web, dashboard, làm đẹp. Giữ lại: form, backend lưu DB, n8n chấm điểm AI, email, gọi ngược cập nhật, trang danh sách.
 
 ## C4. Kịch bản demo (5 đến 7 phút)
 
 1. Nói bài toán và vẽ lại sơ đồ luồng.
 2. Điền form trên web, bấm gửi.
 3. Mở n8n, tab **Executions** cho xem lần chạy thành công và từng node.
-4. Cho xem email xác nhận trong hộp thư, tin nhắn Telegram với khách HOT.
+4. Cho xem email xác nhận trong hộp thư khách, và email thông báo nhân viên với khách HOT.
 5. Quay lại web: khách vừa gửi đã có điểm và mức HOT/WARM/COLD.
 6. Tắt backend, gửi tiếp để thấy retry và log lỗi.
 7. Cho xem `docker ps` với các container đang chạy.

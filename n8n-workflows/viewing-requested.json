@@ -1,0 +1,173 @@
+{
+  "name": "viewing-requested",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "viewing-requested",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "332cb4f2-6af9-4049-9c9c-51fd8e95963f",
+      "name": "Webhook",
+      "webhookId": "2b6e2d39-66eb-4afd-9fcc-07924441cc89",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là trợ lý bán bất động sản. Dựa vào thông tin khách hàng, hãy chấm điểm mức độ tiềm năng.\n\nKhách: {{ $json.body.name }}\nNgân sách (VND): {{ $json.body.budget }}\nNhu cầu: {{ $json.body.needs }}\nGiờ xem nhà: {{ $json.body.viewingTime }}\n\nQuy tắc:\n- score từ 0 đến 100.\n- level: HOT nếu score >= 70, WARM nếu 40 đến 69, COLD nếu dưới 40.\n- Có ngân sách rõ ràng và nhu cầu cụ thể thì điểm cao.\n- reason: 1 câu ngắn bằng tiếng Việt.\n- emailBody: email xác nhận lịch xem nhà, thân thiện, tiếng Việt, tối đa 5 câu.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2456bce6-2ee0-49ba-8172-7e2a98df99b7",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        208
+      ],
+      "id": "aa1bc18e-f45f-437e-a071-4b03900f9afb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wU5LeG7gXaoUdMXQ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"score\": 85,\n  \"level\": \"HOT\",\n  \"reason\": \"Ngân sách rõ ràng, nhu cầu cụ thể\",\n  \"emailBody\": \"Chào anh/chị, chúng tôi xác nhận lịch xem nhà...\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        368,
+        208
+      ],
+      "id": "0ae377df-8f70-4223-a95e-579f99b8c105",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhunhuhoangg@gmail.com",
+        "toEmail": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "Xác nhận lịch xem nhà",
+        "emailFormat": "text",
+        "text": "={{ $json.output.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        512,
+        0
+      ],
+      "id": "b6d04c61-846c-4bb0-8b1d-4bc72ffc3417",
+      "name": "Send an Email",
+      "webhookId": "ef3d6815-aee4-4215-878a-b344a7a38363",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e4e63001-6a9c-4a03-86a8-5378c87144cf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "35c254a187a51902ea860f77ce23479e44ddbd540cdece0ac93c8f7d6b1e859b"
+  },
+  "nodeGroups": [],
+  "id": "prt5invo7qugQx74",
+  "tags": []
+}

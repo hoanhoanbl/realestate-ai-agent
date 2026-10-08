@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Put,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { Lead } from './entities/lead.entity';
@@ -34,7 +36,14 @@ export class LeadsController {
   updateAiResult(
     @Param('id') id: string,
     @Body() data: UpdateAiResultDto,
+    @Headers('x-webhook-secret') webhookSecret?: string,
   ): Promise<Lead> {
+    const expectedSecret = process.env.WEBHOOK_SECRET;
+
+    if (!webhookSecret || webhookSecret !== expectedSecret) {
+      throw new UnauthorizedException('Invalid webhook secret');
+    }
+
     return this.leadsService.updateAiResult(
       Number(id),
       data,

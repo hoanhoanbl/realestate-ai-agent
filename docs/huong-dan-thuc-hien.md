@@ -86,8 +86,8 @@ Cách dễ nhất là SMTP với mật khẩu ứng dụng của Gmail:
 Node **HTTP Request**:
 
 - Method `PUT`
-- URL: `http://host.docker.internal:8080/api/leads/{{ $('Webhook').item.json.body.leadId }}/ai-result`
-  (n8n chạy trong Docker, backend chạy trên máy thật khi đang code. Khi backend vào Docker Compose thì đổi thành `http://backend:8080/...`.)
+- URL: `http://host.docker.internal:8081/api/leads/{{ $('Webhook').item.json.body.leadId }}/ai-result`
+  (n8n chạy trong Docker, backend chạy trên máy thật khi đang code. Khi backend vào Docker Compose thì đổi thành `http://backend:8081/...`.)
 - Header: `X-Webhook-Secret` = giá trị secret
 - Body JSON: `score`, `level`, `reason`, `aiReply`, `emailSent`, `telegramNotified` theo `api-contract.md`.
 
@@ -213,7 +213,7 @@ Khi `POST /api/viewings` thành công, gọi `POST` tới `N8N_WEBHOOK_URL` vớ
 
 ## B6. Kiểm thử
 
-Chạy `npm run start:dev`, mở `http://localhost:3000/api/docs` thử từng API. Hoặc dùng Postman. Thử luồng: tạo viewing, backend gọi n8n (bạn n8n đang Listen), kiểm tra n8n gọi ngược cập nhật `score`.
+Chạy `npm run start:dev`, mở `http://localhost:8081/api/docs` thử từng API. Hoặc dùng Postman. Thử luồng: tạo viewing, backend gọi n8n (bạn n8n đang Listen), kiểm tra n8n gọi ngược cập nhật `score`.
 
 ## B7. Lưu vào Git
 
@@ -242,13 +242,13 @@ Các trang cần có:
 2. **Danh sách khách:** bảng, lọc HOT/WARM/COLD, thấy điểm và lý do AI.
 3. **Dashboard:** số lead theo mức, gọi `GET /api/stats`.
 
-Địa chỉ API đặt trong `web/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:3000/api` (lưu ý Next.js mặc định cũng chạy cổng 3000, đổi một trong hai, ví dụ chạy web bằng `npm run dev -- -p 3001`).
+Địa chỉ API đặt trong `web/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8081/api` (backend chạy cổng 8081, Next.js giữ cổng mặc định 3000, không bị trùng).
 
 ## C2. Docker Compose (thứ Sáu)
 
 1. Thêm `backend/Dockerfile` và `web/Dockerfile`.
 2. Bỏ comment khối `backend` trong `docker-compose.yml`, thêm khối `web`.
-3. Đổi URL gọi nhau theo tên service: backend gọi `http://n8n:5678/...`, n8n gọi `http://backend:3000/...` (đúng cổng của NestJS).
+3. Đổi URL gọi nhau theo tên service: backend gọi `http://n8n:5678/...`, n8n gọi `http://backend:8081/...` (đúng cổng backend).
 4. Chạy `docker compose up -d --build` và thử lại toàn bộ luồng.
 
 ## C3. Lịch

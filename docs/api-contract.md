@@ -46,7 +46,7 @@ Body:
 
 - Method: `PUT /api/leads/{leadId}/ai-result`
 - Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`
-- Trong Docker Compose, n8n goi: `http://backend:8080/api/leads/{leadId}/ai-result`
+- Trong Docker Compose, n8n goi: `http://backend:8081/api/leads/{leadId}/ai-result`
 
 Body:
 

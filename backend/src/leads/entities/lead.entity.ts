@@ -57,7 +57,7 @@ export class Lead {
 
   @CreateDateColumn({
     name: 'created_at',
-    type: 'timestamp',
+    type: 'timestamptz',
   })
   createdAt: Date;
 }

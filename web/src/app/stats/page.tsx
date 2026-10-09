@@ -18,27 +18,60 @@ export default function StatsPage() {
     cold: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
 
-  const fetchStats = async () => {
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${apiUrl}/stats`);
+        if (!res.ok) {
+          throw new Error(`Máy chủ phản hồi mã lỗi ${res.status}`);
+        }
+        const data = await res.json();
+        if (!ignore) {
+          setStats(data);
+          setError(null);
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          const msg = err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ Backend';
+          setError(msg);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadStats();
+
+    return () => {
+      ignore = true;
+    };
+  }, [apiUrl]);
+
+  const handleRefresh = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${apiUrl}/stats`);
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+      if (!res.ok) {
+        throw new Error(`Máy chủ phản hồi mã lỗi ${res.status}`);
       }
-    } catch (err) {
-      console.error('Lỗi tải thống kê:', err);
+      const data = await res.json();
+      setStats(data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ Backend';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
 
   const getPercent = (count: number) => {
     if (!stats.total || stats.total === 0) return 0;
@@ -63,13 +96,32 @@ export default function StatsPage() {
         </div>
 
         <button
-          onClick={fetchStats}
-          className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition flex items-center space-x-2 self-start sm:self-auto"
+          onClick={handleRefresh}
+          disabled={loading}
+          className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition flex items-center space-x-2 self-start sm:self-auto disabled:opacity-50"
         >
           <span>🔄</span>
-          <span>Làm mới dữ liệu</span>
+          <span>{loading ? 'Đang tải...' : 'Làm mới dữ liệu'}</span>
         </button>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm">
+          <div className="flex items-center space-x-2">
+            <span>⚠️</span>
+            <span>
+              <strong>Lỗi tải thống kê:</strong> {error}. Vui lòng kiểm tra kết nối Backend (cổng 8081).
+            </span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-semibold px-3 py-1.5 rounded-lg transition"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
 
       {/* KPI Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -130,7 +182,7 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Distribution Chart & Insights */}
+      {/* Distribution Chart & Criteria */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Progress Bar View */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
@@ -192,27 +244,29 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* AI Agent System Status */}
+        {/* Lead Classification Criteria */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <h2 className="text-lg font-bold text-slate-900">
-            Hạ Tầng Tự Động Hóa
+            Tiêu Chí Phân Loại AI
           </h2>
           <div className="space-y-3 text-xs text-slate-600">
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
-              <span className="font-medium">Backend API</span>
-              <span className="font-bold text-emerald-600">🟢 Port 8081 (NestJS)</span>
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-100">
+              <span className="font-bold text-rose-700 block mb-1">🔥 Khách HOT (&ge; 70 điểm)</span>
+              <span className="text-slate-600 leading-relaxed">
+                Ngân sách và nhu cầu rõ ràng. Ưu tiên liên hệ trong 30 phút, thông báo nhân viên phụ trách.
+              </span>
             </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
-              <span className="font-medium">Workflow Engine</span>
-              <span className="font-bold text-emerald-600">🟢 Port 5678 (n8n)</span>
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
+              <span className="font-bold text-amber-700 block mb-1">⚡ Khách WARM (40 - 69 điểm)</span>
+              <span className="text-slate-600 leading-relaxed">
+                Có nhu cầu nhưng chưa xác định cụ thể khu vực/tài chính. Chăm sóc trong 24 giờ.
+              </span>
             </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
-              <span className="font-medium">Model Trí Tuệ Nhân Tạo</span>
-              <span className="font-bold text-blue-600">Gemini 1.5 Flash</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
-              <span className="font-medium">Kênh thông báo tức thì</span>
-              <span className="font-bold text-slate-800">Email + Telegram Bot</span>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="font-bold text-slate-700 block mb-1">❄️ Khách COLD (&lt; 40 điểm)</span>
+              <span className="text-slate-600 leading-relaxed">
+                Thiếu thông tin hoặc ngân sách chưa phù hợp. Gửi email xác nhận và lưu trữ tiếp thị.
+              </span>
             </div>
           </div>
         </div>

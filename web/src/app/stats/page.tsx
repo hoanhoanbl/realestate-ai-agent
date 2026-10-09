@@ -2,16 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-interface StatsData {
-  total: number;
-  hot: number;
-  warm: number;
-  cold: number;
-}
+import { getStats, type Stats } from '@/lib/api';
 
 export default function StatsPage() {
-  const [stats, setStats] = useState<StatsData>({
+  const [stats, setStats] = useState<Stats>({
     total: 0,
     hot: 0,
     warm: 0,
@@ -20,18 +14,12 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
-
   useEffect(() => {
     let ignore = false;
 
     async function loadStats() {
       try {
-        const res = await fetch(`${apiUrl}/stats`);
-        if (!res.ok) {
-          throw new Error(`Máy chủ phản hồi mã lỗi ${res.status}`);
-        }
-        const data = await res.json();
+        const data = await getStats();
         if (!ignore) {
           setStats(data);
           setError(null);
@@ -53,17 +41,13 @@ export default function StatsPage() {
     return () => {
       ignore = true;
     };
-  }, [apiUrl]);
+  }, []);
 
   const handleRefresh = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiUrl}/stats`);
-      if (!res.ok) {
-        throw new Error(`Máy chủ phản hồi mã lỗi ${res.status}`);
-      }
-      const data = await res.json();
+      const data = await getStats();
       setStats(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ Backend';
@@ -111,7 +95,7 @@ export default function StatsPage() {
           <div className="flex items-center space-x-2">
             <span>⚠️</span>
             <span>
-              <strong>Lỗi tải thống kê:</strong> {error}. Vui lòng kiểm tra kết nối Backend (cổng 8081).
+              <strong>Lỗi tải thống kê:</strong> {error}
             </span>
           </div>
           <button

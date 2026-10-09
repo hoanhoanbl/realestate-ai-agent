@@ -31,6 +31,7 @@ services:
       # Trong container, backend duoc goi bang ten service, khong dung localhost
       BACKEND_URL: http://backend:8081
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
 

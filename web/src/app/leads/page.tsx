@@ -1,269 +1,220 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
+import LevelBadge from "@/components/LevelBadge";
+import StatusBadge from "@/components/StatusBadge";
+import {
+  formatDateTime,
+  formatVnd,
+  getLeads,
+  type Lead,
+  type Level,
+} from "@/lib/api";
 
-interface Lead {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  budget: number | string;
-  needs: string | null;
-  score: number | null;
-  level: 'HOT' | 'WARM' | 'COLD' | null;
-  reason: string | null;
-  aiReply: string | null;
-  emailSent: boolean | null;
-  staffNotified: boolean | null;
-  automationStatus: string;
-  status: string;
-  createdAt: string;
+type Filter = "ALL" | Level;
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "ALL", label: "Tất cả" },
+  { value: "HOT", label: "HOT" },
+  { value: "WARM", label: "WARM" },
+  { value: "COLD", label: "COLD" },
+];
+
+// Còn khách chờ chấm điểm thì tải lại nhanh, không thì thưa hơn
+const POLL_PENDING_MS = 5000;
+const POLL_IDLE_MS = 20000;
+
+function Flag({ value }: { value: boolean | null | undefined }) {
+  if (value === true) return <span className="text-emerald-600">✓</span>;
+  if (value === false) return <span className="text-slate-400">✗</span>;
+  return <span className="text-slate-300">-</span>;
 }
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filterLevel, setFilterLevel] = useState<string>('ALL');
-  const [loading, setLoading] = useState(true);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [filter, setFilter] = useState<Filter>("ALL");
+  const [leads, setLeads] = useState<Lead[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
-
-  const fetchLeads = async (level = filterLevel) => {
-    setLoading(true);
-    try {
-      let url = `${apiUrl}/leads`;
-      if (level && level !== 'ALL') {
-        url += `?level=${level}`;
-      }
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setLeads(data);
-      }
-    } catch (err) {
-      console.error('Lỗi tải danh sách leads:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const hasPending = (leads ?? []).some((l) => l.automationStatus === "PENDING");
 
   useEffect(() => {
-    fetchLeads(filterLevel);
-  }, [filterLevel]);
+    let cancelled = false;
 
-  const formatVND = (val: string | number) => {
-    const num = Number(val);
-    if (isNaN(num)) return '0 đ';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
-  };
-
-  const getLevelBadge = (level: string | null) => {
-    switch (level) {
-      case 'HOT':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">🔥 HOT</span>;
-      case 'WARM':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">⚡ WARM</span>;
-      case 'COLD':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">❄️ COLD</span>;
-      default:
-        return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Chưa chấm</span>;
+    function load() {
+      getLeads()
+        .then((data) => {
+          if (cancelled) return;
+          setLeads(data);
+          setError(null);
+          setUpdatedAt(new Date());
+        })
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          setError(e instanceof Error ? e.message : "Lỗi không xác định.");
+        });
     }
-  };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Hoàn thành</span>;
-      case 'FAILED':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">Lỗi AI</span>;
-      case 'PENDING':
-      default:
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 animate-pulse">Đang xử lý</span>;
+    load();
+    const timer = setInterval(load, hasPending ? POLL_PENDING_MS : POLL_IDLE_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [hasPending]);
+
+  const counts = useMemo(() => {
+    const result = { ALL: 0, HOT: 0, WARM: 0, COLD: 0 };
+    for (const lead of leads ?? []) {
+      result.ALL += 1;
+      if (lead.level) result[lead.level] += 1;
     }
-  };
+    return result;
+  }, [leads]);
+
+  const visible = useMemo(
+    () => (leads ?? []).filter((l) => filter === "ALL" || l.level === filter),
+    [leads, filter],
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header & Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <section>
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Quản Lý Khách Hàng Tiềm Năng (Leads)
-          </h1>
-          <p className="text-sm text-slate-500">
-            Danh sách khách đã đặt lịch và kết quả thẩm định tự động từ AI Agent.
+          <h1 className="text-2xl font-bold text-slate-900">Danh sách khách</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Điểm và mức độ do AI chấm.{" "}
+            {hasPending
+              ? "Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
+              : "Trang tự cập nhật định kỳ."}
           </p>
         </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Refresh Button */}
-          <button
-            onClick={() => fetchLeads()}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition"
-          >
-            🔄 Tải lại
-          </button>
-
-          {/* Filter Pills */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-            {['ALL', 'HOT', 'WARM', 'COLD'].map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setFilterLevel(lvl)}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${
-                  filterLevel === lvl
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {lvl === 'ALL' ? 'Tất cả' : lvl}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="py-12 text-center text-slate-400 text-sm">
-            <span className="inline-block animate-spin mr-2">⏳</span> Đang tải danh sách khách hàng...
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-sm">
-            Không tìm thấy khách hàng nào phù hợp với bộ lọc.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4">ID</th>
-                  <th className="px-6 py-4">Khách hàng</th>
-                  <th className="px-6 py-4">Ngân sách</th>
-                  <th className="px-6 py-4">Điểm AI</th>
-                  <th className="px-6 py-4">Phân loại</th>
-                  <th className="px-6 py-4">Tự động hoá</th>
-                  <th className="px-6 py-4">Ngày tạo</th>
-                  <th className="px-6 py-4 text-right">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/80 transition">
-                    <td className="px-6 py-4 font-bold text-slate-900">#{lead.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-900">{lead.name}</div>
-                      <div className="text-xs text-slate-400">{lead.phone} • {lead.email}</div>
-                    </td>
-                    <td className="px-6 py-4 font-medium text-slate-900">
-                      {formatVND(lead.budget)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {lead.score !== null ? (
-                        <div className="flex items-center space-x-2">
-                          <span className="font-extrabold text-base text-slate-900">{lead.score}</span>
-                          <span className="text-xs text-slate-400">/100</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getLevelBadge(lead.level)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(lead.automationStatus)}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {new Date(lead.createdAt).toLocaleString('vi-VN')}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedLead(lead)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition"
-                      >
-                        Xem AI
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {updatedAt && (
+          <p className="text-xs text-slate-500">
+            Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}
+          </p>
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-bold text-slate-900">
-                Chi Tiết Lead #{selectedLead.id} - {selectedLead.name}
-              </h2>
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {FILTERS.map((f) => {
+          const active = filter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setFilter(f.value)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium ring-1 ${
+                active
+                  ? "bg-blue-600 text-white ring-blue-600"
+                  : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {f.label} ({counts[f.value]})
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="space-y-3 text-sm text-slate-700">
-              <div>
-                <span className="font-bold text-xs uppercase text-slate-400 block">Nhu cầu của khách:</span>
-                <p className="bg-slate-50 p-3 rounded-lg text-slate-800 mt-1">
-                  {selectedLead.needs || 'Không nhập'}
-                </p>
-              </div>
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200"
+        >
+          {error}
+        </p>
+      )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <span className="font-bold text-xs uppercase text-slate-400 block">Điểm & Mức độ:</span>
-                  <div className="mt-1 flex items-center space-x-2">
-                    <span className="text-xl font-extrabold">{selectedLead.score ?? '—'}</span>
-                    {getLevelBadge(selectedLead.level)}
-                  </div>
-                </div>
+      {leads === null && !error && (
+        <p className="mt-6 text-slate-500">Đang tải...</p>
+      )}
 
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <span className="font-bold text-xs uppercase text-slate-400 block">Thông báo tự động:</span>
-                  <div className="mt-1 text-xs space-y-1">
-                    <div>📧 Email khách: {selectedLead.emailSent ? '✅ Đã gửi' : '❌ Chưa'}</div>
-                    <div>🔔 Báo nhân viên: {selectedLead.staffNotified ? '✅ Đã báo' : '❌ Chưa'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-bold text-xs uppercase text-slate-400 block">Lý do AI đánh giá:</span>
-                <p className="bg-blue-50/60 border border-blue-100 p-3 rounded-lg text-blue-900 font-medium text-xs mt-1">
-                  {selectedLead.reason || 'Chưa có phân tích'}
-                </p>
-              </div>
-
-              {selectedLead.aiReply && (
-                <div>
-                  <span className="font-bold text-xs uppercase text-slate-400 block">Nội dung thư AI đã soạn:</span>
-                  <p className="bg-emerald-50/60 border border-emerald-100 p-3 rounded-lg text-emerald-950 text-xs mt-1 whitespace-pre-line">
-                    {selectedLead.aiReply}
-                  </p>
-                </div>
+      {leads !== null && (
+        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-3">Khách</th>
+                <th className="px-3 py-3">Ngân sách</th>
+                <th className="px-3 py-3">Nhu cầu</th>
+                <th className="px-3 py-3 text-center">Điểm</th>
+                <th className="px-3 py-3">Mức</th>
+                <th className="px-3 py-3">Lý do AI</th>
+                <th className="px-3 py-3 text-center">Email</th>
+                <th className="px-3 py-3 text-center">Báo NV</th>
+                <th className="px-3 py-3">Trạng thái</th>
+                <th className="px-3 py-3">Tạo lúc</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {visible.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-8 text-center text-slate-500"
+                  >
+                    Chưa có khách nào.
+                  </td>
+                </tr>
               )}
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
+              {visible.map((lead) => (
+                <tr key={lead.id} className="align-top hover:bg-slate-50">
+                  <td className="px-3 py-3">
+                    <div className="font-medium text-slate-900">
+                      {lead.name}
+                    </div>
+                    <div className="text-xs text-slate-500">{lead.email}</div>
+                    <div className="text-xs text-slate-500">{lead.phone}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    {formatVnd(lead.budget)}
+                  </td>
+                  <td className="max-w-[200px] px-3 py-3 text-slate-600">
+                    {lead.needs ?? "-"}
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold">
+                    {lead.score ?? "-"}
+                  </td>
+                  <td className="px-3 py-3">
+                    <LevelBadge level={lead.level} />
+                  </td>
+                  <td className="max-w-[260px] px-3 py-3 text-slate-600">
+                    {lead.reason ?? "-"}
+                    {lead.aiReply && (
+                      <details className="mt-1 text-xs">
+                        <summary className="cursor-pointer text-blue-600">
+                          Xem email AI soạn
+                        </summary>
+                        <p className="mt-1 whitespace-pre-line text-slate-500">
+                          {lead.aiReply}
+                        </p>
+                      </details>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <Flag value={lead.emailSent} />
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <Flag value={lead.staffNotified} />
+                  </td>
+                  <td className="px-3 py-3">
+                    <StatusBadge status={lead.automationStatus} />
+                    {lead.automationStatus === "FAILED" &&
+                      lead.automationError && (
+                        <p className="mt-1 max-w-[180px] text-xs text-rose-600">
+                          {lead.automationError}
+                        </p>
+                      )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">
+                    {formatDateTime(lead.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

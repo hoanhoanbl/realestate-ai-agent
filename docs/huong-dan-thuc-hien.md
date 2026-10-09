@@ -12,11 +12,13 @@ Hai file tài liệu chung của nhóm:
 
 Mỗi file/thư mục có **đúng một chủ**. Chỉ chủ được sửa; người kia muốn sửa thì nhắn chủ (kèm file và lý do) hoặc mở Issue trên GitHub.
 
-| Người | Nhánh gốc | Sở hữu |
+| Người | Nhánh đã dùng từ đầu | Sở hữu |
 |---|---|---|
-| Bạn n8n | `feature/n8n-workflow` | `n8n-workflows/` (workflow, prompt AI, email khách, email nhân viên). Trên web: **form đăng ký**, **trang danh sách khách**, `web/src/lib/`, `web/src/components/`, `layout.tsx`, `globals.css`, `package.json`, `next.config.ts`, `tsconfig.json` |
-| Bạn backend | `feature/backend-api` | `backend/` (NestJS, PostgreSQL, API, gọi webhook), `docker-compose.yml`, `.env.example`, `web/Dockerfile`. Trên web: **trang `/stats`** (`web/src/app/stats/`) |
-| Chung (đổi qua Pull Request, người kia duyệt) | | `docs/`, `README.md`, `.gitignore` |
+| Bạn n8n | `feature/n8n-workflow` | `n8n-workflows/` (workflow, prompt AI, email khách, email nhân viên). **Toàn bộ `web/` trừ hai phần của bạn backend bên dưới** (form đăng ký, danh sách khách, `lib/`, `components/`, `layout.tsx`, `public/`, cấu hình `package.json`, `next.config.ts`, `tsconfig.json`...) |
+| Bạn backend | `feature/backend-api` | `backend/` (NestJS, PostgreSQL, API, gọi webhook), `docker-compose.yml`, `.env.example`. Trên web chỉ có **hai phần**: `web/Dockerfile` và **trang `/stats`** (`web/src/app/stats/`) |
+| Chung (đổi qua Pull Request, người kia duyệt) | | `docs/`, `README.md` ở thư mục gốc, `.gitignore` ở thư mục gốc |
+
+Hai tên nhánh ở cột giữa chỉ là nhánh đã dùng từ đầu dự án. **Từ giờ mỗi việc một nhánh ngắn** tách từ `main` mới nhất (xem quy tắc 3 bên dưới), làm xong thì merge và xoá.
 
 Hai chỗ giao nhau của hai bên, mỗi chỗ có một người gửi và một người nhận. Đổi gì ở đây thì phải sửa [api-contract.md](api-contract.md) trước:
 
@@ -54,9 +56,9 @@ Hai chỗ giao nhau của hai bên, mỗi chỗ có một người gửi và m�
 | N2 | **Địa chỉ gọi ngược backend.** Node HTTP Request đang cố định `host.docker.internal:8081`. Trong compose phải là `http://backend:8081`. Compose đã đặt sẵn biến `BACKEND_URL` cho n8n, dùng `{{ $env.BACKEND_URL \|\| 'http://host.docker.internal:8081' }}` để một file chạy được cả hai nơi. Nếu n8n báo chặn truy cập `$env` thì nhờ bạn backend thêm `N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"` vào khối `n8n` trong compose; hoặc đơn giản hơn, sửa cứng thành `http://backend:8081` cho bản demo chạy bằng compose | Chạy bằng `docker compose up` rồi gửi 1 lead, lead đổi sang `COMPLETED` |
 | N3 | Node HTTP Request: đặt *Wait Between Tries* = 5000 ms (hiện chưa đặt, mặc định 1 giây) | Mở Settings của node thấy 3 lần, 5000 ms |
 | N4 | Kiểm tra bảo mật webhook: credential Header Auth có Name đúng `X-Webhook-Secret`; gọi không kèm header phải bị 403 | Thử bằng lệnh ở mục A1, nhận 403 |
-| N5 | Chạy 3 ca chấm điểm (ngân sách rõ → HOT, mơ hồ → WARM, nhu cầu trống → COLD) và ghi kết quả cho báo cáo | Có bảng kết quả trong báo cáo |
+| N5 | **Đã chạy thử 3 ca** (ảnh chụp kết quả có trong file `.docx` của bạn n8n): khách rõ ràng 90 điểm HOT, ngân sách rõ nhưng chưa rõ khu vực 45 điểm WARM, thiếu thông tin 0 điểm COLD. Khớp yêu cầu "rõ ràng → HOT, mơ hồ → WARM, thiếu thông tin → COLD". Còn lại: đưa bảng 3 ca vào mục "Đánh giá chất lượng phân loại AI" của báo cáo | Có bảng 3 ca trong báo cáo |
 | N6 | Export lại workflow vào `n8n-workflows/viewing-requested.json` sau khi sửa, kiểm tra không chứa key | PR được merge |
-| N7 | **Web:** làm xong form đăng ký và trang danh sách khách trên nhánh `feature/web` (xem mục C1) | PR được merge, trang chạy trên `main` |
+| N7 | **Web:** gộp hai bản web thành một, làm các việc W1 đến W6 (bảng "Việc ghép web" bên dưới) trong **một PR** từ nhánh `feature/web` | PR được merge, `/`, `/leads`, `/stats` chạy trên `main` |
 
 ### Việc của bạn backend
 
@@ -67,17 +69,35 @@ Hai chỗ giao nhau của hai bên, mỗi chỗ có một người gửi và m�
 | B-c | `.env.example` còn dòng nhắc "Telegram bot token", sửa thành "SMTP". Ghi chú rõ `N8N_WEBHOOK_URL` ở `.env` gốc là **URL gốc của n8n**, còn `N8N_WEBHOOK_URL` backend đọc là **URL đầy đủ của webhook** (cùng tên nhưng khác nghĩa; compose đã ghi đè cho backend nên chỉ gây nhầm khi chạy backend ngoài Docker) | Hai biến có chú thích rõ |
 | B-d | Thêm `backend/.env.example` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, N8N_WEBHOOK_URL, WEBHOOK_SECRET) để bạn kia chạy backend ngoài Docker được | File có trong repo |
 | B-e | Khối `web` trong compose đặt `NEXT_PUBLIC_API_URL` ở `environment`, nhưng biến `NEXT_PUBLIC_*` được nhúng lúc **build**, nên giá trị này không có tác dụng lúc chạy. Hiện vẫn chạy đúng vì giá trị mặc định trong code trùng. Chỉ cần sửa (dùng `build.args`) khi đem lên server khác `localhost` | Ghi nhớ; sửa nếu deploy |
-| B-f | Duyệt PR `feature/web` của bạn n8n (kiểm tra web chỉ gọi API có trong hợp đồng), trang `/stats`, slide, dọn dữ liệu test trong DB trước khi demo | Trước demo |
+| B-f | Duyệt PR `feature/web` của bạn n8n (kiểm tra web chỉ gọi API có trong hợp đồng), slide, dọn dữ liệu test trong DB trước khi demo | Trước demo |
+| B-g | **Sửa trang `/stats` của bạn (chỉ file `web/src/app/stats/page.tsx`).** Khung "Hạ Tầng Tự Động Hóa" đang ghi cứng thông tin sai: "Gemini 1.5 Flash" (workflow dùng `gemini-3.5-flash-lite`), "Email + Telegram Bot" (nhóm đã bỏ Telegram), và các đèn 🟢 luôn xanh dù hệ thống có chạy hay không. Xoá khung này (hoặc chỉ giữ chữ không khẳng định gì). Sửa 2 lỗi lint `react-hooks/set-state-in-effect`. Hiện thông báo lỗi khi gọi `/api/stats` thất bại thay vì im lặng. Khi PR web (N7) đã merge thì đổi sang gọi `getStats()` trong `lib/api.ts` | `npm run lint` không lỗi; trang không còn câu nào sai sự thật |
+
+### Việc ghép web (một bản duy nhất)
+
+Hiện có hai bản web: bản của bạn backend trên `main` (`web/src/app/`) và bản của bạn n8n (chưa lên Git). Đã đối chiếu: cả hai đều `build` được. Bản backend có giao diện đầy đủ nhưng mỗi trang tự viết `fetch`, không tự tải lại danh sách, có 6 lỗi lint. Bản n8n có lớp gọi API chung, kiểm tra dữ liệu, tự tải lại mỗi 5 giây, 0 lỗi lint, nhưng chưa có `/stats`. Quyết định: **giữ phần tốt của từng bên theo đúng phân công ở bảng Phân vai**, làm trong một PR (`feature/web`), bạn backend duyệt:
+
+| # | Việc (bạn n8n làm) | Xong khi |
+|---|---|---|
+| W1 | Chuyển `lib/` và `components/` vào `web/src/`. Trong `lib/api.ts`: bỏ `telegramNotified`, thêm kiểu `Stats` và hàm `getStats()`, thêm trường `automationError`, khai báo `viewing` theo camelCase | Chỉ còn `lib/api.ts` chứa `fetch` (riêng `/stats` của bạn backend được phép tự `fetch` cho đến khi B-g xong) |
+| W2 | **Form đăng ký đặt ở `/`**, thay `web/src/app/page.tsx` của bản backend. Xoá trang chào và thư mục `dang-ky/` của bản n8n (để demo bớt một lần bấm). Có thể lấy thêm từ bản backend: ô chọn nhà hiển thị địa chỉ và diện tích | Gửi được đăng ký có ngân sách 50.000.000 (ca COLD); form không còn chặn ngân sách thấp |
+| W3 | **Danh sách khách ở `/leads`**, thay bản backend. Giữ tự tải lại 5 giây. Thêm: khi `automationStatus = FAILED` thì hiện lý do (`automationError`) nếu có | Tắt n8n, gửi 1 lead: dòng đó hiện "Lỗi" kèm lý do |
+| W4 | `layout.tsx` và `NavBar`: dùng NavBar có tô sáng trang đang mở, ba mục **Đăng ký (`/`)**, **Danh sách khách (`/leads`)**, **Thống kê (`/stats`)**. Với link `/` phải so khớp **chính xác** (nếu dùng `startsWith("/")` thì mục "Đăng ký" luôn sáng ở mọi trang). Bỏ `next/font/google` (Geist), dùng font hệ thống: `docker compose up --build` không được phụ thuộc mạng Internet | Build được khi tắt mạng; mỗi trang chỉ sáng đúng một mục |
+| W5 | Xoá 5 ảnh mặc định không dùng trong `web/public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`). Không đưa file bên ngoài `web/` (như file `.docx` ở thư mục gốc) vào PR này | `git diff` chỉ chứa file trong `web/` |
+| W6 | Trước khi mở PR chạy `npm run lint` và `npm run build` trong `web/` | Cả hai không lỗi |
+
+Thứ tự để không đụng file nhau: bạn n8n làm W1 đến W6 và không sửa `web/src/app/stats/`; bạn backend làm B-g và không sửa gì khác trong `web/`. Hai việc chạy song song được. `layout.tsx` chỉ do bạn n8n sửa.
 
 ### Việc chung
 
-- Thống nhất trước về web (10 phút, xem mục C1): giữ cấu trúc `web/src/`; bản web đầu tiên của backend là bản nền, mỗi trang có một chủ và chủ được thay bằng bản của mình qua PR.
+- Cấu trúc web sau khi ghép (xem mục C1): giữ `web/src/`, mỗi trang một chủ như bảng Phân vai.
 - Cả hai chạy một lần kịch bản demo (mục C4) trên máy của người sẽ trình bày, kể cả kịch bản lỗi.
 - Quay video dự phòng.
 
 ---
 
 # PHẦN A. Bạn n8n
+
+> Phần A là hướng dẫn gốc, phần lớn đã làm xong và đang chạy trong `n8n-workflows/viewing-requested.json`. Dùng để tra cứu cách cấu hình. **Việc còn lại thật sự nằm ở mục "Tình trạng ngày 09/10 và việc còn lại" ở đầu file**, đừng làm lại từ đầu theo các bước dưới.
 
 ## A1. Webhook (đã bắt đầu)
 
@@ -176,6 +196,8 @@ git push
 
 # PHẦN B. Bạn backend (NestJS)
 
+> Phần B là hướng dẫn gốc và **đã làm xong**: backend đang chạy trên `main`. Giữ lại để tra cứu cấu trúc. Các lệnh trong B1 (như `git rm backend-test.txt`) chỉ dùng một lần lúc khởi tạo, **không chạy lại**. Việc còn lại nằm ở mục "Tình trạng ngày 09/10 và việc còn lại" ở đầu file.
+
 ## B1. Chuẩn bị
 
 1. Cài **Node.js LTS** từ nodejs.org, kiểm tra:
@@ -236,7 +258,7 @@ Chú ý: `N8N_WEBHOOK_URL` trong `backend/.env` là **URL đầy đủ của web
 
 - `app.setGlobalPrefix('api')`
 - `app.enableCors()` để Next.js gọi được
-- `app.useGlobalPipes(new ValidationPipe({ whitelist: true }))`
+- `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`
 - Swagger tại `/api/docs` để thử API nhanh
 
 ## B4. Dữ liệu và API
@@ -306,16 +328,27 @@ Các trang và người phụ trách (mỗi trang một chủ):
 | `/stats` **Dashboard** | Số lead theo mức. Gọi `GET /api/stats` (trả `{ total, hot, warm, cold }`) | Bạn backend |
 | `web/Dockerfile`, khối `web` trong compose | Đóng gói web | Bạn backend |
 
-**Tình trạng và cách xử lý bản web trùng lặp (chốt):** bạn backend đã làm sẵn bản đầu của cả 3 trang trong `web/src/app/` để chạy được luồng từ sớm, và bản đó đã nằm trên `main`. Bạn n8n cũng có một bản form và danh sách riêng. Hai bản **không cùng tồn tại**:
+**Cấu trúc web sau khi ghép** (chi tiết từng việc ở bảng "Việc ghép web", W1 đến W6, và B-g):
 
-1. Giữ cấu trúc `web/src/` đang có trên `main` (Dockerfile và compose đã build theo cấu trúc này).
-2. `/stats` giữ bản của bạn backend, chỉ đổi sang gọi qua `lib/api.ts` khi `lib/api.ts` đã có trên `main`.
-3. `/` và `/leads`: bạn n8n thay bản đầu bằng bản của mình qua một Pull Request từ nhánh `feature/web` (đúng như phân công ban đầu), bạn backend duyệt. Bạn n8n chuyển `lib/`, `components/` vào `web/src/` rồi sửa import cho đúng, và nên lấy điểm tốt của bản kia nếu có (ví dụ khung xem chi tiết lead).
-4. Từ khi PR này merge, bạn backend không sửa `/` và `/leads` nữa; cần sửa thì nhắn bạn n8n.
+```
+web/
+  Dockerfile                 (bạn backend)
+  src/
+    app/
+      layout.tsx             (bạn n8n: NavBar, font hệ thống)
+      globals.css
+      page.tsx               /       form đăng ký xem nhà   (bạn n8n)
+      leads/page.tsx         /leads  danh sách khách        (bạn n8n)
+      stats/page.tsx         /stats  thống kê               (bạn backend)
+    components/              NavBar, LevelBadge, StatusBadge (bạn n8n)
+    lib/api.ts               một chỗ duy nhất gọi API        (bạn n8n)
+```
+
+Quy tắc: giữ `web/src/` vì Dockerfile và compose đã build theo cấu trúc này; `/stats` giữ bản của bạn backend; `/` và `/leads` do bạn n8n thay bản đầu trên `main` bằng bản của mình qua một PR. Từ khi PR đó merge, bạn backend không sửa `/` và `/leads` nữa; cần sửa thì nhắn bạn n8n.
 
 Lưu ý khi viết web (đã chốt với backend, chi tiết ở mục 4 của hợp đồng):
 
-- `budget` của lead (khi `GET`), `price` và `area` của bất động sản trả về dạng **chuỗi**; phải `Number(...)` trước khi hiển thị. Riêng `budget` trong phản hồi `POST /api/viewings` là số, nên kiểu khai báo là `string | number`.
+- `budget` của lead (khi `GET`), `price` và `area` của bất động sản trả về dạng **chuỗi**; phải `Number(...)` trước khi hiển thị. `budget` trong phản hồi `POST /api/viewings` có thể là số, nên khai báo kiểu `string | number` và luôn `Number(...)`, đừng dựa vào một kiểu cố định.
 - `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` là `null` khi chưa chấm xong (`automationStatus = PENDING`). `FAILED` nghĩa là xử lý lỗi, cần hiển thị rõ cho người dùng.
 - Mọi khoá JSON đều camelCase, kể cả `viewing` trong phản hồi `POST /api/viewings` (`propertyId`, `leadId`, `viewingTime`). Dùng `staffNotified`, không dùng `telegramNotified`.
 - `viewingTime` trả về dạng ISO giờ UTC (`...Z`): hiển thị theo múi giờ `Asia/Ho_Chi_Minh`.
@@ -336,7 +369,7 @@ Lưu ý khi viết web (đã chốt với backend, chi tiết ở mục 4 của 
 |---|---|---|
 | Thứ Tư 7/10 | A1 đến A3 (Webhook, AI, email) | B1 đến B4 (NestJS, DB, API) |
 | Thứ Năm 8/10 | Xong workflow: thông báo nhân viên (email) và email HTML. Khởi tạo Next.js, làm form đăng ký | B5, B6 (gọi webhook, test), đổi `staffNotified`, endpoint `automation-status`, Dockerfile backend |
-| Thứ Sáu 9/10 | Việc N1 đến N7 ở mục "Tình trạng ngày 09/10 và việc còn lại": nhánh lỗi báo `FAILED`, gộp web, làm đẹp, quay video dự phòng | Việc B-a đến B-f: kiểm tra giờ, chạy thử compose, dọn DB, duyệt PR web, slide |
+| Thứ Sáu 9/10 | Việc N1 đến N7 ở mục "Tình trạng ngày 09/10 và việc còn lại": nhánh lỗi báo `FAILED`, ghép web (W1 đến W6), quay video dự phòng | Việc B-a đến B-g: kiểm tra giờ, chạy thử compose, sửa trang `/stats`, dọn DB, duyệt PR web, slide |
 | Thứ Bảy 10/10 | Chạy thử một lần, rồi demo | Chạy thử một lần, rồi demo |
 
 Nếu thiếu thời gian, bỏ theo thứ tự: làm đẹp, dashboard. Giữ lại: form, backend lưu DB, n8n chấm điểm AI, email, gọi ngược cập nhật, trang danh sách, nhánh lỗi báo `FAILED`, chạy được bằng `docker compose`.

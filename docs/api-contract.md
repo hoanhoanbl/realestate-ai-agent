@@ -1,4 +1,4 @@
-# Hop dong API giua Backend va n8n
+# Hop dong API giua Backend, n8n va Web
 
 File nay la "luat chung" cua ca nhom (n8n, backend, web). **Neu file nay va `huong-dan-thuc-hien.md` mau thuan nhau thi file nay thang.**
 
@@ -147,11 +147,11 @@ Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
 
 | Truong | Kieu tra ve | Cach xu ly o web |
 |---|---|---|
-| `leads.budget` | **chuoi** (`"3000000000"`) khi `GET`, nhung la **so** trong phan hoi cua `POST /viewings` | Luon `Number(...)` truoc khi dinh dang |
+| `leads.budget` | **chuoi** (`"3000000000"`, cot `bigint`) khi `GET`; trong phan hoi cua `POST /viewings` co the la **so** | Khai bao kieu `string \| number`, luon `Number(...)` truoc khi dinh dang, khong dua vao mot kieu co dinh |
 | `properties.price`, `properties.area` | **chuoi** (cot `bigint`/`decimal`) | `Number(...)` truoc khi dinh dang |
 | `viewings.viewingTime` | chuoi ISO gio UTC, vi du `2026-10-12T02:00:00.000Z` (cot `timestamptz`) | Hien thi theo gio Viet Nam (`Asia/Ho_Chi_Minh`), khong tu cong tru 7 gio |
 | `leads.createdAt` | chuoi ISO (cot `timestamp` khong mui gio) | Hien thi nhu nhan duoc; backend can kiem tra khong lech 7 gio (xem checklist trong `huong-dan-thuc-hien.md`) |
-| `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` | `null` cho den khi `automationStatus = COMPLETED` | Hien "dang xu ly" khi `PENDING`, "loi" khi `FAILED` |
+| `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` | `null` cho den khi `automationStatus = COMPLETED` | Hien "dang xu ly" khi `PENDING`, "loi" khi `FAILED` (kem `automationError` neu co) |
 
 Gia tri trang thai:
 
@@ -174,3 +174,4 @@ Gia tri trang thai:
 | Ngay | Ai sua | Noi dung |
 |---|---|---|
 | 09/10/2026 | Ca nhom (dong bo voi code da merge len `main`) | `viewing` da camelCase; `automation-status` da co; `viewingTime` gui sang n8n co `+07:00`; them kieu du lieu tra ve (budget/price/area la chuoi); them `GET /api/viewings`, `automationError`, `eventId`; ro rang moi nhanh loi n8n phai bao `FAILED` |
+| 09/10/2026 (lan 2) | Ca nhom | Doi ten hop dong cho dung pham vi (ca Web); `leads.budget` trong phan hoi `POST` ghi la "co the la so" (chua kiem chung khi chay that); web hien `automationError` khi `FAILED` |

@@ -3,26 +3,101 @@
 Stack: **n8n + NestJS + Next.js + PostgreSQL + Docker Compose**.
 Hạn demo giữa kỳ: **thứ Bảy 10/10/2026**.
 
-Hợp đồng dữ liệu hai bên: xem [api-contract.md](api-contract.md). Đổi gì trong đó thì báo bạn kia.
+Hai file tài liệu chung của nhóm:
 
-## Phân vai
+- [api-contract.md](api-contract.md): **luật chung** về dữ liệu và API (webhook, callback, kiểu dữ liệu trả về). Nếu hai file mâu thuẫn thì file này thắng.
+- File này: ai làm gì, làm thế nào, phối hợp ra sao, còn việc gì.
 
-| Người | Nhánh Git | Phụ trách | Thư mục |
-|---|---|---|---|
-| Bạn n8n | `feature/n8n-workflow` | Workflow n8n, prompt AI, email, Telegram | `n8n-workflows/` |
-| Bạn backend | `feature/backend-api` | NestJS, PostgreSQL, API, gọi webhook | `backend/` |
-| Cả hai | | Next.js (chia nhau), Docker, báo cáo, demo | `web/` |
+## Phân vai (chốt)
 
-Quy tắc: mỗi người chỉ sửa thư mục của mình để không xung đột. Mỗi sáng chạy `git checkout main`, `git pull`, rồi quay lại nhánh mình và `git merge main`.
+Mỗi file/thư mục có **đúng một chủ**. Chỉ chủ được sửa; người kia muốn sửa thì nhắn chủ (kèm file và lý do) hoặc mở Issue trên GitHub.
+
+| Người | Nhánh đã dùng từ đầu | Sở hữu |
+|---|---|---|
+| Bạn n8n | `feature/n8n-workflow` | `n8n-workflows/` (workflow, prompt AI, email khách, email nhân viên). **Toàn bộ `web/` trừ hai phần của bạn backend bên dưới** (form đăng ký, danh sách khách, `lib/`, `components/`, `layout.tsx`, `public/`, cấu hình `package.json`, `next.config.ts`, `tsconfig.json`...) |
+| Bạn backend | `feature/backend-api` | `backend/` (NestJS, PostgreSQL, API, gọi webhook), `docker-compose.yml`, `.env.example`. Trên web chỉ có **hai phần**: `web/Dockerfile` và **trang `/stats`** (`web/src/app/stats/`) |
+| Chung (đổi qua Pull Request, người kia duyệt) | | `docs/`, `README.md` ở thư mục gốc, `.gitignore` ở thư mục gốc |
+
+Hai tên nhánh ở cột giữa chỉ là nhánh đã dùng từ đầu dự án. **Từ giờ mỗi việc một nhánh ngắn** tách từ `main` mới nhất (xem quy tắc 3 bên dưới), làm xong thì merge và xoá.
+
+Hai chỗ giao nhau của hai bên, mỗi chỗ có một người gửi và một người nhận. Đổi gì ở đây thì phải sửa [api-contract.md](api-contract.md) trước:
+
+| Điểm giao | Bên gửi | Bên nhận |
+|---|---|---|
+| Webhook `POST /webhook/viewing-requested` | Backend | n8n |
+| Callback `PUT /api/leads/:id/ai-result` và `/automation-status` | n8n | Backend |
+| API cho web (bảng ở mục 3 của hợp đồng) | Backend | Web (bạn n8n làm, trang `/stats` do backend làm) |
+
+## Cách phối hợp (để không lộn xộn)
+
+1. **Một việc, một chủ.** Xem bảng phân vai. Không sửa file của người kia, kể cả "sửa nhanh cho tiện".
+2. **Hợp đồng đi trước code.** Muốn đổi tên field, thêm API, đổi kiểu dữ liệu: sửa `api-contract.md` trước (qua Pull Request, người kia duyệt), rồi mới sửa code.
+3. **Không push thẳng vào `main`.** `main` là bản dùng để demo. Mỗi việc một nhánh `feature/<việc>` hoặc `fix/<việc>` (ví dụ `feature/web`, `fix/n8n-failed-callback`), mở Pull Request vào `main`, người kia xem nhanh và bấm Approve (hoặc nhắn "ok"), người tạo PR bấm Merge.
+4. **Mỗi sáng và trước khi bắt đầu việc mới:** `git checkout main`, `git pull`, rồi tạo nhánh mới (hoặc `git merge main` vào nhánh đang làm). Không để nhánh sống lâu quá một ngày.
+5. **Commit nhỏ, nói rõ làm gì**: `feat:`, `fix:`, `docs:`, `chore:`. Không commit `.env`, key, `node_modules`, file build.
+6. **"Xong" nghĩa là đã merge vào `main` và chạy được từ `main`**, không phải "chạy được trên máy tôi".
+7. **Đóng băng trước demo.** Sau khi hai bên chạy thử trọn luồng trên `main` bằng `docker compose up -d --build`, chỉ được sửa lỗi, không thêm tính năng.
+8. **Báo ngay khi lệch.** Thấy tài liệu và code không khớp, thấy việc của mình bị chặn bởi việc của người kia: nhắn luôn, đừng tự vá thư mục của họ.
 
 ## Khoá bí mật dùng chung
 
 - `WEBHOOK_SECRET` phải **giống nhau** trong `.env` của hai máy. Gửi cho nhau qua tin nhắn riêng, không đưa lên GitHub.
-- Key Gemini, token Telegram, mật khẩu email: chỉ nhập trong **n8n (Credentials)**, không để trong repo.
+- Key Gemini, mật khẩu email (SMTP): chỉ nhập trong **n8n (Credentials)**, không để trong repo.
+
+## Tình trạng ngày 09/10 và việc còn lại
+
+Đã làm và đã gộp vào `main`: backend đủ API theo hợp đồng (kể cả `automation-status`, `viewing` camelCase, `staffNotified`), seed 10 bất động sản, backend gọi n8n có thử lại 3 lần, workflow n8n chấm điểm bằng Gemini + email khách + email nhân viên (lead HOT) + gọi ngược backend, `web/Dockerfile` và khối `web` trong compose, bản web đầu tiên của 3 trang.
+
+### Việc của bạn n8n
+
+| # | Việc | Xong khi |
+|---|---|---|
+| N1 | **Nhánh lỗi báo `FAILED`.** Node Basic LLM Chain, Send an Email, Notify staff hiện đã bật Retry nhưng chưa có đường ra khi lỗi: workflow dừng, lead kẹt `PENDING` mãi. Đặt On Error → *Continue (using error output)* cho 3 node này, nối nhánh lỗi vào một node HTTP Request `PUT .../api/leads/{leadId}/automation-status` với body `{"status":"FAILED","error":"..."}` | Nhập sai key Gemini, gửi 1 lead: trong chưa đầy 1 phút lead hiện `FAILED` trên web |
+| N2 | **Địa chỉ gọi ngược backend.** Node HTTP Request đang cố định `host.docker.internal:8081`. Trong compose phải là `http://backend:8081`. Compose đã đặt sẵn biến `BACKEND_URL` cho n8n, dùng `{{ $env.BACKEND_URL \|\| 'http://host.docker.internal:8081' }}` để một file chạy được cả hai nơi. Nếu n8n báo chặn truy cập `$env` thì nhờ bạn backend thêm `N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"` vào khối `n8n` trong compose; hoặc đơn giản hơn, sửa cứng thành `http://backend:8081` cho bản demo chạy bằng compose | Chạy bằng `docker compose up` rồi gửi 1 lead, lead đổi sang `COMPLETED` |
+| N3 | Node HTTP Request: đặt *Wait Between Tries* = 5000 ms (hiện chưa đặt, mặc định 1 giây) | Mở Settings của node thấy 3 lần, 5000 ms |
+| N4 | Kiểm tra bảo mật webhook: credential Header Auth có Name đúng `X-Webhook-Secret`; gọi không kèm header phải bị 403 | Thử bằng lệnh ở mục A1, nhận 403 |
+| N5 | **Đã chạy thử 3 ca** (ảnh chụp kết quả có trong file `.docx` của bạn n8n): khách rõ ràng 90 điểm HOT, ngân sách rõ nhưng chưa rõ khu vực 45 điểm WARM, thiếu thông tin 0 điểm COLD. Khớp yêu cầu "rõ ràng → HOT, mơ hồ → WARM, thiếu thông tin → COLD". Còn lại: đưa bảng 3 ca vào mục "Đánh giá chất lượng phân loại AI" của báo cáo | Có bảng 3 ca trong báo cáo |
+| N6 | Export lại workflow vào `n8n-workflows/viewing-requested.json` sau khi sửa, kiểm tra không chứa key | PR được merge |
+| N7 | **Web:** gộp hai bản web thành một, làm các việc W1 đến W6 (bảng "Việc ghép web" bên dưới) trong **một PR** từ nhánh `feature/web` | PR được merge, `/`, `/leads`, `/stats` chạy trên `main` |
+
+### Việc của bạn backend
+
+| # | Việc | Xong khi |
+|---|---|---|
+| B-a | **Kiểm tra `createdAt` có lệch 7 giờ không.** Cột `created_at` là `timestamp` (không múi giờ) trong khi container backend chạy `TZ=Asia/Ho_Chi_Minh`. Tạo 1 lead lúc 15:00, xem `GET /api/leads`: nếu thấy 08:00 thì đổi sang `timestamptz` | `createdAt` đúng giờ Việt Nam |
+| B-b | **Chạy thử trọn luồng trên compose từ `main` sạch** (xoá volume DB cũ): `docker compose down -v`, `docker compose up -d --build`, rồi web → backend → n8n → backend. Báo bạn n8n nếu n8n không gọi được `backend:8081` | Lead đổi sang `COMPLETED` có điểm trên trang danh sách |
+| B-c | `.env.example` còn dòng nhắc "Telegram bot token", sửa thành "SMTP". Ghi chú rõ `N8N_WEBHOOK_URL` ở `.env` gốc là **URL gốc của n8n**, còn `N8N_WEBHOOK_URL` backend đọc là **URL đầy đủ của webhook** (cùng tên nhưng khác nghĩa; compose đã ghi đè cho backend nên chỉ gây nhầm khi chạy backend ngoài Docker) | Hai biến có chú thích rõ |
+| B-d | Thêm `backend/.env.example` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, N8N_WEBHOOK_URL, WEBHOOK_SECRET) để bạn kia chạy backend ngoài Docker được | File có trong repo |
+| B-e | Khối `web` trong compose đặt `NEXT_PUBLIC_API_URL` ở `environment`, nhưng biến `NEXT_PUBLIC_*` được nhúng lúc **build**, nên giá trị này không có tác dụng lúc chạy. Hiện vẫn chạy đúng vì giá trị mặc định trong code trùng. Chỉ cần sửa (dùng `build.args`) khi đem lên server khác `localhost` | Ghi nhớ; sửa nếu deploy |
+| B-f | Duyệt PR `feature/web` của bạn n8n (kiểm tra web chỉ gọi API có trong hợp đồng), slide, dọn dữ liệu test trong DB trước khi demo | Trước demo |
+| B-g | **Sửa trang `/stats` của bạn (chỉ file `web/src/app/stats/page.tsx`).** Khung "Hạ Tầng Tự Động Hóa" đang ghi cứng thông tin sai: "Gemini 1.5 Flash" (workflow dùng `gemini-3.5-flash-lite`), "Email + Telegram Bot" (nhóm đã bỏ Telegram), và các đèn 🟢 luôn xanh dù hệ thống có chạy hay không. Xoá khung này (hoặc chỉ giữ chữ không khẳng định gì). Sửa 2 lỗi lint `react-hooks/set-state-in-effect`. Hiện thông báo lỗi khi gọi `/api/stats` thất bại thay vì im lặng. Khi PR web (N7) đã merge thì đổi sang gọi `getStats()` trong `lib/api.ts` | `npm run lint` không lỗi; trang không còn câu nào sai sự thật |
+
+### Việc ghép web (một bản duy nhất)
+
+Hiện có hai bản web: bản của bạn backend trên `main` (`web/src/app/`) và bản của bạn n8n (chưa lên Git). Đã đối chiếu: cả hai đều `build` được. Bản backend có giao diện đầy đủ nhưng mỗi trang tự viết `fetch`, không tự tải lại danh sách, có 6 lỗi lint. Bản n8n có lớp gọi API chung, kiểm tra dữ liệu, tự tải lại mỗi 5 giây, 0 lỗi lint, nhưng chưa có `/stats`. Quyết định: **giữ phần tốt của từng bên theo đúng phân công ở bảng Phân vai**, làm trong một PR (`feature/web`), bạn backend duyệt:
+
+| # | Việc (bạn n8n làm) | Xong khi |
+|---|---|---|
+| W1 | Chuyển `lib/` và `components/` vào `web/src/`. Trong `lib/api.ts`: bỏ `telegramNotified`, thêm kiểu `Stats` và hàm `getStats()`, thêm trường `automationError`, khai báo `viewing` theo camelCase | Chỉ còn `lib/api.ts` chứa `fetch` (riêng `/stats` của bạn backend được phép tự `fetch` cho đến khi B-g xong) |
+| W2 | **Form đăng ký đặt ở `/`**, thay `web/src/app/page.tsx` của bản backend. Xoá trang chào và thư mục `dang-ky/` của bản n8n (để demo bớt một lần bấm). Có thể lấy thêm từ bản backend: ô chọn nhà hiển thị địa chỉ và diện tích | Gửi được đăng ký có ngân sách 50.000.000 (ca COLD); form không còn chặn ngân sách thấp |
+| W3 | **Danh sách khách ở `/leads`**, thay bản backend. Giữ tự tải lại 5 giây. Thêm: khi `automationStatus = FAILED` thì hiện lý do (`automationError`) nếu có | Tắt n8n, gửi 1 lead: dòng đó hiện "Lỗi" kèm lý do |
+| W4 | `layout.tsx` và `NavBar`: dùng NavBar có tô sáng trang đang mở, ba mục **Đăng ký (`/`)**, **Danh sách khách (`/leads`)**, **Thống kê (`/stats`)**. Với link `/` phải so khớp **chính xác** (nếu dùng `startsWith("/")` thì mục "Đăng ký" luôn sáng ở mọi trang). Bỏ `next/font/google` (Geist), dùng font hệ thống: `docker compose up --build` không được phụ thuộc mạng Internet | Build được khi tắt mạng; mỗi trang chỉ sáng đúng một mục |
+| W5 | Xoá 5 ảnh mặc định không dùng trong `web/public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`). Không đưa file bên ngoài `web/` (như file `.docx` ở thư mục gốc) vào PR này | `git diff` chỉ chứa file trong `web/` |
+| W6 | Trước khi mở PR chạy `npm run lint` và `npm run build` trong `web/` | Cả hai không lỗi |
+
+Thứ tự để không đụng file nhau: bạn n8n làm W1 đến W6 và không sửa `web/src/app/stats/`; bạn backend làm B-g và không sửa gì khác trong `web/`. Hai việc chạy song song được. `layout.tsx` chỉ do bạn n8n sửa.
+
+### Việc chung
+
+- Cấu trúc web sau khi ghép (xem mục C1): giữ `web/src/`, mỗi trang một chủ như bảng Phân vai.
+- Cả hai chạy một lần kịch bản demo (mục C4) trên máy của người sẽ trình bày, kể cả kịch bản lỗi.
+- Quay video dự phòng.
 
 ---
 
 # PHẦN A. Bạn n8n
+
+> Phần A là hướng dẫn gốc, phần lớn đã làm xong và đang chạy trong `n8n-workflows/viewing-requested.json`. Dùng để tra cứu cách cấu hình. **Việc còn lại thật sự nằm ở mục "Tình trạng ngày 09/10 và việc còn lại" ở đầu file**, đừng làm lại từ đầu theo các bước dưới.
 
 ## A1. Webhook (đã bắt đầu)
 
@@ -31,7 +106,7 @@ Quy tắc: mỗi người chỉ sửa thư mục của mình để không xung �
 3. Test (thay `GIA_TRI_SECRET`):
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/viewing-requested" -Headers @{ "X-Webhook-Secret" = "GIA_TRI_SECRET" } -ContentType "application/json" -Body '{"event":"viewing_requested","eventId":"b7f3c1a2-0f4e-4a55-9d1e-1c2f3a4b5c6d","leadId":12,"name":"Nguyen Van A","email":"a@example.com","phone":"0900000000","budget":3000000000,"needs":"Can ho 2 phong ngu gan Da Nang","propertyId":5,"viewingTime":"2026-10-12T09:00:00"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/viewing-requested" -Headers @{ "X-Webhook-Secret" = "GIA_TRI_SECRET" } -ContentType "application/json" -Body '{"event":"viewing_requested","eventId":"b7f3c1a2-0f4e-4a55-9d1e-1c2f3a4b5c6d","leadId":12,"name":"Nguyen Van A","email":"a@example.com","phone":"0900000000","budget":3000000000,"needs":"Can ho 2 phong ngu gan Da Nang","propertyId":5,"viewingTime":"2026-10-12T09:00:00+07:00"}'
 ```
 
 4. Ghim dữ liệu (Pin data) ở Output để làm các node sau không cần gửi lại.
@@ -56,13 +131,14 @@ Quy tắc:
 - level: HOT nếu score >= 70, WARM nếu 40 đến 69, COLD nếu dưới 40.
 - Có ngân sách rõ ràng và nhu cầu cụ thể thì điểm cao.
 - reason: 1 câu ngắn bằng tiếng Việt.
-- emailBody: email xác nhận lịch xem nhà, thân thiện, tiếng Việt, tối đa 5 câu.
+- emailBody: email xác nhận lịch xem nhà, thân thiện, tiếng Việt, tối đa 5 câu. Xưng hô trung tính "anh/chị", gọi khách bằng tên đầy đủ.
+- staffNote: 1 đến 2 câu gợi ý hành động cho nhân viên sale (mức ưu tiên, nên gọi lại khi nào, nên hỏi thêm gì).
 
 Chỉ trả về JSON hợp lệ, không thêm chữ nào khác:
-{"score": 0, "level": "COLD", "reason": "", "emailBody": ""}
+{"score": 0, "level": "COLD", "reason": "", "emailBody": "", "staffNote": ""}
 ```
 
-4. Thêm **Structured Output Parser** (hoặc dùng node Code/Edit Fields để `JSON.parse` kết quả) để các trường `score`, `level`, `reason`, `emailBody` dùng được ở node sau.
+4. Thêm **Structured Output Parser** (hoặc dùng node Code/Edit Fields để `JSON.parse` kết quả) để các trường `score`, `level`, `reason`, `emailBody`, `staffNote` dùng được ở node sau.
 5. Chạy thử với dữ liệu đã ghim. Thử 3 ca: ngân sách rõ (HOT), ngân sách mơ hồ (WARM), nhu cầu trống (COLD) để chắc AI phân loại hợp lý. Ghi lại kết quả cho phần đo lường trong báo cáo.
 
 Giao diện n8n thay đổi tên nút theo phiên bản, nếu khác thì chụp màn hình để hỏi.
@@ -75,29 +151,32 @@ Cách dễ nhất là SMTP với mật khẩu ứng dụng của Gmail:
 2. Trong n8n thêm node **Send Email**, tạo credential SMTP: host `smtp.gmail.com`, port `465`, bật SSL, user là email của bạn, password là App password.
 3. To: `{{ $('Webhook').item.json.body.email }}`, Subject: `Xác nhận lịch xem nhà`, nội dung: `emailBody` từ AI.
 
-## A4. Rẽ nhánh HOT và báo Telegram
+## A4. Rẽ nhánh HOT và báo nhân viên bằng email
 
-1. Thêm node **IF**: `{{ $json.level }}` bằng `HOT`.
-2. Tạo bot: nhắn `@BotFather` trên Telegram, gửi `/newbot`, lấy **token**. Nhắn bot vài chữ rồi lấy chat ID (nhắn `@userinfobot` để thấy ID của bạn).
-3. Nhánh true: node **Telegram → Send Message**, tạo credential bằng token, chat ID của bạn, nội dung ví dụ: `Lead nóng: {{ name }} - điểm {{ score }}. Xem nhà lúc {{ viewingTime }}`.
+Nhóm đã chốt **không dùng Telegram**: thông báo nhân viên gửi bằng email (cùng credential SMTP ở A3).
+
+1. Thêm node **IF**: `{{ $('Basic LLM Chain').first().json.output.level }}` bằng `HOT`.
+2. Nhánh true: node **Send Email** (tên `Notify staff`) gửi cho nhân viên, tiêu đề dạng `[HOT] Tên khách - điểm - cần gọi lại`, nội dung gồm điểm, lý do, thông tin khách, giờ xem nhà và `staffNote` do AI gợi ý. Sau đó nối tiếp sang node gọi ngược backend (A5).
+3. Nhánh false: nối thẳng sang node gọi ngược backend. `staffNotified` gửi về backend là `true` chỉ khi `level` là `HOT`.
 
 ## A5. Gọi ngược về backend
 
 Node **HTTP Request**:
 
 - Method `PUT`
-- URL: `http://host.docker.internal:8081/api/leads/{{ $('Webhook').item.json.body.leadId }}/ai-result`
-  (n8n chạy trong Docker, backend chạy trên máy thật khi đang code. Khi backend vào Docker Compose thì đổi thành `http://backend:8081/...`.)
-- Header: `X-Webhook-Secret` = giá trị secret
+- URL: `<địa chỉ backend>/api/leads/{{ $('Webhook').item.json.body.leadId }}/ai-result`, trong đó `<địa chỉ backend>` là:
+  - `http://host.docker.internal:8081` khi n8n chạy trong Docker còn backend chạy trên máy thật (lúc đang code);
+  - `http://backend:8081` khi cả hai chạy trong Docker Compose (compose đã đặt sẵn biến `BACKEND_URL` cho n8n, xem việc N2 ở đầu file).
+- Header: `X-Webhook-Secret` = giá trị secret (credential Header Auth)
 - Body JSON: `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` theo `api-contract.md`.
-
-Chưa có backend thì tạm tắt node này (Deactivate).
+- Bật Retry On Fail: 3 lần, chờ 5 giây. Nếu vẫn lỗi (ví dụ lead không tồn tại) thì đi nhánh lỗi tới node `Callback failed` và kết thúc.
 
 ## A6. Xử lý lỗi (cần có để lấy điểm)
 
-- Các node AI, Email, Telegram, HTTP: mở **Settings** của node, bật **Retry On Fail** (3 lần, chờ 5 giây).
-- Một nhánh lỗi: bật **On Error → Continue (using error output)** rồi ghi log hoặc báo Telegram `Workflow lỗi`.
-- Có thể tạo workflow riêng "Error Handler" dùng node **Error Trigger** và chọn nó ở Settings của workflow chính.
+- Các node AI, Email khách, Email nhân viên, HTTP Request: mở **Settings** của node, bật **Retry On Fail** (3 lần, chờ 5 giây).
+- Ba node AI, Email khách, Email nhân viên: bật thêm **On Error → Continue (using error output)**, nối nhánh lỗi vào node HTTP Request `PUT /api/leads/{leadId}/automation-status` với body `{"status":"FAILED","error":"<mô tả ngắn>"}`. Làm vậy lead mới không kẹt `PENDING`, web hiện được trạng thái lỗi. Nhiều nhánh lỗi có thể dùng chung một node báo lỗi.
+- Node HTTP Request gọi ngược `ai-result`: nhánh lỗi kết thúc ở `Callback failed` (vì chính backend không nhận được nên không báo được).
+- Không cần workflow "Error Handler" riêng cho bài này.
 
 ## A7. Xuất và lưu vào Git
 
@@ -116,6 +195,8 @@ git push
 ---
 
 # PHẦN B. Bạn backend (NestJS)
+
+> Phần B là hướng dẫn gốc và **đã làm xong**: backend đang chạy trên `main`. Giữ lại để tra cứu cấu trúc. Các lệnh trong B1 (như `git rm backend-test.txt`) chỉ dùng một lần lúc khởi tạo, **không chạy lại**. Việc còn lại nằm ở mục "Tình trạng ngày 09/10 và việc còn lại" ở đầu file.
 
 ## B1. Chuẩn bị
 
@@ -171,11 +252,13 @@ WEBHOOK_SECRET=<giống bạn n8n>
 
 Dùng `webhook-test` khi bạn n8n đang bấm Listen, đổi sang `webhook` khi workflow đã Publish.
 
+Chú ý: `N8N_WEBHOOK_URL` trong `backend/.env` là **URL đầy đủ của webhook** (có đuôi `/webhook/viewing-requested`). Biến cùng tên trong `.env` ở thư mục gốc là **URL gốc của n8n** (`http://localhost:5678/`) và chỉ dùng cho n8n. Đừng chép nhầm giá trị của biến này sang `backend/.env`, nếu không backend sẽ gọi sai địa chỉ và lead nào cũng thành `FAILED`.
+
 ## B3. Cấu hình `main.ts`
 
 - `app.setGlobalPrefix('api')`
 - `app.enableCors()` để Next.js gọi được
-- `app.useGlobalPipes(new ValidationPipe({ whitelist: true }))`
+- `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`
 - Swagger tại `/api/docs` để thử API nhanh
 
 ## B4. Dữ liệu và API
@@ -185,21 +268,23 @@ Tạo 3 module bằng `npx nest g resource properties`, `leads`, `viewings` (ch�
 | Bảng | Trường |
 |---|---|
 | `properties` | id, name, address, price, area, type, status |
-| `leads` | id, name, email, phone, budget, needs, score, level, status, automationStatus, createdAt |
+| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, automationError, eventId, createdAt |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
 
 Cấu hình TypeORM với `synchronize: true` (chỉ dùng khi phát triển).
 
-API tối thiểu:
+API (đầy đủ trong mục 3 của `api-contract.md`):
 
 | Method | Đường dẫn | Việc |
 |---|---|---|
 | POST | `/api/viewings` | Tạo lead + viewing, rồi gọi webhook n8n |
 | GET | `/api/leads` | Danh sách, lọc theo `level` |
 | GET | `/api/leads/:id` | Chi tiết |
-| PUT | `/api/leads/:id/ai-result` | n8n cập nhật điểm AI (kiểm tra header `X-Webhook-Secret`, sai trả 401) |
+| PUT | `/api/leads/:id/ai-result` | n8n cập nhật điểm AI (kiểm tra header `X-Webhook-Secret`, sai trả 401), đặt `automationStatus = COMPLETED` |
+| PUT | `/api/leads/:id/automation-status` | n8n báo `FAILED` (kiểm tra header `X-Webhook-Secret`, sai trả 401), lưu `error` vào `automationError` |
 | GET | `/api/properties` | Danh sách bất động sản |
-| GET | `/api/stats` | Tổng số lead, số HOT/WARM/COLD |
+| GET | `/api/stats` | `{ total, hot, warm, cold }` |
+| GET | `/api/viewings` | Danh sách lịch xem nhà (để kiểm tra) |
 
 Nhập sẵn khoảng 10 bất động sản mẫu (seed) để demo.
 
@@ -229,39 +314,54 @@ Mỗi khi xong một phần (API leads, gọi webhook, stats) thì commit một 
 
 # PHẦN C. Làm chung
 
-## C1. Next.js (thứ Năm đến thứ Sáu)
+## C1. Next.js
 
-```powershell
-cd web
-npx create-next-app@latest . --typescript --app --use-npm
+Dự án Next.js (TypeScript, App Router, Tailwind) đã được khởi tạo sẵn trong `web/`, mã nguồn nằm trong **`web/src/`** (đường dẫn `@/...` trỏ vào `web/src/`). Không cần chạy lại `create-next-app`. Cài và chạy: `cd web`, `npm install`, `npm run dev` (cổng 3000).
+
+Các trang và người phụ trách (mỗi trang một chủ):
+
+| Trang / phần | Làm gì | Chủ |
+|---|---|---|
+| `web/src/lib/api.ts` | Một chỗ duy nhất gọi API, kiểu dữ liệu, hàm định dạng tiền/giờ. **Các trang không tự viết `fetch`.** Chỉ gọi API có trong mục 3 của hợp đồng | Bạn n8n |
+| `/` **Form đăng ký xem nhà** | Tên, email, SĐT, ngân sách, nhu cầu, chọn bất động sản (`GET /api/properties`), giờ xem. Gọi `POST /api/viewings` | Bạn n8n |
+| `/leads` **Danh sách khách** | Bảng, lọc HOT/WARM/COLD, điểm, mức, lý do AI, trạng thái xử lý (`automationStatus`), tự tải lại khi còn `PENDING`. Gọi `GET /api/leads` | Bạn n8n |
+| `/stats` **Dashboard** | Số lead theo mức. Gọi `GET /api/stats` (trả `{ total, hot, warm, cold }`) | Bạn backend |
+| `web/Dockerfile`, khối `web` trong compose | Đóng gói web | Bạn backend |
+
+**Cấu trúc web sau khi ghép** (chi tiết từng việc ở bảng "Việc ghép web", W1 đến W6, và B-g):
+
+```
+web/
+  Dockerfile                 (bạn backend)
+  src/
+    app/
+      layout.tsx             (bạn n8n: NavBar, font hệ thống)
+      globals.css
+      page.tsx               /       form đăng ký xem nhà   (bạn n8n)
+      leads/page.tsx         /leads  danh sách khách        (bạn n8n)
+      stats/page.tsx         /stats  thống kê               (bạn backend)
+    components/              NavBar, LevelBadge, StatusBadge (bạn n8n)
+    lib/api.ts               một chỗ duy nhất gọi API        (bạn n8n)
 ```
 
-Các trang cần có và người phụ trách:
+Quy tắc: giữ `web/src/` vì Dockerfile và compose đã build theo cấu trúc này; `/stats` giữ bản của bạn backend; `/` và `/leads` do bạn n8n thay bản đầu trên `main` bằng bản của mình qua một PR. Từ khi PR đó merge, bạn backend không sửa `/` và `/leads` nữa; cần sửa thì nhắn bạn n8n.
 
-| Trang | Làm gì | Người làm |
-|---|---|---|
-| Khung dự án và `web/lib/api.ts` | Khởi tạo Next.js, hàm gọi API dùng chung | Bạn n8n (làm trước, push sớm) |
-| **Form đăng ký xem nhà** | Tên, email, SĐT, ngân sách, nhu cầu, chọn bất động sản (`GET /api/properties`), giờ xem. Gọi `POST /api/viewings` | Bạn n8n |
-| **Danh sách khách** | Bảng, lọc HOT/WARM/COLD, thấy điểm, mức, lý do AI, trạng thái xử lý (`automationStatus`). Gọi `GET /api/leads` | Bạn n8n |
-| **Dashboard** | Số lead theo mức, gọi `GET /api/stats` (trả `{ total, hot, warm, cold }`) | Bạn backend (nếu xong việc backend), nếu không thì bạn n8n |
+Lưu ý khi viết web (đã chốt với backend, chi tiết ở mục 4 của hợp đồng):
 
-Quy tắc chia để không xung đột git: mỗi trang nằm trong thư mục riêng (`web/app/...`), mỗi người chỉ sửa trang của mình. Bạn backend chỉ đụng `web/Dockerfile` và `docker-compose.yml`.
-
-Lưu ý khi viết web (đã chốt với backend):
-
-- `price` và `area` của bất động sản trả về dạng **chuỗi**, cần ép sang số khi hiển thị.
-- `score`, `level`, `reason` là `null` khi chưa chấm xong (`automationStatus = PENDING`). `FAILED` nghĩa là xử lý lỗi.
-- Đối tượng `viewing` trong phản hồi `POST /api/viewings` dùng khoá snake_case cho tới khi backend đổi sang camelCase.
+- `budget` của lead (khi `GET`), `price` và `area` của bất động sản trả về dạng **chuỗi**; phải `Number(...)` trước khi hiển thị. `budget` trong phản hồi `POST /api/viewings` có thể là số, nên khai báo kiểu `string | number` và luôn `Number(...)`, đừng dựa vào một kiểu cố định.
+- `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` là `null` khi chưa chấm xong (`automationStatus = PENDING`). `FAILED` nghĩa là xử lý lỗi, cần hiển thị rõ cho người dùng.
+- Mọi khoá JSON đều camelCase, kể cả `viewing` trong phản hồi `POST /api/viewings` (`propertyId`, `leadId`, `viewingTime`). Dùng `staffNotified`, không dùng `telegramNotified`.
+- `viewingTime` trả về dạng ISO giờ UTC (`...Z`): hiển thị theo múi giờ `Asia/Ho_Chi_Minh`.
 - Backend đã bật CORS.
 
-Địa chỉ API đặt trong `web/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8081/api` (backend chạy cổng 8081, Next.js giữ cổng mặc định 3000, không bị trùng).
+Địa chỉ API đặt trong `web/.env.local` (file này không đưa lên Git): `NEXT_PUBLIC_API_URL=http://localhost:8081/api` (backend chạy cổng 8081, Next.js giữ cổng mặc định 3000, không bị trùng). Nếu không đặt thì code dùng đúng giá trị này làm mặc định.
 
-## C2. Docker Compose (thứ Sáu)
+## C2. Docker Compose
 
-1. `backend/Dockerfile` đã có. Bạn backend thêm `web/Dockerfile` (khi web đã chạy được).
-2. Khối `backend` trong `docker-compose.yml` đã bật. Bạn backend thêm khối `web`.
-3. Đổi URL gọi nhau theo tên service: backend gọi `http://n8n:5678/...`, n8n gọi `http://backend:8081/...` (đúng cổng backend).
-4. Chạy `docker compose up -d --build` và thử lại toàn bộ luồng.
+1. `backend/Dockerfile`, `web/Dockerfile` và các khối `db`, `n8n`, `backend`, `web` trong `docker-compose.yml` đã có (bạn backend làm).
+2. URL gọi nhau theo tên service: backend gọi `http://n8n:5678/webhook/viewing-requested` (đã đặt trong compose); n8n gọi `http://backend:8081/...` (compose đã đặt biến `BACKEND_URL` cho n8n, workflow cần dùng biến này, xem việc N2).
+3. Trình duyệt gọi backend qua `http://localhost:8081/api`, không phải tên service `backend`, vì trình duyệt chạy ngoài Docker.
+4. Chạy `docker compose up -d --build` từ `main` sạch và thử lại toàn bộ luồng (việc B-b). Trong n8n, workflow phải ở trạng thái Active thì URL `/webhook/...` mới nhận.
 
 ## C3. Lịch
 
@@ -269,10 +369,10 @@ Lưu ý khi viết web (đã chốt với backend):
 |---|---|---|
 | Thứ Tư 7/10 | A1 đến A3 (Webhook, AI, email) | B1 đến B4 (NestJS, DB, API) |
 | Thứ Năm 8/10 | Xong workflow: thông báo nhân viên (email) và email HTML. Khởi tạo Next.js, làm form đăng ký | B5, B6 (gọi webhook, test), đổi `staffNotified`, endpoint `automation-status`, Dockerfile backend |
-| Thứ Sáu 9/10 | Trang danh sách khách, làm đẹp, nhánh lỗi n8n gọi `automation-status`, quay video dự phòng | Dashboard, `web/Dockerfile` và khối `web` trong compose, dọn DB, slide |
+| Thứ Sáu 9/10 | Việc N1 đến N7 ở mục "Tình trạng ngày 09/10 và việc còn lại": nhánh lỗi báo `FAILED`, ghép web (W1 đến W6), quay video dự phòng | Việc B-a đến B-g: kiểm tra giờ, chạy thử compose, sửa trang `/stats`, dọn DB, duyệt PR web, slide |
 | Thứ Bảy 10/10 | Chạy thử một lần, rồi demo | Chạy thử một lần, rồi demo |
 
-Nếu thiếu thời gian, bỏ theo thứ tự: Docker cho web, dashboard, làm đẹp. Giữ lại: form, backend lưu DB, n8n chấm điểm AI, email, gọi ngược cập nhật, trang danh sách.
+Nếu thiếu thời gian, bỏ theo thứ tự: làm đẹp, dashboard. Giữ lại: form, backend lưu DB, n8n chấm điểm AI, email, gọi ngược cập nhật, trang danh sách, nhánh lỗi báo `FAILED`, chạy được bằng `docker compose`.
 
 ## C4. Kịch bản demo (5 đến 7 phút)
 
@@ -281,7 +381,7 @@ Nếu thiếu thời gian, bỏ theo thứ tự: Docker cho web, dashboard, làm
 3. Mở n8n, tab **Executions** cho xem lần chạy thành công và từng node.
 4. Cho xem email xác nhận trong hộp thư khách, và email thông báo nhân viên với khách HOT.
 5. Quay lại web: khách vừa gửi đã có điểm và mức HOT/WARM/COLD.
-6. Tắt backend, gửi tiếp để thấy retry và log lỗi.
+6. Cho xem xử lý lỗi: chạy `docker compose stop n8n`, gửi thêm một đăng ký trên web. Khách vẫn được lưu; backend thử gọi n8n 3 lần (xem `docker compose logs backend`) rồi đặt `automationStatus = FAILED`, trang danh sách hiện trạng thái lỗi. Bật lại bằng `docker compose start n8n`. (Đừng tắt backend để thử: lúc đó chính form web không gửi được, không có gì để thấy.)
 7. Cho xem `docker ps` với các container đang chạy.
 
 Chuẩn bị sẵn video quay lại luồng này phòng khi mạng hôm demo có sự cố.

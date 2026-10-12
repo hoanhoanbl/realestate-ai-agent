@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -131,7 +133,7 @@ export default function LeadsPage() {
 
       {leads !== null && (
         <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1000px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-3 py-3">Khách</th>
@@ -142,6 +144,7 @@ export default function LeadsPage() {
                 <th className="px-3 py-3">Lý do AI</th>
                 <th className="px-3 py-3 text-center">Email</th>
                 <th className="px-3 py-3 text-center">Báo NV</th>
+                <th className="px-3 py-3">Xử lý</th>
                 <th className="px-3 py-3">Trạng thái</th>
                 <th className="px-3 py-3">Tạo lúc</th>
               </tr>
@@ -150,7 +153,7 @@ export default function LeadsPage() {
               {visible.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="px-3 py-8 text-center text-slate-500"
                   >
                     Chưa có khách nào.
@@ -160,9 +163,12 @@ export default function LeadsPage() {
               {visible.map((lead) => (
                 <tr key={lead.id} className="align-top hover:bg-slate-50">
                   <td className="px-3 py-3">
-                    <div className="font-medium text-slate-900">
+                    <Link
+                      href={`/leads/${lead.id}`}
+                      className="font-medium text-blue-700 hover:underline"
+                    >
                       {lead.name}
-                    </div>
+                    </Link>
                     <div className="text-xs text-slate-500">{lead.email}</div>
                     <div className="text-xs text-slate-500">{lead.phone}</div>
                   </td>
@@ -205,6 +211,9 @@ export default function LeadsPage() {
                           {lead.automationError}
                         </p>
                       )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <LeadStatusBadge status={lead.status} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">
                     {formatDateTime(lead.createdAt)}

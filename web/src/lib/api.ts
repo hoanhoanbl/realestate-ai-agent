@@ -3,6 +3,14 @@ export const API_URL =
 
 export type Level = "HOT" | "WARM" | "COLD";
 export type AutomationStatus = "PENDING" | "COMPLETED" | "FAILED";
+// Trạng thái bán hàng của khách (khác với AutomationStatus là trạng thái chạy của n8n)
+export type LeadStatus =
+  | "NEW"
+  | "CONFIRMED"
+  | "VIEWED"
+  | "DEPOSIT"
+  | "SIGNED"
+  | "LOST";
 
 export interface Property {
   id: number;
@@ -31,7 +39,7 @@ export interface Lead {
   staffNotified: boolean | null;
   automationStatus: AutomationStatus;
   automationError?: string | null;
-  status: string;
+  status: LeadStatus;
   createdAt: string;
 }
 
@@ -41,6 +49,36 @@ export interface Viewing {
   leadId: number;
   viewingTime: string;
   status: string;
+}
+
+export interface LeadEvent {
+  id: number;
+  leadId: number;
+  type: string;
+  note: string | null;
+  createdAt: string;
+}
+
+// GET /leads/:id trả thêm viewing và property (null nếu khách chưa có lịch)
+export type LeadDetail = Lead & {
+  viewing: Viewing | null;
+  property: Property | null;
+};
+
+// Tên tiếng Việt cho lead_events.type
+export const EVENT_LABELS: Record<string, string> = {
+  AI_SCORED: "AI chấm điểm",
+  APPROVED: "Nhân viên duyệt lịch",
+  RESCHEDULE_REQUESTED: "Nhân viên yêu cầu đổi giờ",
+  APPROVAL_TIMEOUT: "Quá 24 giờ chưa duyệt",
+  REMINDER_SENT: "Đã nhắc lịch",
+  FEEDBACK_ASKED: "Đã hỏi cảm nhận",
+  WARM_NUDGE_SENT: "Đã nhắc khách WARM",
+  STATUS_CHANGED: "Đổi trạng thái",
+};
+
+export function eventLabel(type: string): string {
+  return EVENT_LABELS[type] ?? type;
 }
 
 export interface CreateViewingInput {
@@ -110,6 +148,14 @@ export function getProperties(): Promise<Property[]> {
 export function getLeads(level?: Level): Promise<Lead[]> {
   const query = level ? `?level=${level}` : "";
   return request<Lead[]>(`/leads${query}`);
+}
+
+export function getLead(id: number): Promise<LeadDetail> {
+  return request<LeadDetail>(`/leads/${id}`);
+}
+
+export function getLeadEvents(id: number): Promise<LeadEvent[]> {
+  return request<LeadEvent[]>(`/leads/${id}/events`);
 }
 
 export function getStats(): Promise<Stats> {

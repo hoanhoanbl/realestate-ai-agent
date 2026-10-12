@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { Property } from './entities/property.entity';
 
@@ -9,5 +9,10 @@ export class PropertiesController {
   @Get()
   findAll(): Promise<Property[]> {
     return this.propertiesService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string): Promise<Property> {
+    return this.propertiesService.findOne(Number(id));
   }
 }

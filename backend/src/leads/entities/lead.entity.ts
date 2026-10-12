@@ -55,6 +55,9 @@ export class Lead {
   @Column({ type: 'varchar', length: 50, default: 'NEW' })
   status: string;
 
+  @Column({ name: 'approval_url', type: 'text', nullable: true, select: false })
+  approvalUrl: string | null;
+
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamptz',

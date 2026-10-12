@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Property } from './entities/property.entity';
@@ -116,5 +116,17 @@ export class PropertiesService implements OnModuleInit {
 
   findAll(): Promise<Property[]> {
     return this.propertyRepository.find();
+  }
+
+  async findOne(id: number): Promise<Property> {
+    const property = await this.propertyRepository.findOne({
+      where: { id },
+    });
+
+    if (!property) {
+      throw new NotFoundException(`Property with id ${id} not found`);
+    }
+
+    return property;
   }
 }

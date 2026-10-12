@@ -1,4 +1,6 @@
-# Hướng dẫn thực hiện cho 2 người
+# Tuần 1 (05/10 – 10/10/2026): hướng dẫn thực hiện cho demo giữa kỳ
+
+> **Đây là kế hoạch tuần trước, giữ lại để tra cứu.** Trong file này, "bạn n8n" là **Hoàng**, "bạn backend" là **Hậu**. Mục "Cách phối hợp" vẫn áp dụng. Tổng quan dự án: [tong-quan-du-an.md](tong-quan-du-an.md). Việc tuần này: [tuan-2.md](tuan-2.md).
 
 Stack: **n8n + NestJS + Next.js + PostgreSQL + Docker Compose**.
 Hạn demo giữa kỳ: **thứ Bảy 10/10/2026**.

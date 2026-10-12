@@ -1,0 +1,743 @@
+{
+  "name": "luong-2-follow-up",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -900,
+        -40
+      ],
+      "id": "11111111-1111-4000-8000-000000000001",
+      "name": "Mỗi giờ"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        140
+      ],
+      "id": "11111111-1111-4000-8000-000000000002",
+      "name": "Chạy tay"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "backendUrl",
+              "value": "http://backend:8081",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "staffEmail",
+              "value": "nhadn2457+nhanvien@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "managerEmail",
+              "value": "nhadn2457+quanly@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -680,
+        40
+      ],
+      "id": "11111111-1111-4000-8000-000000000003",
+      "name": "Cấu hình"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'REMINDER' AS type, l.id AS lead_id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'CONFIRMED'\n  AND v.viewing_time BETWEEN now() AND now() + interval '24 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'REMINDER_SENT')\nUNION ALL\nSELECT 'FEEDBACK', l.id, l.name, l.email, l.phone, l.needs, l.level, v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status IN ('CONFIRMED', 'VIEWED')\n  AND v.viewing_time < now() - interval '1 day'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED')\nUNION ALL\nSELECT 'WARM_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level, v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.level = 'WARM' AND l.status = 'NEW'\n  AND l.created_at < now() - interval '3 days'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'WARM_NUDGE_SENT')\nLIMIT 50;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -480,
+        40
+      ],
+      "id": "11111111-1111-4000-8000-000000000004",
+      "name": "Lấy lead cần follow-up",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-has-data",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -280,
+        40
+      ],
+      "id": "11111111-1111-4000-8000-000000000005",
+      "name": "Có dữ liệu?"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -60,
+        20
+      ],
+      "id": "11111111-1111-4000-8000-000000000006",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/properties/{{ $json.property_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000007",
+      "name": "Lấy thông tin nhà",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc.',\n  WARM_NUDGE: 'Khách đăng ký 3 ngày trước nhưng chưa phản hồi. Hỏi thăm nhẹ nhàng, hỏi thêm nhu cầu cụ thể (khu vực, số phòng), mời khách trả lời email.',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000008",
+      "name": "Chuẩn bị ngữ cảnh"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là nhân viên chăm sóc khách hàng của một văn phòng bất động sản.\nMục đích email: {{ $json.purpose }}\n\nKhách: {{ $json.name }}\nCăn nhà: {{ $json.propertyName }}, {{ $json.propertyAddress }}\nGiờ xem: {{ $json.viewingTimeText }}\nNhu cầu khách ghi: {{ $json.needs || '(không ghi)' }}\n\nYêu cầu: tiếng Việt, thân thiện, xưng \"chúng tôi\", gọi khách là \"anh/chị {{ $json.name }}\", tối đa 6 câu, không bịa thông tin không có ở trên.\nChỉ trả về JSON: {\"subject\": \"...\", \"body\": \"...\"}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        560,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000009",
+      "name": "AI soạn email",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        540,
+        120
+      ],
+      "id": "11111111-1111-4000-8000-000000000010",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gemini_account_id",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"Nhắc lịch xem căn hộ\",\n  \"body\": \"Chào anh/chị...\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        120
+      ],
+      "id": "11111111-1111-4000-8000-000000000011",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst ok = subject.length > 0 && body.length > 0 && body.length <= 1200\n  && body.includes(ctx.name) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Chúng tôi có thể hỗ trợ thêm gì cho anh/chị?', `Chào anh/chị ${ctx.name}, anh/chị có thể cho chúng tôi biết thêm khu vực và số phòng mong muốn để chúng tôi gợi ý căn phù hợp hơn không?`],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nreturn { json: { ...ctx, subject, body, usedFallback: !ok } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000012",
+      "name": "Kiểm tra nội dung AI"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.body.replace(/\\n/g, '<br>') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1060,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000013",
+      "name": "Email khách",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Kiểm tra nội dung AI').item.json.lead_id }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"type\": $('Kiểm tra nội dung AI').item.json.eventType,\n  \"note\": $('Kiểm tra nội dung AI').item.json.subject\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000014",
+      "name": "Ghi log",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Kiểm tra nội dung AI').item.json.type }}",
+                    "rightValue": "FEEDBACK",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Kiểm tra nội dung AI').item.json.type }}",
+                    "rightValue": "WARM_NUDGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "fallbackOutput": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1460,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000015",
+      "name": "Việc thêm"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Kiểm tra nội dung AI').item.json.lead_id }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"status\": \"VIEWED\",\n  \"note\": \"Đã hỏi cảm nhận sau buổi xem\"\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        -220
+      ],
+      "id": "11111111-1111-4000-8000-000000000016",
+      "name": "Chuyển VIEWED",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Cấu hình').first().json.staffEmail }}",
+        "subject": "=[GỌI LẠI] {{ $('Kiểm tra nội dung AI').item.json.name }} - WARM 3 ngày chưa phản hồi",
+        "html": "=<p>Khách hàng <b>{{ $('Kiểm tra nội dung AI').item.json.name }}</b> (SĐT: {{ $('Kiểm tra nội dung AI').item.json.phone }}) mức WARM đăng ký 3 ngày trước chưa có tiến triển.</p><p><b>Nhu cầu:</b> {{ $('Kiểm tra nội dung AI').item.json.needs || 'Chưa ghi' }}</p><p><b>Email hệ thống vừa gửi:</b></p><blockquote>{{ $('Kiểm tra nội dung AI').item.json.body.replace(/\\n/g, '<br>') }}</blockquote>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1700,
+        -60
+      ],
+      "id": "11111111-1111-4000-8000-000000000017",
+      "name": "Nhắc nhân viên",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: $('Kiểm tra nội dung AI').item.json };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        -100
+      ],
+      "id": "11111111-1111-4000-8000-000000000018",
+      "name": "Gom kết quả"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst count = t => rows.filter(r => r.type === t).length;\nreturn [{\n  json: {\n    total: rows.length,\n    reminder: count('REMINDER'),\n    feedback: count('FEEDBACK'),\n    warmNudge: count('WARM_NUDGE'),\n    fallback: rows.filter(r => r.usedFallback).length,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        220
+      ],
+      "id": "11111111-1111-4000-8000-000000000019",
+      "name": "Tổng hợp"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-has-total",
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        380,
+        220
+      ],
+      "id": "11111111-1111-4000-8000-000000000020",
+      "name": "Có gửi email?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
+        "subject": "=[BÁO CÁO] Đã thực hiện {{ $json.total }} email follow-up tự động",
+        "html": "=<p>Báo cáo tự động từ hệ thống RealEstate AI:</p><ul><li>Tổng số email follow-up đã gửi: <b>{{ $json.total }}</b></li><li>Nhắc lịch xem nhà (REMINDER): <b>{{ $json.reminder }}</b></li><li>Hỏi cảm nhận (FEEDBACK): <b>{{ $json.feedback }}</b></li><li>Nhắc khách tiềm năng (WARM_NUDGE): <b>{{ $json.warmNudge }}</b></li><li>Số lần dùng mẫu dự phòng: <b>{{ $json.fallback }}</b></li></ul>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        600,
+        220
+      ],
+      "id": "11111111-1111-4000-8000-000000000021",
+      "name": "Email báo cáo quản lý",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Mỗi giờ": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chạy tay": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Lấy lead cần follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy lead cần follow-up": {
+      "main": [
+        [
+          {
+            "node": "Có dữ liệu?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có dữ liệu?": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Tổng hợp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lấy thông tin nhà",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy thông tin nhà": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị ngữ cảnh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn bị ngữ cảnh": {
+      "main": [
+        [
+          {
+            "node": "AI soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI soạn email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI soạn email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI soạn email": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra nội dung AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra nội dung AI": {
+      "main": [
+        [
+          {
+            "node": "Email khách",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email khách": {
+      "main": [
+        [
+          {
+            "node": "Ghi log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log": {
+      "main": [
+        [
+          {
+            "node": "Việc thêm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Việc thêm": {
+      "main": [
+        [
+          {
+            "node": "Chuyển VIEWED",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nhắc nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gom kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuyển VIEWED": {
+      "main": [
+        [
+          {
+            "node": "Gom kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nhắc nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Gom kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gom kết quả": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng hợp": {
+      "main": [
+        [
+          {
+            "node": "Có gửi email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có gửi email?": {
+      "main": [
+        [
+          {
+            "node": "Email báo cáo quản lý",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

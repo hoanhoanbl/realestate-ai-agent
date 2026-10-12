@@ -1,8 +1,8 @@
 # Hop dong API giua Backend, n8n va Web
 
-File nay la "luat chung" cua ca nhom (n8n, backend, web). **Neu file nay va `huong-dan-thuc-hien.md` mau thuan nhau thi file nay thang.**
+File nay la "luat chung" cua ca nhom (n8n, backend, web). **Neu file nay va cac file ke hoach tuan (`tuan-*.md`) mau thuan nhau thi file nay thang.**
 
-Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Request, (3) nguoi kia bam Approve roi moi merge, (4) ghi mot dong vao muc "Lich su thay doi" o cuoi file. Khong sua thang tren `main`. Quy trinh day du xem muc "Cach phoi hop" trong `huong-dan-thuc-hien.md`.
+Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Request, (3) nguoi kia bam Approve roi moi merge, (4) ghi mot dong vao muc "Lich su thay doi" o cuoi file. Khong sua thang tren `main`. Quy trinh day du xem muc "Cach phoi hop" trong `tuan-1.md`.
 
 ## Quy uoc chung
 
@@ -15,12 +15,15 @@ Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Requ
 ## Tong quan luong
 
 ```
-Khach dang ky xem nha (web / app)
+Khach dang ky xem nha (web khu khach; app chi danh cho nhan vien)
   -> Backend luu lead + viewing (lead.status = NEW, automationStatus = PENDING)
-  -> Backend POST webhook sang n8n
-  -> n8n: AI cham diem, soan email, gui email, thong bao nhan vien neu lead nong
-  -> n8n goi nguoc Backend de cap nhat diem (automationStatus = COMPLETED)
-  -> Neu n8n hong giua chung: n8n bao Backend automationStatus = FAILED
+  -> Backend POST webhook sang n8n (luong 1)
+  -> n8n: AI cham diem, gui email "da nhan yeu cau" cho khach,
+          gui email nhan vien (moi muc, kem 2 link Duyet / Doi gio)
+  -> n8n goi nguoc Backend de cap nhat diem (automationStatus = COMPLETED, kem approvalUrl)
+  -> Nhan vien bam Duyet -> n8n gui email chot lich, PUT status = CONFIRMED
+  -> Neu n8n hong giua chung (truoc khi cap nhat diem): n8n bao Backend automationStatus = FAILED
+Luong 2 (moi gio): doc DB, gui email nhac lich / hoi cam nhan / nhac khach WARM, ghi lead_events.
 ```
 
 ## 1. Backend -> n8n (webhook)
@@ -73,13 +76,15 @@ Chung cho moi callback:
   "reason": "Ngan sach ro rang, co lich xem nha cu the",
   "aiReply": "Noi dung email xac nhan da soan",
   "emailSent": true,
-  "staffNotified": true
+  "staffNotified": true,
+  "approvalUrl": "http://<dia-chi-n8n>/webhook-waiting/123"
 }
 ```
 
 - `level`: `HOT` | `WARM` | `COLD` (HOT khi score >= 70, WARM 40-69, COLD < 40)
 - `score`: so nguyen 0-100
-- `staffNotified`: `true` neu da thong bao nhan vien (hien tai bang email nhan vien, chi gui cho lead HOT); `false` neu khong gui. (Truoc day ten la `telegramNotified`, da doi vi khong dung Telegram.)
+- `staffNotified`: `true` neu da thong bao nhan vien bang email; `false` neu khong gui. Tu tuan 2, luong 1 gui email nhan vien (kem link duyet) cho **moi** muc, nen thuong la `true`. (Truoc day ten la `telegramNotified`, da doi vi khong dung Telegram.)
+- `approvalUrl` (tuan 2, tuy chon): gia tri `$execution.resumeUrl` cua lan chay dang cho duyet. Them `?action=approve` hoac `?action=reschedule` la duyet / doi gio, y het 2 nut trong email nhan vien. Backend luu vao cot `approval_url` nhung **khong tra ra o cac API GET** (cot dat `select: false`) cho den khi co dang nhap (cuoi ky), vi ai co link deu duyet duoc. Muc dich: sau nay web admin va app bam Duyet se goi dung link nay, de n8n van la noi duy nhat xu ly duyet (gui email chot lich, doi trang thai, ghi log).
 - Backend luu cac truong tren va dat `automationStatus = COMPLETED`.
 
 ### 2.2. Bao loi (n8n hong giua chung)
@@ -97,18 +102,55 @@ Chung cho moi callback:
 - `error`: mo ta ngan (tuy chon). Backend luu vao cot `automationError` cua lead.
 - Backend dat `automationStatus = FAILED`. Neu n8n khong goi endpoint nay khi loi giua chung, lead se ket o `PENDING` mai, nen **moi nhanh loi cua workflow phai goi endpoint nay** (xem muc 5).
 
+### 2.3. Doi trang thai ban hang cua lead (tuan 2)
+
+`PUT /api/leads/{leadId}/status`
+
+```json
+{
+  "status": "CONFIRMED",
+  "note": "Nhan vien duyet lich qua email"
+}
+```
+
+- `status`: `NEW` | `CONFIRMED` | `VIEWED` | `DEPOSIT` | `SIGNED` | `LOST`. Gia tri khac: `400`.
+- `note`: tuy chon.
+- Backend luu `leads.status` va **tu ghi** mot dong `lead_events` voi `type = STATUS_CHANGED`, `note = "<cu> -> <moi>: <note>"`.
+- Neu trang thai moi **trung** trang thai cu: khong doi gi, khong ghi `STATUS_CHANGED`, van tra `200` (de luong 2 goi `VIEWED` nhieu lan khong sinh log rac).
+- Tra ve lead sau khi cap nhat. Lead khong ton tai: `404`.
+- Dung o: luong 1 (`CONFIRMED`), luong 2 (`VIEWED`).
+
+### 2.4. Ghi su kien cua lead (tuan 2)
+
+`POST /api/leads/{leadId}/events`
+
+```json
+{
+  "type": "REMINDER_SENT",
+  "note": "Nhac lich xem 12/10 09:00"
+}
+```
+
+- `type`: mot trong cac gia tri o bang `lead_events` (muc 4). Gia tri khac: `400`.
+- Tra `201` va dong vua tao `{ "id", "leadId", "type", "note", "createdAt" }`. Lead khong ton tai: `404`.
+- Luong 2 dua vao bang nay de **khong gui trung** email follow-up.
+
 ## 3. API backend (toi thieu cho demo)
 
 | Method | Duong dan | Mo ta |
 |---|---|---|
 | POST | `/api/viewings` | Khach dang ky xem nha; tao lead + viewing, goi webhook n8n |
 | GET | `/api/leads` | Danh sach khach (loc theo `?level=HOT`), moi nhat truoc |
-| GET | `/api/leads/{id}` | Chi tiet mot khach |
+| GET | `/api/leads/{id}` | Chi tiet mot khach. Tu tuan 2 tra them `viewing` (`{ id, propertyId, leadId, viewingTime, status }` hoac `null`) va `property` (nhu `GET /api/properties/{id}`, hoac `null`) de trang chi tiet tren web khong phai goi them |
 | PUT | `/api/leads/{id}/ai-result` | n8n cap nhat ket qua AI (muc 2.1) |
 | PUT | `/api/leads/{id}/automation-status` | n8n bao loi (muc 2.2) |
 | GET | `/api/properties` | Danh sach bat dong san |
 | GET | `/api/stats` | Dem lead theo muc, tra `{ "total": 0, "hot": 0, "warm": 0, "cold": 0 }` (lead chua cham diem chi nam trong `total`) |
 | GET | `/api/viewings` | Danh sach lich xem nha (phuc vu kiem tra, web khong bat buoc dung) |
+| GET | `/api/properties/{id}` | Mot bat dong san (tuan 2). Khong co: `404` |
+| PUT | `/api/leads/{id}/status` | n8n doi trang thai ban hang (muc 2.3, can `X-Webhook-Secret`) |
+| POST | `/api/leads/{id}/events` | n8n ghi su kien (muc 2.4, can `X-Webhook-Secret`) |
+| GET | `/api/leads/{id}/events` | Dong thoi gian cua lead, cu nhat truoc (tuan 2; trang `/leads/[id]` tren web dung) |
 
 **Web chi duoc goi cac API trong bang nay.** Can API moi thi bao backend va them vao bang truoc (xem quy tac doi hop dong o dau file).
 
@@ -133,13 +175,27 @@ Request:
 - Sai du lieu: `400` (email sai dinh dang, thieu truong). Khong tim thay bat dong san: `404`.
 - Backend goi n8n **bat dong bo**: n8n loi khong lam hong viec luu lead.
 
-## 4. Du lieu (3 bang)
+## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
 |---|---|
 | `properties` | id, name, address, price, area, type, status |
-| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, automationError, eventId, createdAt |
+| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, automationError, eventId, createdAt, approvalUrl (tuan 2, khong tra ra o GET) |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
+| `lead_events` (tuan 2) | id, leadId, type, note, createdAt (cot DB: `lead_id`, `created_at` kieu `timestamptz`) |
+
+Gia tri `lead_events.type`:
+
+| `type` | Ai ghi | Khi nao |
+|---|---|---|
+| `AI_SCORED` | Luong 1 | AI cham diem xong |
+| `APPROVED` | Luong 1 | Nhan vien bam Duyet |
+| `RESCHEDULE_REQUESTED` | Luong 1 | Nhan vien bam Doi gio |
+| `APPROVAL_TIMEOUT` | Luong 1 | Qua 24 gio khong ai duyet |
+| `REMINDER_SENT` | Luong 2 | Da nhac lich truoc 24h |
+| `FEEDBACK_ASKED` | Luong 2 | Da hoi cam nhan sau buoi xem |
+| `WARM_NUDGE_SENT` | Luong 2 | Da nhac khach WARM im lang |
+| `STATUS_CHANGED` | Backend tu ghi | Moi lan `PUT /status` |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
 
@@ -150,14 +206,14 @@ Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
 | `leads.budget` | **chuoi** (`"3000000000"`, cot `bigint`) khi `GET`; trong phan hoi cua `POST /viewings` co the la **so** | Khai bao kieu `string \| number`, luon `Number(...)` truoc khi dinh dang, khong dua vao mot kieu co dinh |
 | `properties.price`, `properties.area` | **chuoi** (cot `bigint`/`decimal`) | `Number(...)` truoc khi dinh dang |
 | `viewings.viewingTime` | chuoi ISO gio UTC, vi du `2026-10-12T02:00:00.000Z` (cot `timestamptz`) | Hien thi theo gio Viet Nam (`Asia/Ho_Chi_Minh`), khong tu cong tru 7 gio |
-| `leads.createdAt` | chuoi ISO (cot `timestamp` khong mui gio) | Hien thi nhu nhan duoc; backend can kiem tra khong lech 7 gio (xem checklist trong `huong-dan-thuc-hien.md`) |
+| `leads.createdAt` | chuoi ISO gio UTC (cot `timestamptz`) | Hien thi theo gio Viet Nam (`Asia/Ho_Chi_Minh`) |
 | `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` | `null` cho den khi `automationStatus = COMPLETED` | Hien "dang xu ly" khi `PENDING`, "loi" khi `FAILED` (kem `automationError` neu co) |
 
 Gia tri trang thai:
 
 | Truong | Gia tri |
 |---|---|
-| `leads.status` | `NEW` |
+| `leads.status` | `NEW` -> `CONFIRMED` (da chot lich) -> `VIEWED` (da xem) -> `DEPOSIT` (muon dat coc) -> `SIGNED` (da ky); hoac `LOST` (khong mua). Tuan 2 moi dung `NEW`, `CONFIRMED`, `VIEWED` |
 | `leads.automationStatus` | `PENDING` (vua tao, chua co ket qua AI) -> `COMPLETED` (n8n da cap nhat diem) hoac `FAILED` (khong goi duoc n8n, hoac n8n bao loi) |
 | `leads.level` | `HOT` / `WARM` / `COLD` (null khi chua cham) |
 | `viewings.status` | `NEW` |
@@ -167,7 +223,7 @@ Gia tri trang thai:
 - Backend: neu goi n8n that bai, thu lai toi da 3 lan (cach nhau 2 giay), van loi thi dat `automationStatus = FAILED` va ghi log. Khong de loi n8n lam hong viec luu lead.
 - n8n: bat Retry On Fail (3 lan, cho 5 giay) cho **moi** node co the loi: AI, gui email khach, thong bao nhan vien, HTTP Request. Neu mot trong cac node AI / email / thong bao nhan vien van loi sau khi thu lai, nhanh loi phai goi `PUT /api/leads/{id}/automation-status` voi `status = FAILED` va `error` mo ta ngan (muc 2.2).
 - Nhanh loi khi goi nguoc Backend that bai (vi du lead khong ton tai): workflow ket thuc o node `Callback failed`, khong lam treo. (Day la truong hop duy nhat khong bao FAILED duoc, vi chinh Backend khong nhan duoc.)
-- Theo doi: dung `automationStatus` va log cua Backend, tab Executions cua n8n. Bang `automation_logs` la tuy chon, khong bat buoc cho demo.
+- Theo doi: dung `automationStatus`, bang `lead_events` (tuan 2), log cua Backend, tab Executions cua n8n va Error workflow (gui email quan ly khi mot luong loi).
 
 ## Lich su thay doi
 
@@ -175,3 +231,4 @@ Gia tri trang thai:
 |---|---|---|
 | 09/10/2026 | Ca nhom (dong bo voi code da merge len `main`) | `viewing` da camelCase; `automation-status` da co; `viewingTime` gui sang n8n co `+07:00`; them kieu du lieu tra ve (budget/price/area la chuoi); them `GET /api/viewings`, `automationError`, `eventId`; ro rang moi nhanh loi n8n phai bao `FAILED` |
 | 09/10/2026 (lan 2) | Ca nhom | Doi ten hop dong cho dung pham vi (ca Web); `leads.budget` trong phan hoi `POST` ghi la "co the la so" (chua kiem chung khi chay that); web hien `automationError` khi `FAILED` |
+| 12/10/2026 | Hoang (Hau duyet) | Tuan 2: them `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `GET /properties/{id}`; bang `lead_events`; cac gia tri `leads.status`; `staffNotified` gui cho moi muc; `createdAt` da la `timestamptz`; `approvalUrl` trong `ai-result`; `PUT /status` trung trang thai thi bo qua; `GET /leads/{id}` tra them `viewing`, `property`; sua phan "Tong quan luong" cho dung luong tuan 2 |

@@ -1,0 +1,121 @@
+{
+  "name": "error-workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fe5c6b9e-f136-c000-4abb-c1db9d4cf399",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2b0136d1-19b1-fcf5-e186-3ac6c597c1a2",
+              "name": "workflow",
+              "value": "={{ $json.workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "d29a45d4-3c45-f8a5-598f-30c092ee3154",
+              "name": "node",
+              "value": "={{ $json.execution.lastNodeExecuted }}",
+              "type": "string"
+            },
+            {
+              "id": "2c976527-2c79-5653-d4e1-8eb9e87540ac",
+              "name": "message",
+              "value": "={{ $json.execution.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "a2fb6c6c-6d55-0cbe-8f44-cb4d961e6abc",
+              "name": "url",
+              "value": "={{ $json.execution.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "76f53103-60bd-3448-02c5-353cad9bf560",
+      "name": "Tóm tắt lỗi"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "nhadn2457+quanly@gmail.com",
+        "subject": "=[LỖI] {{ $json.workflow }}",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#dc2626;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Luồng n8n bị lỗi</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <table style=\"width:100%;border-collapse:collapse;background:#fef2f2\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:25%\">Workflow</td><td style=\"padding:10px\"><b>{{ $json.workflow }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Node lỗi</td><td style=\"padding:10px\">{{ $json.node }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Thông báo</td><td style=\"padding:10px\">{{ $json.message }}</td></tr>\n    </table>\n    <p style=\"margin-top:20px\"><a href=\"{{ $json.url }}\" style=\"background:#1d4ed8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Mở lần chạy bị lỗi</a></p>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ Error workflow.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "777e648b-90be-cbbb-81b4-cc1f71a437f5",
+      "name": "Email báo lỗi",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tóm tắt lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tóm tắt lỗi": {
+      "main": [
+        [
+          {
+            "node": "Email báo lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3f9cb271-1d56-2b84-b047-7a35691dd2b2",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "errorWfRealestat",
+  "tags": []
+}

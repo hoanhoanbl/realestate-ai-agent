@@ -32,4 +32,8 @@ export class UpdateAiResultDto {
   @IsOptional()
   @IsBoolean()
   staffNotified?: boolean;
+
+  @IsOptional()
+  @IsString()
+  approvalUrl?: string;
 }

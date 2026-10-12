@@ -139,6 +139,7 @@ export class ViewingsService {
         `Failed to trigger n8n webhook for lead ${lead.id} after ${maxRetries} attempts. Setting automationStatus to FAILED.`,
       );
       lead.automationStatus = 'FAILED';
+      lead.automationError = `Không gọi được n8n sau ${maxRetries} lần thử`;
       await this.leadRepository.save(lead);
     }
   }

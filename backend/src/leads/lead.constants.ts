@@ -1,0 +1,19 @@
+export const LEAD_STATUSES = [
+  'NEW',
+  'CONFIRMED',
+  'VIEWED',
+  'DEPOSIT',
+  'SIGNED',
+  'LOST',
+];
+
+export const LEAD_EVENT_TYPES = [
+  'AI_SCORED',
+  'APPROVED',
+  'RESCHEDULE_REQUESTED',
+  'APPROVAL_TIMEOUT',
+  'REMINDER_SENT',
+  'FEEDBACK_ASKED',
+  'WARM_NUDGE_SENT',
+  'STATUS_CHANGED',
+];

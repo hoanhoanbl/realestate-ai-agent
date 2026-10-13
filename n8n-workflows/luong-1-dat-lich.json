@@ -1,0 +1,1261 @@
+{
+  "name": "luong-1-dat-lich",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "viewing-requested",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        200
+      ],
+      "id": "332cb4f2-6af9-4049-9c9c-51fd8e95963f",
+      "name": "Webhook",
+      "webhookId": "2b6e2d39-66eb-4afd-9fcc-07924441cc89",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2f3fe257-8fc2-84cd-5814-a8907ef6dfce",
+              "name": "backendUrl",
+              "value": "http://backend:8081",
+              "type": "string"
+            },
+            {
+              "id": "85cc3a9d-b778-7078-f48b-371d0ecf32c4",
+              "name": "staffEmail",
+              "value": "nhadn2457+nhanvien@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "46b48419-66cc-f6f1-d06f-6d16d8fdd0f4",
+              "name": "managerEmail",
+              "value": "nhadn2457+quanly@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        200
+      ],
+      "id": "b5456d73-5eeb-ef57-3111-d88d16c200f0",
+      "name": "Cấu hình"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const b = $('Webhook').first().json.body;\nreturn [{\n  json: {\n    leadId: b.leadId,\n    name: String(b.name ?? '').trim(),\n    email: String(b.email ?? '').trim().toLowerCase(),\n    phone: String(b.phone ?? '').replace(/\\D/g, ''),\n    budget: Number(b.budget) || 0,\n    needs: String(b.needs ?? '').trim(),\n    propertyId: Number(b.propertyId) || 0,\n    viewingTime: b.viewingTime,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ],
+      "id": "2dde57ca-0ecf-23ae-4f3e-8d8f234435db",
+      "name": "Chuẩn hoá"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "416712c9-46af-c163-0ae9-582077e2d9f9",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "@",
+              "operator": {
+                "type": "string",
+                "operation": "contains",
+                "name": "filter.operator.contains"
+              }
+            },
+            {
+              "id": "8e29e109-2c24-cc89-e9a7-6b87237adf51",
+              "leftValue": "={{ $json.budget }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gte",
+                "name": "filter.operator.gte"
+              }
+            },
+            {
+              "id": "c930da30-31af-f050-d92e-c49b72d7eadf",
+              "leftValue": "={{ $json.propertyId }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "name": "filter.operator.gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        660,
+        200
+      ],
+      "id": "e4e2dafa-b51a-299d-c48c-64a3a693a7b2",
+      "name": "Hợp lệ?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8d9bfe3-be5a-4605-391a-b929a386a1f5",
+              "name": "error",
+              "value": "Dữ liệu đăng ký không hợp lệ (email, ngân sách hoặc căn nhà)",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        460
+      ],
+      "id": "b30d3892-380d-d044-9570-718dcb7333bc",
+      "name": "Lỗi dữ liệu"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/properties/{{ $json.propertyId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        200
+      ],
+      "id": "04658d89-5c38-79ab-b648-721740f9419b",
+      "name": "Lấy thông tin nhà",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const k = $('Chuẩn hoá').first().json;\nconst p = $input.first().json; // ket qua GET /api/properties/:id (price, area la chuoi)\nconst price = Number(p.price);\nreturn [{\n  json: {\n    ...k,\n    property: { name: p.name, address: p.address, price, area: Number(p.area), type: p.type },\n    budgetRatio: price > 0 ? Math.round((k.budget / price) * 100) : null, // % ngan sach so voi gia\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ],
+      "id": "6f8e68b9-1108-330b-8268-5f81918adb95",
+      "name": "Ghép dữ liệu"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Bạn là trợ lý bán bất động sản. Dựa vào thông tin khách hàng, hãy chấm điểm mức độ tiềm năng.\n\nKhách: {{ $json.name }}\nNgân sách (VND): {{ $json.budget }}\nNhu cầu: {{ $json.needs || '(không ghi)' }}\nGiờ xem nhà: {{ $json.viewingTime }}\nCăn khách chọn: {{ $json.property.name }}, {{ $json.property.address }}, {{ $json.property.area }} m², giá {{ $json.property.price }} VND\nNgân sách so với giá căn: {{ $json.budgetRatio }}%\n\nQuy tắc:\n- score từ 0 đến 100.\n- level: HOT nếu score >= 70, WARM nếu 40 đến 69, COLD nếu dưới 40.\n- Có ngân sách rõ ràng và nhu cầu cụ thể thì điểm cao.\n- Ngân sách từ 90% giá căn trở lên: cộng điểm mạnh. Dưới 50%: trừ điểm mạnh.\n- reason: 1 câu ngắn bằng tiếng Việt.\n- emailBody: email báo đã nhận yêu cầu xem nhà, nói rõ nhân viên sẽ liên hệ để xác nhận lịch (KHÔNG khẳng định lịch đã chốt), thân thiện, tiếng Việt, tối đa 5 câu. Xưng hô trung tính \"anh/chị\" (không đoán giới tính), gọi khách bằng tên đầy đủ. Phải nhắc tên căn nhà khách chọn.\n- staffNote: 1 đến 2 câu gợi ý hành động cho nhân viên sale (mức ưu tiên, nên gọi lại khi nào, nên hỏi thêm gì về nhu cầu).",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1320,
+        200
+      ],
+      "id": "2456bce6-2ee0-49ba-8172-7e2a98df99b7",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1300,
+        420
+      ],
+      "id": "aa1bc18e-f45f-437e-a071-4b03900f9afb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wU5LeG7gXaoUdMXQ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"score\": 85,\n  \"level\": \"HOT\",\n  \"reason\": \"Ngân sách rõ ràng, nhu cầu cụ thể\",\n  \"emailBody\": \"Chào anh/chị, chúng tôi đã nhận yêu cầu xem nhà và nhân viên sẽ liên hệ để xác nhận lịch...\",\n  \"staffNote\": \"Ưu tiên cao, nên gọi trong 1 giờ để chốt lịch và hỏi thêm về khu vực mong muốn.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1480,
+        420
+      ],
+      "id": "0ae377df-8f70-4223-a95e-579f99b8c105",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "57675fb5-4c90-74fc-ea37-0f2a22518786",
+                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "rightValue": "HOT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HOT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d0049a29-7a15-3085-1300-0fee5d207ac5",
+                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "rightValue": "WARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WARM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0b656a15-f50b-ba22-693e-87323ca58140",
+                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "rightValue": "COLD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COLD"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1540,
+        200
+      ],
+      "id": "6898445e-5d07-556c-f724-937fa61ec68c",
+      "name": "Mức"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
+        "subject": "Đã nhận yêu cầu xem nhà, nhân viên sẽ gọi trong hôm nay",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#1d4ed8;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        20
+      ],
+      "id": "64dad82a-f3ac-b553-1fc6-685a6332721f",
+      "name": "Email khách HOT",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
+        "subject": "Đã nhận yêu cầu xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#0891b2;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        200
+      ],
+      "id": "206fc544-9fd0-ee8f-54e9-83baeb9c416f",
+      "name": "Email khách WARM",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
+        "subject": "Đã nhận yêu cầu xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#6b7280;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <p>Để chúng tôi tư vấn đúng nhu cầu hơn, anh/chị có thể trả lời email này và bổ sung thêm nhu cầu cùng ngân sách dự kiến.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        380
+      ],
+      "id": "02b4f8a0-f7ce-834a-1612-59c8ef666d61",
+      "name": "Email khách COLD",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Cấu hình').first().json.staffEmail }}",
+        "subject": "={{ $('Basic LLM Chain').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '' }}{{ $('Chuẩn hoá').first().json.name }} - {{ $('Basic LLM Chain').first().json.output.score }} điểm - cần duyệt lịch xem",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:{{ ({HOT:'#dc2626',WARM:'#f59e0b',COLD:'#6b7280'})[$('Basic LLM Chain').first().json.output.level] }};color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách {{ $('Basic LLM Chain').first().json.output.level }} - cần duyệt lịch xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\"><b>Điểm AI: {{ $('Basic LLM Chain').first().json.output.score }}/100</b> &mdash; {{ $('Basic LLM Chain').first().json.output.reason }}</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\"><b>{{ $('Chuẩn hoá').first().json.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Email</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.email }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Ngân sách</td><td style=\"padding:10px\">{{ Number($('Chuẩn hoá').first().json.budget).toLocaleString('vi-VN') }} VND</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Nhu cầu</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.needs || '(không ghi)' }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Căn nhà</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.name }}, {{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Giờ xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n    </table>\n    <p style=\"margin-top:20px;padding:12px;background:#fffbeb;border-left:4px solid #f59e0b\"><b>Gợi ý của AI:</b> {{ $('Basic LLM Chain').first().json.output.staffNote }}</p>\n    <p style=\"margin-top:20px\">\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=approve\" style=\"background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Duyệt lịch</a>\n      &nbsp;\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=reschedule\" style=\"background:#6b7280;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Đổi giờ</a>\n    </p>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Bấm nút trong vòng 24 giờ. Quá hạn, hệ thống sẽ báo cho quản lý.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1980,
+        200
+      ],
+      "id": "a3c27c2a-a41c-3ce5-0d7f-b12e400e8b83",
+      "name": "Email nhân viên",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/ai-result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"score\": $('Basic LLM Chain').first().json.output.score,\n  \"level\": $('Basic LLM Chain').first().json.output.level,\n  \"reason\": $('Basic LLM Chain').first().json.output.reason,\n  \"aiReply\": $('Basic LLM Chain').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"staffNotified\": true,\n  \"approvalUrl\": $execution.resumeUrl\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        200
+      ],
+      "id": "c801e0de-d265-ea9a-e465-03e3649fdd43",
+      "name": "Lưu kết quả AI",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        420
+      ],
+      "id": "20748b55-d231-43ca-8be2-0ac8a6781c96",
+      "name": "Callback failed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"type\": \"AI_SCORED\",\n  \"note\": $('Basic LLM Chain').first().json.output.level + \" \" + $('Basic LLM Chain').first().json.output.score + \" điểm: \" + $('Basic LLM Chain').first().json.output.reason\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2420,
+        200
+      ],
+      "id": "2fedf074-d5dd-821e-9926-37817d9854a6",
+      "name": "Ghi log AI_SCORED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 24,
+        "resumeUnit": "hours",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        200
+      ],
+      "id": "104b5506-6c34-cb62-ea94-3edc48e8b379",
+      "name": "Chờ duyệt",
+      "webhookId": "a9e0b372-9331-5929-a085-597d27608ff6"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9b344264-35c1-5b4c-b83a-1a8efb41af2d",
+                    "leftValue": "={{ $json.query?.action }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9560215d-331d-09d6-38eb-81baaca029d0",
+                    "leftValue": "={{ $json.query?.action }}",
+                    "rightValue": "reschedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reschedule"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Hết giờ"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2860,
+        200
+      ],
+      "id": "70c2fc47-5216-f69a-38db-07e917337b03",
+      "name": "Kết quả duyệt"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã gửi email cho khách.</h2></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3080,
+        20
+      ],
+      "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
+      "name": "Trả lời duyệt"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã báo khách là nhân viên sẽ gọi lại để hẹn giờ khác.</h2></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3080,
+        200
+      ],
+      "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
+      "name": "Trả lời đổi giờ"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
+        "subject": "Xác nhận lịch xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#16a34a;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã được xác nhận</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, nhân viên đã xác nhận lịch xem nhà của anh/chị. Rất mong được đón anh/chị đúng giờ.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3300,
+        20
+      ],
+      "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
+      "name": "Email chốt lịch",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
+        "subject": "Cần hẹn lại giờ xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#f59e0b;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Cần hẹn lại giờ xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, khung giờ anh/chị đăng ký chưa phù hợp với lịch của nhân viên. Nhân viên sẽ gọi lại để hẹn một giờ khác thuận tiện cho anh/chị.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3300,
+        200
+      ],
+      "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
+      "name": "Email báo đổi giờ",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
+        "subject": "=[CẢNH BÁO] {{ $('Chuẩn hoá').first().json.name }} chưa được duyệt lịch sau 24 giờ",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#dc2626;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lead chưa được nhân viên duyệt sau 24 giờ</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Nhân viên chưa bấm Duyệt hay Đổi giờ cho yêu cầu dưới đây sau 24 giờ.</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Mã lead</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.leadId }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Mức AI</td><td style=\"padding:10px\">{{ $('Basic LLM Chain').first().json.output.level }} ({{ $('Basic LLM Chain').first().json.output.score }} điểm)</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ luồng 1.</div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3080,
+        420
+      ],
+      "id": "351610fb-49f7-6934-0fca-bda8fab90001",
+      "name": "Email cảnh báo quản lý",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"CONFIRMED\", \"note\": \"Nhân viên duyệt qua email\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3520,
+        20
+      ],
+      "id": "e9522c19-4b97-77be-b497-01f4b3554260",
+      "name": "Cập nhật CONFIRMED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"APPROVED\", \"note\": \"Nhân viên duyệt lịch qua email\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3740,
+        20
+      ],
+      "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
+      "name": "Ghi log APPROVED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"RESCHEDULE_REQUESTED\", \"note\": \"Nhân viên yêu cầu đổi giờ qua email\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3520,
+        200
+      ],
+      "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
+      "name": "Ghi log RESCHEDULE_REQUESTED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"APPROVAL_TIMEOUT\", \"note\": \"Quá 24 giờ chưa duyệt\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3300,
+        420
+      ],
+      "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
+      "name": "Ghi log APPROVAL_TIMEOUT",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/automation-status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"status\": \"FAILED\",\n  \"error\": String($json.error?.message ?? $json.error ?? \"Loi khong ro\").slice(0, 300)\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        640
+      ],
+      "id": "01669830-4898-48a4-a620-a243ea54cd8f",
+      "name": "Report FAILED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn hoá": {
+      "main": [
+        [
+          {
+            "node": "Hợp lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hợp lệ?": {
+      "main": [
+        [
+          {
+            "node": "Lấy thông tin nhà",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lỗi dữ liệu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lỗi dữ liệu": {
+      "main": [
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy thông tin nhà": {
+      "main": [
+        [
+          {
+            "node": "Ghép dữ liệu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghép dữ liệu": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Mức",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mức": {
+      "main": [
+        [
+          {
+            "node": "Email khách HOT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email khách WARM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email khách COLD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email khách HOT": {
+      "main": [
+        [
+          {
+            "node": "Email nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email khách WARM": {
+      "main": [
+        [
+          {
+            "node": "Email nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email khách COLD": {
+      "main": [
+        [
+          {
+            "node": "Email nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Lưu kết quả AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu kết quả AI": {
+      "main": [
+        [
+          {
+            "node": "Ghi log AI_SCORED",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log AI_SCORED": {
+      "main": [
+        [
+          {
+            "node": "Chờ duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chờ duyệt": {
+      "main": [
+        [
+          {
+            "node": "Kết quả duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kết quả duyệt": {
+      "main": [
+        [
+          {
+            "node": "Trả lời duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả lời đổi giờ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email cảnh báo quản lý",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trả lời duyệt": {
+      "main": [
+        [
+          {
+            "node": "Email chốt lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email chốt lịch": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật CONFIRMED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật CONFIRMED": {
+      "main": [
+        [
+          {
+            "node": "Ghi log APPROVED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trả lời đổi giờ": {
+      "main": [
+        [
+          {
+            "node": "Email báo đổi giờ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email báo đổi giờ": {
+      "main": [
+        [
+          {
+            "node": "Ghi log RESCHEDULE_REQUESTED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email cảnh báo quản lý": {
+      "main": [
+        [
+          {
+            "node": "Ghi log APPROVAL_TIMEOUT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "errorWorkflow": "errorWfRealestat"
+  },
+  "versionId": "8e75150a-a6a7-6952-b4b5-0dea332dd363",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "prt5invo7qugQx74",
+  "tags": []
+}

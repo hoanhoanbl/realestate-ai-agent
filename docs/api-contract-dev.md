@@ -258,6 +258,22 @@ Trạng thái `contracts.status`: `DRAFTING` (chờ n8n soạn) → `PENDING_APP
 
 Bảng `contracts`: `id, lead_id, property_id, title, content, deposit_amount, property_price, status, ai_review, reject_reason, resume_url (ẩn), sign_token (duy nhất), expires_at, approved_by, created_by, signer_name, signature (ẩn ở danh sách), signed_at, signed_ip, created_at, updated_at`.
 
+## 3g. Báo cáo kinh doanh (dev)
+
+| Method | Đường dẫn | Ai gọi được | Mô tả |
+|---|---|---|---|
+| POST | `/api/reports` | n8n | Body `{ periodStart, periodEnd (yyyy-MM-dd), metrics (object), analysis (object), alerts (string[]) }` |
+| GET | `/api/reports` | Quản lý | 52 báo cáo mới nhất: `[{ id, periodStart, periodEnd, createdAt, headline, alertCount }]` |
+| GET | `/api/reports/:id` | Quản lý | Đầy đủ `metrics`, `analysis`, `alerts` |
+| POST | `/api/reports/run` | Quản lý | Gọi webhook `report-requested` để n8n tạo báo cáo ngay. Trả `{ ok: true }` ngay, báo cáo xuất hiện sau 30 đến 60 giây |
+
+`analysis` = `{ headline, insights[], recommendations[], aiUsed }`. `metrics` = `{ period, cur, prev, delta, funnel }`.
+
+**Webhook backend → n8n (mới):** `POST /webhook/report-requested`, body `{ "by": "tên quản lý" }`. Xem [luồng 4](luong/luong-4-bao-cao.md).
+
+Bảng `weekly_reports`: `id, period_start (date), period_end (date), metrics (jsonb), analysis (jsonb), alerts (jsonb), created_at`.
+Tài khoản database chỉ đọc cho AI Agent: `backend/sql/readonly-role.sql`.
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -327,6 +343,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/luong-4-bao-cao` | Thêm mục 3g (báo cáo), bảng `weekly_reports`, webhook `report-requested`, tài khoản DB chỉ đọc `n8n_readonly` |
 | `feature/luong-3-hop-dong` | Thêm mục 3f (hợp đồng, ký online), bảng `contracts`, webhook `contract-requested`, event `CONTRACT_*` |
 | `feature/cam-nhan` | Thêm mục 3e (feedback), bảng `feedbacks`, webhook `feedback-submitted`, event `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, biến `PUBLIC_WEB_URL` |
 | `feature/quan-ly-nha` | Thêm mục 3d (thêm, sửa, ẩn nhà), `GET /properties` ẩn căn HIDDEN, đặt lịch căn không AVAILABLE trả 400 |

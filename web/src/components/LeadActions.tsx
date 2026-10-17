@@ -1,14 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import RescheduleControl from "@/components/RescheduleControl";
-import { approveLead, setLeadStatus, type LeadDetail } from "@/lib/api";
+import { approveLead, createContract, formatVnd, getContracts, setLeadStatus, type LeadDetail } from "@/lib/api";
 
 const BTN = "rounded-lg px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60";
 
 // Các việc nhân viên làm với một khách, tuỳ trạng thái hiện tại. Duyệt lịch vẫn do n8n xử lý (gửi email, ghi log).
 export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onChanged: () => void }) {
+  const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  // Tiền cọc gợi ý 10% giá nhà; nhân viên sửa được
+  const [deposit, setDeposit] = useState("");
+  const [contractId, setContractId] = useState<number | null>(null);
+
+  // Khách đang đặt cọc hoặc đã ký thì tìm hợp đồng của khách để dẫn link
+  useEffect(() => {
+    if (lead.status !== "DEPOSIT" && lead.status !== "SIGNED") return;
+    let cancelled = false;
+    getContracts()
+      .then((rows) => {
+        if (!cancelled) setContractId(rows.find((r) => r.leadId === lead.id)?.id ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [lead.id, lead.status]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +52,16 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const canLose = lead.status !== "SIGNED" && lead.status !== "LOST";
   const canReschedule = (lead.status === "NEW" || lead.status === "CONFIRMED") && lead.viewing;
 
-  if (!canApprove && !canMarkViewed && !canLose && !canReschedule) return null;
+  const canCreateContract = lead.status === "VIEWED" && lead.property !== null;
+  const defaultDeposit = lead.property ? Math.round(Number(lead.property.price) * 0.1) : 0;
+
+  const contractLink = contractId !== null && (
+    <Link href={`/admin/hop-dong/${contractId}`} className={`${BTN} bg-white text-blue-700 ring-1 ring-blue-300 hover:bg-blue-50`}>
+      Xem hợp đồng
+    </Link>
+  );
+
+  if (!canApprove && !canMarkViewed && !canLose && !canReschedule && !canCreateContract && !contractLink) return null;
 
   return (
     <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50/50 p-5">
@@ -86,6 +115,35 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
             Khách không đến
           </button>
         )}
+        {canCreateContract && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white p-2 ring-1 ring-amber-300">
+            <input
+              type="number"
+              min={1}
+              value={deposit}
+              onChange={(e) => setDeposit(e.target.value)}
+              placeholder={`Tiền cọc, gợi ý ${formatVnd(defaultDeposit)}`}
+              aria-label="Tiền đặt cọc (VND)"
+              className="w-56 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() =>
+                run("contract", async () => {
+                  const amount = deposit === "" ? defaultDeposit : Number(deposit);
+                  if (!Number.isInteger(amount) || amount < 1) throw new Error("Tiền đặt cọc phải là số nguyên dương.");
+                  const c = await createContract(lead.id, amount);
+                  router.push(`/admin/hop-dong/${c.id}`);
+                })
+              }
+              className={`${BTN} bg-amber-500 text-white hover:bg-amber-600`}
+            >
+              {busy === "contract" ? "Đang tạo..." : "Tạo hợp đồng đặt cọc"}
+            </button>
+          </div>
+        )}
+        {contractLink}
         {canLose && (
           <button
             type="button"

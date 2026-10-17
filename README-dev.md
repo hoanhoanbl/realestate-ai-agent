@@ -18,7 +18,7 @@ Khách hàng · Nhân viên sale · Quản lý. Danh sách use case: [docs/use-c
 | 2. Follow-up tự động | [luong-2](docs/luong/luong-2-follow-up.md) | Có (đang sửa lỗi) |
 | 1b. Chốt lịch / đổi giờ từ web admin | [luong-1b](docs/luong/luong-1b-chot-lich-thu-cong.md) | Có |
 | Error workflow | [error-workflow](docs/luong/error-workflow.md) | Có |
-| 3. Hợp đồng đặt cọc | (sẽ thêm) | Chưa |
+| 3. Hợp đồng đặt cọc | [luong-3](docs/luong/luong-3-hop-dong.md) | Có |
 | 4. Báo cáo kinh doanh | (sẽ thêm) | Chưa |
 | 5. Cảm nhận sau buổi xem | [luong-5](docs/luong/luong-5-cam-nhan.md) | Có |
 
@@ -31,10 +31,12 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 | `/` | Khách | Danh sách nhà, lọc theo thành phố, loại, giá |
 | `/nha/[id]` | Khách | Chi tiết một căn và form đặt lịch xem |
 | `/admin/login` | Nhân viên, quản lý | Đăng nhập |
+| `/ky/[token]` | Khách | Đọc và ký hợp đồng đặt cọc (link trong email) |
 | `/cam-nhan/[token]` | Khách | Gửi cảm nhận sau buổi xem (link trong email) |
 | `/admin` | Nhân viên, quản lý | Tổng quan: phễu theo trạng thái, việc cần xử lý |
 | `/admin/leads`, `/admin/leads/[id]` | Nhân viên, quản lý | Danh sách khách, chi tiết, dòng thời gian, nút Duyệt / Đổi giờ / Đã xem / Mất khách |
 | `/admin/lich-xem` | Nhân viên, quản lý | Lịch xem sắp tới và đã qua, đổi giờ |
+| `/admin/hop-dong`, `/admin/hop-dong/[id]` | Nhân viên, quản lý | Danh sách và chi tiết hợp đồng; quản lý duyệt hoặc từ chối |
 | `/admin/nha` | Chỉ quản lý | Thêm, sửa, ẩn căn nhà |
 
 Khu khách không có đường dẫn sang khu admin; nhân viên tự gõ `/admin`.

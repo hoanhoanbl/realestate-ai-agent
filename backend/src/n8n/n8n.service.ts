@@ -25,9 +25,10 @@ export class N8nService {
   }
 
   // Bấm "link duyệt" của một lần chạy n8n đang chờ (Wait). Ném lỗi nếu link đã hết hạn / đã dùng.
-  async resume(approvalUrl: string, action: string): Promise<void> {
+  async resume(approvalUrl: string, action: string, extra: Record<string, string> = {}): Promise<void> {
     const u = this.toInternalUrl(approvalUrl);
     u.searchParams.set('action', action);
+    for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, v);
     await firstValueFrom(this.httpService.get(u.toString(), { timeout: 60000 }));
   }
 

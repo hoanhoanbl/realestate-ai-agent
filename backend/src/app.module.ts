@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { N8nModule } from './n8n/n8n.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
   imports: [
@@ -47,6 +48,8 @@ import { FeedbackModule } from './feedback/feedback.module';
     N8nModule,
 
     FeedbackModule,
+
+    ContractsModule,
   ],
 })
 export class AppModule {}

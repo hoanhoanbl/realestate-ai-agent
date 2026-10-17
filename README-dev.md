@@ -34,6 +34,7 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 | `/admin` | Nhân viên, quản lý | Tổng quan: phễu theo trạng thái, việc cần xử lý |
 | `/admin/leads`, `/admin/leads/[id]` | Nhân viên, quản lý | Danh sách khách, chi tiết, dòng thời gian, nút Duyệt / Đổi giờ / Đã xem / Mất khách |
 | `/admin/lich-xem` | Nhân viên, quản lý | Lịch xem sắp tới và đã qua, đổi giờ |
+| `/admin/nha` | Chỉ quản lý | Thêm, sửa, ẩn căn nhà |
 
 Khu khách không có đường dẫn sang khu admin; nhân viên tự gõ `/admin`.
 

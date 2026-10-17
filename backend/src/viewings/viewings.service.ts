@@ -45,6 +45,9 @@ export class ViewingsService {
     if (!property) {
       throw new NotFoundException(`Property with id ${propertyId} not found`);
     }
+    if (property.status !== 'AVAILABLE') {
+      throw new BadRequestException('Căn nhà này hiện không nhận đặt lịch xem');
+    }
 
     const { text: normalizedViewingTime, date: viewingDate } = parseViewingTime(viewingTime);
 

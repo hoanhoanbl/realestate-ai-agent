@@ -91,7 +91,7 @@ sequenceDiagram
 | 14 | Chờ duyệt (Wait) | Dừng, chờ nhân viên bấm link, tối đa 24 giờ | |
 | 15 | Kết quả duyệt (Switch) | Rẽ: approve / reschedule / còn lại | |
 | 15b | Hết giờ thật? (IF) | Nhánh "còn lại": nếu không có `action` là **hết 24 giờ** → cảnh báo quản lý. Nếu có `action` nhưng sai → trả trang lỗi 400 và **quay lại chờ** (link vẫn dùng được) | |
-| 16 | Email chốt lịch → Cập nhật CONFIRMED → log APPROVED → Trả lời duyệt | Chốt lịch cho khách; **trang "đã ghi nhận" chỉ hiện sau khi email đã gửi** | `leads.status = CONFIRMED` |
+| 16 | Lấy giờ xem mới nhất (Postgres) → Email chốt lịch → Cập nhật CONFIRMED → log APPROVED → Trả lời duyệt | Email dùng **giờ xem mới nhất trong DB** (nhân viên có thể đã đổi giờ ở web admin trong lúc chờ); **trang "đã ghi nhận" chỉ hiện sau khi email đã gửi** | `leads.status = CONFIRMED` |
 | 17 | Email báo đổi giờ → log → Trả lời đổi giờ | Báo khách sẽ hẹn lại | `lead_events` |
 | 18 | Email cảnh báo quản lý → log | Báo quản lý khi quá hạn | `lead_events` |
 
@@ -100,6 +100,7 @@ sequenceDiagram
 - **Vào:** webhook `viewing-requested` do backend gọi (xem `api-contract-dev.md` mục 1).
 - **Ra:** `PUT /leads/:id/ai-result`, `PUT /leads/:id/status`, `POST /leads/:id/events`, `PUT /leads/:id/automation-status` (mục 2).
 - **Trạng thái khách:** `NEW → CONFIRMED`. **Trạng thái tự động hoá:** `PENDING → COMPLETED` hoặc `FAILED`.
+- Nếu link duyệt hết hạn hoặc nhân viên đã bấm Đổi giờ, lịch được chốt bằng [luồng 1b](luong-1b-chot-lich-thu-cong.md).
 - **Link Duyệt** chính là `$execution.resumeUrl` của lần chạy đang chờ. Backend lưu link này (`approvalUrl`, không lộ ra API đọc) để web admin và app sau này có nút Duyệt mà n8n vẫn là nơi xử lý duy nhất.
 
 ## 6. Khi lỗi thì sao?

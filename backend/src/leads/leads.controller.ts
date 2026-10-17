@@ -7,6 +7,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
@@ -16,7 +17,9 @@ import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { UpdateAutomationStatusDto } from './dto/update-automation-status.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { CreateLeadEventDto } from './dto/create-lead-event.dto';
+import { AdminStatusDto } from './dto/admin-status.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthUser } from '../auth/auth.types';
 import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
 
 @Controller('leads')
@@ -41,6 +44,22 @@ export class LeadsController {
   @UseGuards(JwtAuthGuard)
   findEvents(@Param('id', ParseIntPipe) id: number): Promise<LeadEvent[]> {
     return this.leadsService.findEvents(id);
+  }
+
+  @Post(':id/approve')
+  @UseGuards(JwtAuthGuard)
+  approve(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.leadsService.approve(id, req.user);
+  }
+
+  @Put(':id/admin-status')
+  @UseGuards(JwtAuthGuard)
+  adminStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: AdminStatusDto,
+    @Req() req: { user: AuthUser },
+  ): Promise<Lead> {
+    return this.leadsService.adminSetStatus(id, data, req.user);
   }
 
   // --- Cho n8n (header X-Webhook-Secret) ---

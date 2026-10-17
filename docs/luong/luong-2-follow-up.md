@@ -9,7 +9,7 @@ Nhân viên môi giới thường quên: quên nhắc khách trước giờ xem 
 | Loại | Điều kiện | Việc làm |
 |---|---|---|
 | `REMINDER` | Khách đã chốt lịch (`CONFIRMED`), giờ xem trong 24 giờ tới | Email nhắc lịch cho khách |
-| `FEEDBACK` | Giờ xem đã qua hơn 1 ngày | Email hỏi cảm nhận cho khách, chuyển khách sang `VIEWED` |
+| `FEEDBACK` | Nhân viên đã bấm "Đã xem" (`VIEWED`) và giờ xem đã qua hơn 2 giờ; hoặc nhân viên quên bấm, khách vẫn `CONFIRMED` và giờ xem đã qua hơn 1 ngày | Email hỏi cảm nhận cho khách (trường hợp quên bấm thì n8n chuyển khách sang `VIEWED`) |
 | `WARM_NUDGE` | Khách WARM đã `VIEWED`, được hỏi cảm nhận hơn 3 ngày mà chưa tiến triển | Email hỏi thăm khách + email nhắc nhân viên |
 | `STAFF_NUDGE` | Khách HOT/WARM đăng ký hơn 3 ngày nhưng vẫn `NEW` (nhân viên chưa duyệt) | **Chỉ** email nhắc nhân viên. Khách không nhận gì, vì lỗi nằm ở phía mình |
 

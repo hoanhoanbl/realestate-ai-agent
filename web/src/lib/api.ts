@@ -1,3 +1,5 @@
+import { clearSession, getToken, type SessionUser } from "@/lib/auth";
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/api";
 
@@ -75,6 +77,7 @@ export const EVENT_LABELS: Record<string, string> = {
   FEEDBACK_ASKED: "Đã hỏi cảm nhận",
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
+  VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FOLLOWUP_FAILED: "Follow-up bị lỗi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
@@ -116,9 +119,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Gửi kèm token đăng nhập (nếu có). API công khai bỏ qua header này.
+  const token = getToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init });
+    res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init, headers });
   } catch {
     throw new ApiError(
       `Không kết nối được backend (${API_URL}). Hãy kiểm tra backend đã chạy chưa.`,
@@ -127,6 +135,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    // Token hết hạn: xoá phiên và đưa về trang đăng nhập
+    if (res.status === 401 && token) {
+      clearSession();
+      if (!window.location.pathname.startsWith("/admin/login")) {
+        // tải lại cả trang để xoá sạch dữ liệu của phiên cũ
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = "/admin/login";
+      }
+    }
     let message = `Lỗi ${res.status}`;
     try {
       const body = await res.json();
@@ -176,6 +193,78 @@ export function createViewing(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+}
+
+// ---- Khu quản trị (cần đăng nhập) ----
+
+export interface LoginResult {
+  accessToken: string;
+  user: SessionUser;
+}
+
+export function login(email: string, password: string): Promise<LoginResult> {
+  return request<LoginResult>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export interface Funnel {
+  total: number;
+  byStatus: Record<LeadStatus, number>;
+  conversionRate: number;
+  pendingApproval: number;
+  failedAutomation: number;
+  viewingsToday: number;
+}
+
+export function getFunnel(): Promise<Funnel> {
+  return request<Funnel>("/stats/funnel");
+}
+
+export interface ScheduleRow {
+  id: number;
+  viewingTime: string;
+  leadId: number;
+  leadName: string;
+  leadPhone: string;
+  leadLevel: Level | null;
+  leadStatus: LeadStatus;
+  propertyId: number;
+  propertyName: string;
+  propertyAddress: string;
+}
+
+export function getSchedule(): Promise<ScheduleRow[]> {
+  return request<ScheduleRow[]>("/viewings/schedule");
+}
+
+export function approveLead(id: number): Promise<{ via: "resume" | "manual" }> {
+  return request(`/leads/${id}/approve`, { method: "POST" });
+}
+
+export function setLeadStatus(id: number, status: "VIEWED" | "LOST", note?: string): Promise<Lead> {
+  return request<Lead>(`/leads/${id}/admin-status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, note }),
+  });
+}
+
+export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {
+  return request<Viewing>(`/viewings/${viewingId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ viewingTime }),
+  });
+}
+
+// ISO (UTC) -> "YYYY-MM-DDTHH:mm" theo giờ Việt Nam, dùng cho ô datetime-local
+export function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).replace(" ", "T").slice(0, 16);
 }
 
 export function formatVnd(value: string | number): string {

@@ -80,6 +80,12 @@ export const EVENT_LABELS: Record<string, string> = {
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
   FEEDBACK_ANALYZED: "AI phân tích cảm nhận",
+  CONTRACT_CREATED: "Tạo hợp đồng",
+  CONTRACT_DRAFTED: "Hợp đồng soạn xong",
+  CONTRACT_SENT: "Hợp đồng gửi khách ký",
+  CONTRACT_SIGNED: "Khách ký hợp đồng",
+  CONTRACT_REJECTED: "Hợp đồng bị từ chối",
+  CONTRACT_EXPIRED: "Hợp đồng hết hạn",
   FOLLOWUP_FAILED: "Follow-up bị lỗi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
@@ -243,6 +249,100 @@ export async function getLeadFeedback(leadId: number): Promise<Feedback | null> 
     throw e;
   });
   return text;
+}
+
+// ---- Hợp đồng đặt cọc ----
+
+export type ContractStatus = "DRAFTING" | "PENDING_APPROVAL" | "SENT" | "SIGNED" | "REJECTED" | "EXPIRED";
+
+export interface ContractRow {
+  id: number;
+  status: ContractStatus;
+  depositAmount: string | number;
+  createdAt: string;
+  signedAt: string | null;
+  leadId: number;
+  leadName: string;
+  propertyName: string;
+}
+
+export interface ContractDetail {
+  id: number;
+  leadId: number;
+  title: string | null;
+  content: string | null;
+  depositAmount: string | number;
+  propertyPrice: string | number;
+  status: ContractStatus;
+  aiReview: string | null;
+  rejectReason: string | null;
+  approvedBy: string | null;
+  createdBy: string | null;
+  signerName: string | null;
+  signature: string | null;
+  signedAt: string | null;
+  signedIp: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  signUrl: string | null;
+  lead: { id: number; name: string; email: string; phone: string } | null;
+  property: Property | null;
+}
+
+export function getContracts(): Promise<ContractRow[]> {
+  return request<ContractRow[]>("/contracts");
+}
+
+export function getContract(id: number): Promise<ContractDetail> {
+  return request<ContractDetail>(`/contracts/${id}`);
+}
+
+export function createContract(leadId: number, depositAmount: number): Promise<{ id: number }> {
+  return request<{ id: number }>("/contracts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ leadId, depositAmount }),
+  });
+}
+
+export function approveContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/approve`, { method: "POST" });
+}
+
+export function rejectContract(id: number, reason: string): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// Trang ký công khai của khách
+export interface SignInfo {
+  title: string | null;
+  content: string | null;
+  customerName: string;
+  propertyName: string | null;
+  depositAmount: string | number;
+  status: ContractStatus;
+  expiresAt: string | null;
+  signedAt: string | null;
+  signerName: string | null;
+}
+
+export function getSignInfo(token: string): Promise<SignInfo> {
+  return request<SignInfo>(`/sign/${encodeURIComponent(token)}`);
+}
+
+export function submitSignature(
+  token: string,
+  body: { signerName: string; signature: string; agree: boolean },
+): Promise<{ ok: true }> {
+  return request(`/sign/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export function getProperty(id: number): Promise<Property> {

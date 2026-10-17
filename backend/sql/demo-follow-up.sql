@@ -1,4 +1,6 @@
 -- Xoá dữ liệu mẫu cũ (chỉ các lead dùng email +demo)
+DELETE FROM contracts   WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
+DELETE FROM feedbacks   WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM lead_events WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM viewings    WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM leads       WHERE email LIKE 'nhadn2457+demo%';

@@ -236,6 +236,28 @@ Tất cả cần `Authorization: Bearer <token>` (xem mục 3b). Lỗi nghiệp 
 Bảng `feedbacks`: `id, lead_id, token (duy nhất), rating, interest, comment, submitted_at, ai_sentiment, ai_summary, ai_next_action, created_at`.
 Biến môi trường mới: `PUBLIC_WEB_URL` (địa chỉ web mà khách mở được từ email; backend và n8n đều dùng).
 
+## 3f. Hợp đồng đặt cọc (dev)
+
+Trạng thái `contracts.status`: `DRAFTING` (chờ n8n soạn) → `PENDING_APPROVAL` (chờ quản lý duyệt) → `SENT` (đã gửi khách ký) → `SIGNED`; hoặc `REJECTED`, `EXPIRED`.
+
+| Method | Đường dẫn | Ai gọi được | Mô tả |
+|---|---|---|---|
+| POST | `/api/contracts` | Đã đăng nhập | Tạo hợp đồng. Body `{ leadId, depositAmount }`. Khách phải `VIEWED`, chưa có hợp đồng đang xử lý, cọc không lớn hơn giá nhà. Khách chuyển `DEPOSIT`, gọi webhook `contract-requested`. Sai điều kiện: `400`; đã có hợp đồng: `409` |
+| GET | `/api/contracts` | Đã đăng nhập | Danh sách kèm tên khách, căn nhà |
+| GET | `/api/contracts/:id` | Đã đăng nhập | Chi tiết: nội dung, `aiReview` (JSON `{riskLevel, notes, aiUsed}`), chữ ký (khi đã ký), `signUrl` (khi `SENT`). Không bao giờ trả `resumeUrl` và `signToken` |
+| POST | `/api/contracts/:id/approve` | Quản lý | Bấm link tiếp tục của n8n với `action=approve`. Không ở `PENDING_APPROVAL`: `400`; link đã quá hạn: `409` |
+| POST | `/api/contracts/:id/reject` | Quản lý | Body `{ reason }` (bắt buộc, tối đa 300 ký tự) |
+| PUT | `/api/contracts/:id/draft` | n8n | Body `{ title, content, aiReview, resumeUrl }` → `PENDING_APPROVAL` |
+| POST | `/api/contracts/:id/issue-token` | n8n | Cấp token ký (hạn 7 ngày), trả `{ token, signUrl, expiresAt }` → `SENT` |
+| PUT | `/api/contracts/:id/rejected` | n8n | Body `{ reason }` → `REJECTED`, khách về `VIEWED` |
+| PUT | `/api/contracts/:id/expired` | n8n | Body `{ reason? }` → `EXPIRED`, khách về `VIEWED` |
+| GET | `/api/sign/:token` | Công khai | Nội dung hợp đồng cho khách đọc. Không lộ email, SĐT. Token sai: `404` |
+| POST | `/api/sign/:token` | Công khai | Body `{ signerName, signature (data URL PNG, tối đa 90000 ký tự), agree: true }`. Lưu chữ ký, `SIGNED`, khách `SIGNED`, báo n8n. Đã ký: `409`; hết hạn hoặc không còn ký được: `400` |
+
+**Webhook backend → n8n (mới):** `POST /webhook/contract-requested`, body `{ "contractId": 2 }`. Xem [luồng 3](luong/luong-3-hop-dong.md).
+
+Bảng `contracts`: `id, lead_id, property_id, title, content, deposit_amount, property_price, status, ai_review, reject_reason, resume_url (ẩn), sign_token (duy nhất), expires_at, approved_by, created_by, signer_name, signature (ẩn ở danh sách), signed_at, signed_ip, created_at, updated_at`.
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -262,6 +284,7 @@ Gia tri `lead_events.type`:
 | `VIEWING_RESCHEDULED` (dev) | Backend | Nhân viên đổi giờ xem |
 | `FEEDBACK_RECEIVED` (dev) | Backend | Khách gửi cảm nhận |
 | `FEEDBACK_ANALYZED` (dev) | Luong 5 | AI phân tích xong cảm nhận |
+| `CONTRACT_CREATED` / `CONTRACT_DRAFTED` / `CONTRACT_SENT` / `CONTRACT_SIGNED` / `CONTRACT_REJECTED` / `CONTRACT_EXPIRED` (dev) | Backend | Các mốc của hợp đồng |
 | `FOLLOWUP_FAILED` (dev) | Luong 2 | Follow-up cho khách này bị lỗi (bỏ qua 6 giờ) |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
@@ -304,6 +327,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/luong-3-hop-dong` | Thêm mục 3f (hợp đồng, ký online), bảng `contracts`, webhook `contract-requested`, event `CONTRACT_*` |
 | `feature/cam-nhan` | Thêm mục 3e (feedback), bảng `feedbacks`, webhook `feedback-submitted`, event `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, biến `PUBLIC_WEB_URL` |
 | `feature/quan-ly-nha` | Thêm mục 3d (thêm, sửa, ẩn nhà), `GET /properties` ẩn căn HIDDEN, đặt lịch căn không AVAILABLE trả 400 |
 | `feature/web-admin` | Thêm mục 3c (funnel, schedule, đổi giờ, duyệt, đổi trạng thái), webhook `viewing-admin-action`, event `VIEWING_RESCHEDULED` |

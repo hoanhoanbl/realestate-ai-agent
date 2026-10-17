@@ -17,6 +17,7 @@ const LINKS: NavLink[] = [
   { href: "/admin/leads", label: "Khách hàng" },
   { href: "/admin/lich-xem", label: "Lịch xem" },
   { href: "/admin/hop-dong", label: "Hợp đồng" },
+  { href: "/admin/bao-cao", label: "Báo cáo", roles: ["MANAGER"] },
   { href: "/admin/nha", label: "Quản lý nhà", roles: ["MANAGER"] },
 ];
 

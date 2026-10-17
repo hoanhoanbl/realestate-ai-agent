@@ -19,7 +19,7 @@ Khách hàng · Nhân viên sale · Quản lý. Danh sách use case: [docs/use-c
 | 1b. Chốt lịch / đổi giờ từ web admin | [luong-1b](docs/luong/luong-1b-chot-lich-thu-cong.md) | Có |
 | Error workflow | [error-workflow](docs/luong/error-workflow.md) | Có |
 | 3. Hợp đồng đặt cọc | [luong-3](docs/luong/luong-3-hop-dong.md) | Có |
-| 4. Báo cáo kinh doanh | (sẽ thêm) | Chưa |
+| 4. Báo cáo kinh doanh | [luong-4](docs/luong/luong-4-bao-cao.md) | Có |
 | 5. Cảm nhận sau buổi xem | [luong-5](docs/luong/luong-5-cam-nhan.md) | Có |
 
 Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
@@ -37,6 +37,7 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 | `/admin/leads`, `/admin/leads/[id]` | Nhân viên, quản lý | Danh sách khách, chi tiết, dòng thời gian, nút Duyệt / Đổi giờ / Đã xem / Mất khách |
 | `/admin/lich-xem` | Nhân viên, quản lý | Lịch xem sắp tới và đã qua, đổi giờ |
 | `/admin/hop-dong`, `/admin/hop-dong/[id]` | Nhân viên, quản lý | Danh sách và chi tiết hợp đồng; quản lý duyệt hoặc từ chối |
+| `/admin/bao-cao` | Chỉ quản lý | Báo cáo tuần do AI Agent viết, nút "Tạo báo cáo ngay" |
 | `/admin/nha` | Chỉ quản lý | Thêm, sửa, ẩn căn nhà |
 
 Khu khách không có đường dẫn sang khu admin; nhân viên tự gõ `/admin`.
@@ -47,6 +48,7 @@ Khu khách không có đường dẫn sang khu admin; nhân viên tự gõ `/adm
 2. `docker compose up -d --build`
 3. Mở: web http://localhost:3000 · backend http://localhost:8081/api/docs · n8n http://localhost:5678
 4. Import workflow trong `n8n-workflows/` vào n8n, gắn credential (Gemini, SMTP, Header Auth `X-Webhook-Secret`), bật các luồng.
+5. Luồng 4 cần thêm tài khoản database chỉ đọc: xem mục 8 của [luồng 4](docs/luong/luong-4-bao-cao.md).
 
 ## Tài khoản đăng nhập (web admin, app)
 

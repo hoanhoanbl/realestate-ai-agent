@@ -345,6 +345,39 @@ export function submitSignature(
   });
 }
 
+// ---- Báo cáo kinh doanh (chỉ quản lý) ----
+
+export interface ReportRow {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  headline: string | null;
+  alertCount: number;
+}
+
+export interface ReportDetail {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  metrics: Record<string, unknown>;
+  analysis: Record<string, unknown>;
+  alerts: string[];
+}
+
+export function getReports(): Promise<ReportRow[]> {
+  return request<ReportRow[]>("/reports");
+}
+
+export function getReport(id: number): Promise<ReportDetail> {
+  return request<ReportDetail>(`/reports/${id}`);
+}
+
+export function runReportNow(): Promise<{ ok: true }> {
+  return request("/reports/run", { method: "POST" });
+}
+
 export function getProperty(id: number): Promise<Property> {
   return request<Property>(`/properties/${id}`);
 }

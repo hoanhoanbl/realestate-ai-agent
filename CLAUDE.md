@@ -48,6 +48,8 @@ cd backend && npm run build && npm run lint && npm test
 cd web && npm run lint && npm run build
 ```
 
+**Lưu ý kiểm thử:** `npm test` của backend hiện **không chạy được** (đã hỏng từ `main`: NestJS 12 chỉ phát hành dạng ESM, Jest 30 + TypeScript 6 không nạp được; các file `*.spec.ts` chỉ là mẫu sinh tự động). Trên `dev` kiểm tra bằng `npm run build`, `npm run lint` và gọi API thật bằng `curl` / chạy luồng n8n thật.
+
 Cổng: web 3000, backend 8081 (`/api`, Swagger `/api/docs`), n8n 5678.
 
 ## Lưu ý khi chạy thử

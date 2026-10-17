@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   createViewing,
@@ -142,12 +141,6 @@ export default function BookingPage() {
           >
             Đăng ký thêm
           </button>
-          <Link
-            href="/leads"
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700"
-          >
-            Xem kết quả chấm điểm
-          </Link>
         </div>
       </section>
     );

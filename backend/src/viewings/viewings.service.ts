@@ -52,6 +52,9 @@ export class ViewingsService {
     if (Number.isNaN(viewingDate.getTime())) {
       throw new BadRequestException('Invalid viewingTime format');
     }
+    if (viewingDate.getTime() < Date.now()) {
+      throw new BadRequestException('viewingTime phải ở trong tương lai');
+    }
 
     const eventId = crypto.randomUUID();
 

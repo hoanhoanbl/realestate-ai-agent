@@ -199,6 +199,8 @@ Gia tri `lead_events.type`:
 | `FEEDBACK_ASKED` | Luong 2 | Da hoi cam nhan sau buoi xem |
 | `WARM_NUDGE_SENT` | Luong 2 | Da nhac khach WARM im lang |
 | `STATUS_CHANGED` | Backend tu ghi | Moi lan `PUT /status` |
+| `STAFF_NUDGE_SENT` (dev) | Luong 2 | Đã nhắc nhân viên về khách HOT/WARM chưa được duyệt sau 3 ngày |
+| `FOLLOWUP_FAILED` (dev) | Luong 2 | Follow-up cho khách này bị lỗi (bỏ qua 6 giờ) |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
 
@@ -240,4 +242,6 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `fix/luong-1`, `fix/luong-2` | Thêm `lead_events.type`: `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED` |
+| `fix/backend-web` | Kiểm tra đầu vào chặt hơn (giờ quá khứ, tên rỗng, SĐT, `:id` không phải số) |
 | `docs/dev-setup` | Tạo bản sao từ `api-contract.md` (commit `7b21c70` của `main`) |

@@ -178,11 +178,28 @@ Request:
 - Sai du lieu: `400` (email sai dinh dang, thieu truong). Khong tim thay bat dong san: `404`.
 - Backend goi n8n **bat dong bo**: n8n loi khong lam hong viec luu lead.
 
+## 3b. Đăng nhập và phân quyền (dev)
+
+Có **hai cách xác thực**, dùng cho hai đối tượng khác nhau:
+
+| Ai gọi | Cách xác thực | Dùng ở |
+|---|---|---|
+| n8n | Header `X-Webhook-Secret` (guard `WebhookSecretGuard`) | `PUT /leads/:id/ai-result`, `/automation-status`, `/status`, `POST /leads/:id/events` |
+| Người dùng (web admin, app) | Header `Authorization: Bearer <accessToken>` (guard `JwtAuthGuard`), có thêm `@Roles('MANAGER')` nếu chỉ quản lý được dùng | `GET /leads`, `/leads/:id`, `/leads/:id/events`, `/viewings`, `/stats`, `/auth/me` |
+| Công khai (không cần gì) | | `POST /viewings` (khách đặt lịch), `GET /properties`, `GET /properties/:id`, `POST /auth/login` |
+
+`POST /api/auth/login` — body `{ "email": "...", "password": "..." }` → `200 { "accessToken": "...", "user": { "id", "email", "name", "role" } }`. Sai email hoặc mật khẩu: `401` cùng một thông báo. Token sống **8 giờ**. Thiếu hoặc sai token: `401`; đúng token nhưng sai vai: `403`.
+
+`GET /api/auth/me` → thông tin người đang đăng nhập.
+
+Bảng `users`: `id, email (duy nhất), name, password_hash (bcrypt, không bao giờ trả ra API), role (MANAGER | SALE), push_token, created_at`. Hai tài khoản mẫu được tạo khi backend khởi động (email `nhadn2457+quanly@gmail.com` vai MANAGER và `nhadn2457+nhanvien@gmail.com` vai SALE); mật khẩu lấy từ biến `SEED_USER_PASSWORD` trong `.env`. Ký token dùng biến `JWT_SECRET`.
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
 |---|---|
 | `properties` | id, name, address, price, area, type, status |
+| `users` (dev) | id, email, name, passwordHash, role, pushToken, createdAt |
 | `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, automationError, eventId, createdAt, approvalUrl (tuan 2, khong tra ra o GET) |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
 | `lead_events` (tuan 2) | id, leadId, type, note, createdAt (cot DB: `lead_id`, `created_at` kieu `timestamptz`) |
@@ -242,6 +259,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/auth` | Thêm bảng `users`, `POST /auth/login`, `GET /auth/me`; khoá các `GET` của admin bằng JWT (mục 3b) |
 | `fix/luong-1`, `fix/luong-2` | Thêm `lead_events.type`: `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED` |
 | `fix/backend-web` | Kiểm tra đầu vào chặt hơn (giờ quá khứ, tên rỗng, SĐT, `:id` không phải số) |
 | `docs/dev-setup` | Tạo bản sao từ `api-contract.md` (commit `7b21c70` của `main`) |

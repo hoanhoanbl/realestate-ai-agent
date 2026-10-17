@@ -221,6 +221,21 @@ Tất cả cần `Authorization: Bearer <token>` (xem mục 3b). Lỗi nghiệp 
 
 `POST /api/viewings` với căn không `AVAILABLE` trả `400`. Nhân viên (`SALE`) gọi POST/PUT/DELETE trả `403`.
 
+## 3e. Cảm nhận sau buổi xem (dev)
+
+| Method | Đường dẫn | Ai gọi được | Mô tả |
+|---|---|---|---|
+| POST | `/api/feedback/link/:leadId` | n8n (`X-Webhook-Secret`) | Luồng 2 xin link. Trả `{ token, url }`; mỗi khách chỉ có một link (gọi lại trả link cũ). `url = PUBLIC_WEB_URL + /cam-nhan/ + token` |
+| GET | `/api/feedback/:token` | Công khai | `{ leadName, propertyName, viewingTime, submitted }`. Không lộ email, SĐT. Token sai: `404` |
+| POST | `/api/feedback/:token` | Công khai | Body `{ rating (1-5), interest (DEPOSIT \| OTHER \| NONE), comment? (tối đa 1000 ký tự) }`. Lưu, ghi `FEEDBACK_RECEIVED`, gọi webhook `feedback-submitted`. Đã gửi rồi: `409` |
+| PUT | `/api/feedback/:id/ai-result` | n8n | Body `{ sentiment (POSITIVE \| NEUTRAL \| NEGATIVE), summary, nextAction }` |
+| GET | `/api/feedback/lead/:leadId` | Đã đăng nhập | Cảm nhận mới nhất của khách, hoặc rỗng nếu chưa có |
+
+**Webhook backend → n8n (mới):** `POST /webhook/feedback-submitted`, body `{ "feedbackId": 1, "leadId": 84 }`. Xem [luồng 5](luong/luong-5-cam-nhan.md).
+
+Bảng `feedbacks`: `id, lead_id, token (duy nhất), rating, interest, comment, submitted_at, ai_sentiment, ai_summary, ai_next_action, created_at`.
+Biến môi trường mới: `PUBLIC_WEB_URL` (địa chỉ web mà khách mở được từ email; backend và n8n đều dùng).
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -245,6 +260,8 @@ Gia tri `lead_events.type`:
 | `STATUS_CHANGED` | Backend tu ghi | Moi lan `PUT /status` |
 | `STAFF_NUDGE_SENT` (dev) | Luong 2 | Đã nhắc nhân viên về khách HOT/WARM chưa được duyệt sau 3 ngày |
 | `VIEWING_RESCHEDULED` (dev) | Backend | Nhân viên đổi giờ xem |
+| `FEEDBACK_RECEIVED` (dev) | Backend | Khách gửi cảm nhận |
+| `FEEDBACK_ANALYZED` (dev) | Luong 5 | AI phân tích xong cảm nhận |
 | `FOLLOWUP_FAILED` (dev) | Luong 2 | Follow-up cho khách này bị lỗi (bỏ qua 6 giờ) |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
@@ -287,6 +304,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/cam-nhan` | Thêm mục 3e (feedback), bảng `feedbacks`, webhook `feedback-submitted`, event `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, biến `PUBLIC_WEB_URL` |
 | `feature/quan-ly-nha` | Thêm mục 3d (thêm, sửa, ẩn nhà), `GET /properties` ẩn căn HIDDEN, đặt lịch căn không AVAILABLE trả 400 |
 | `feature/web-admin` | Thêm mục 3c (funnel, schedule, đổi giờ, duyệt, đổi trạng thái), webhook `viewing-admin-action`, event `VIEWING_RESCHEDULED` |
 | `feature/auth` | Thêm bảng `users`, `POST /auth/login`, `GET /auth/me`; khoá các `GET` của admin bằng JWT (mục 3b) |

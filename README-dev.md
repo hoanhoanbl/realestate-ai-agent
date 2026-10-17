@@ -20,7 +20,7 @@ Khách hàng · Nhân viên sale · Quản lý. Danh sách use case: [docs/use-c
 | Error workflow | [error-workflow](docs/luong/error-workflow.md) | Có |
 | 3. Hợp đồng đặt cọc | (sẽ thêm) | Chưa |
 | 4. Báo cáo kinh doanh | (sẽ thêm) | Chưa |
-| 5. Cảm nhận sau buổi xem | (sẽ thêm) | Chưa |
+| 5. Cảm nhận sau buổi xem | [luong-5](docs/luong/luong-5-cam-nhan.md) | Có |
 
 Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 
@@ -31,6 +31,7 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 | `/` | Khách | Danh sách nhà, lọc theo thành phố, loại, giá |
 | `/nha/[id]` | Khách | Chi tiết một căn và form đặt lịch xem |
 | `/admin/login` | Nhân viên, quản lý | Đăng nhập |
+| `/cam-nhan/[token]` | Khách | Gửi cảm nhận sau buổi xem (link trong email) |
 | `/admin` | Nhân viên, quản lý | Tổng quan: phễu theo trạng thái, việc cần xử lý |
 | `/admin/leads`, `/admin/leads/[id]` | Nhân viên, quản lý | Danh sách khách, chi tiết, dòng thời gian, nút Duyệt / Đổi giờ / Đã xem / Mất khách |
 | `/admin/lich-xem` | Nhân viên, quản lý | Lịch xem sắp tới và đã qua, đổi giờ |

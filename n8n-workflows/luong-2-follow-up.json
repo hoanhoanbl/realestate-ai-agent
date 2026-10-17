@@ -159,7 +159,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc.',\n  WARM_NUDGE: 'Khách đã xem nhà và được hỏi cảm nhận cách đây vài ngày nhưng chưa phản hồi. Hỏi thăm nhẹ nhàng, hỏi thêm nhu cầu cụ thể (khu vực, số phòng), mời khách trả lời email.',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NUDGE_SENT', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
+        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc. Cuối email có nút \"Gửi cảm nhận\", hãy mời khách bấm nút đó và KHÔNG tự chèn đường link.',\n  WARM_NUDGE: 'Khách đã xem nhà và được hỏi cảm nhận cách đây vài ngày nhưng chưa phản hồi. Hỏi thăm nhẹ nhàng, hỏi thêm nhu cầu cụ thể (khu vực, số phòng), mời khách trả lời email.',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NUDGE_SENT', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -173,14 +173,14 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Bạn là nhân viên chăm sóc khách hàng của một văn phòng bất động sản.\nMục đích email: {{ $json.purpose }}\n\nKhách: {{ $json.name }}\nCăn nhà: {{ $json.propertyName }}, {{ $json.propertyAddress }}\nGiờ xem: {{ $json.viewingTimeText }}\nNhu cầu khách ghi: {{ $json.needs || '(không ghi)' }}\n\nYêu cầu: tiếng Việt, thân thiện, xưng \"chúng tôi\", gọi khách là \"anh/chị {{ $json.name }}\", tối đa 6 câu, không bịa thông tin không có ở trên.\nChỉ trả về JSON: {\"subject\": \"...\", \"body\": \"...\"}",
+        "text": "=Bạn là nhân viên chăm sóc khách hàng của một văn phòng bất động sản.\nMục đích email: {{ $('Chuẩn bị ngữ cảnh').item.json.purpose }}\n\nKhách: {{ $('Chuẩn bị ngữ cảnh').item.json.name }}\nCăn nhà: {{ $('Chuẩn bị ngữ cảnh').item.json.propertyName }}, {{ $('Chuẩn bị ngữ cảnh').item.json.propertyAddress }}\nGiờ xem: {{ $('Chuẩn bị ngữ cảnh').item.json.viewingTimeText }}\nNhu cầu khách ghi: {{ $('Chuẩn bị ngữ cảnh').item.json.needs || '(không ghi)' }}\n\nYêu cầu: tiếng Việt, thân thiện, xưng \"chúng tôi\", gọi khách là \"anh/chị {{ $('Chuẩn bị ngữ cảnh').item.json.name }}\", tối đa 6 câu, không bịa thông tin không có ở trên.\nChỉ trả về JSON: {\"subject\": \"...\", \"body\": \"...\"}",
         "hasOutputParser": true,
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        680,
+        1040,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000009",
@@ -198,7 +198,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        660,
+        1020,
         120
       ],
       "id": "11111111-1111-4000-8000-000000000010",
@@ -217,7 +217,7 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.2,
       "position": [
-        820,
+        1180,
         120
       ],
       "id": "11111111-1111-4000-8000-000000000011",
@@ -230,7 +230,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
+        1320,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000012",
@@ -241,7 +241,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $json.email }}",
         "subject": "={{ $json.subject }}",
-        "html": "={{ $json.bodyHtml.replace(/\\n/g, '<br>') }}",
+        "html": "={{ $json.bodyHtml.replace(/\\n/g, '<br>') }}{{ $json.type === 'FEEDBACK' ? '<p style=\"margin-top:16px\"><a href=\"' + $('Tạo link cảm nhận').item.json.url + '\" style=\"background:#2563eb;color:#ffffff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold\">Gửi cảm nhận của anh/chị</a></p>' : '' }}",
         "options": {
           "appendAttribution": false
         }
@@ -249,7 +249,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1160,
+        1520,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000013",
@@ -279,7 +279,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1260,
+        1720,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000014",
@@ -358,7 +358,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1460,
+        1920,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000015",
@@ -378,7 +378,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1700,
+        2160,
         -220
       ],
       "id": "11111111-1111-4000-8000-000000000016",
@@ -407,7 +407,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1700,
+        2160,
         -60
       ],
       "id": "11111111-1111-4000-8000-000000000017",
@@ -430,7 +430,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1940,
+        2400,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000018",
@@ -557,7 +557,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1260,
+        1720,
         160
       ],
       "id": "06520be4-b37e-4cfd-a1b2-1f7a8398917c",
@@ -581,11 +581,71 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
+        1960,
         160
       ],
       "id": "5a95a37b-6576-4c7f-9944-ed31992f5bcd",
       "name": "Gom lỗi"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-is-fb",
+              "leftValue": "={{ $json.type === 'FEEDBACK' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        580,
+        -220
+      ],
+      "id": "9843ba1f-1dd0-4d26-9217-e987b40577eb",
+      "name": "Là cảm nhận?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback/link/{{ $json.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        -220
+      ],
+      "id": "a814243b-8e89-4b94-a1cf-a6bb97971350",
+      "name": "Tạo link cảm nhận",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     }
   ],
   "pinData": {},
@@ -863,7 +923,7 @@
       "main": [
         [
           {
-            "node": "AI soạn email",
+            "node": "Là cảm nhận?",
             "type": "main",
             "index": 0
           }
@@ -893,6 +953,42 @@
         [
           {
             "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Là cảm nhận?": {
+      "main": [
+        [
+          {
+            "node": "Tạo link cảm nhận",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tạo link cảm nhận": {
+      "main": [
+        [
+          {
+            "node": "AI soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
             "type": "main",
             "index": 0
           }

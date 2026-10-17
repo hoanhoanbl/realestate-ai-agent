@@ -75,6 +75,7 @@ sequenceDiagram
 | 5 | Loop Over Items | Xử lý từng khách một |
 | 6 | Lấy thông tin nhà | Tên và địa chỉ căn nhà |
 | 7 | Chuẩn bị ngữ cảnh | Ghép mục đích email, giờ xem theo giờ Việt Nam, escape HTML tên/nhu cầu/SĐT |
+| 7a | Là cảm nhận? → Tạo link cảm nhận | Loại `FEEDBACK`: xin backend một link riêng cho khách, gắn thành nút "Gửi cảm nhận" ở cuối email (xem [luồng 5](luong-5-cam-nhan.md)) |
 | 7b | Cần email khách? | `STAFF_NUDGE` bỏ qua AI và email khách, đi thẳng tới ghi log |
 | 8 | AI soạn email | Gemini viết `subject` + `body` |
 | 9 | Kiểm tra nội dung AI | **Guardrail**: thiếu tên khách, quá dài, còn `{{` thì thay bằng mẫu dự phòng |

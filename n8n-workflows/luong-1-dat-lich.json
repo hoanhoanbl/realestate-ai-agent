@@ -62,7 +62,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const b = $('Webhook').first().json.body;\nreturn [{\n  json: {\n    leadId: b.leadId,\n    name: String(b.name ?? '').trim(),\n    email: String(b.email ?? '').trim().toLowerCase(),\n    phone: String(b.phone ?? '').replace(/\\D/g, ''),\n    budget: Number(b.budget) || 0,\n    needs: String(b.needs ?? '').trim(),\n    propertyId: Number(b.propertyId) || 0,\n    viewingTime: b.viewingTime,\n  },\n}];"
+        "jsCode": "const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst b = $('Webhook').first().json.body;\nreturn [{\n  json: {\n    leadId: b.leadId,\n    name: esc(String(b.name ?? '').trim()),\n    email: String(b.email ?? '').trim().toLowerCase(),\n    phone: String(b.phone ?? '').replace(/\\D/g, ''),\n    budget: Number(b.budget) || 0,\n    needs: esc(String(b.needs ?? '').trim()),\n    propertyId: Number(b.propertyId) || 0,\n    viewingTime: b.viewingTime,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -251,7 +251,7 @@
                 "conditions": [
                   {
                     "id": "57675fb5-4c90-74fc-ea37-0f2a22518786",
-                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "leftValue": "={{ $('Tính mức').first().json.output.level }}",
                     "rightValue": "HOT",
                     "operator": {
                       "type": "string",
@@ -276,7 +276,7 @@
                 "conditions": [
                   {
                     "id": "d0049a29-7a15-3085-1300-0fee5d207ac5",
-                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "leftValue": "={{ $('Tính mức').first().json.output.level }}",
                     "rightValue": "WARM",
                     "operator": {
                       "type": "string",
@@ -301,7 +301,7 @@
                 "conditions": [
                   {
                     "id": "0b656a15-f50b-ba22-693e-87323ca58140",
-                    "leftValue": "={{ $('Basic LLM Chain').first().json.output.level }}",
+                    "leftValue": "={{ $('Tính mức').first().json.output.level }}",
                     "rightValue": "COLD",
                     "operator": {
                       "type": "string",
@@ -317,7 +317,10 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Mức lạ"
+        }
       },
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -333,7 +336,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
         "subject": "Đã nhận yêu cầu xem nhà, nhân viên sẽ gọi trong hôm nay",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#1d4ed8;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#1d4ed8;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Tính mức').first().json.output.emailBodyHtml.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -362,7 +365,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
         "subject": "Đã nhận yêu cầu xem nhà",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#0891b2;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#0891b2;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Tính mức').first().json.output.emailBodyHtml.replace(/\\n/g, '<br>') }}\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -391,7 +394,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
         "subject": "Đã nhận yêu cầu xem nhà",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#6b7280;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Basic LLM Chain').first().json.output.emailBody.replace(/\\n/g, '<br>') }}\n    <p>Để chúng tôi tư vấn đúng nhu cầu hơn, anh/chị có thể trả lời email này và bổ sung thêm nhu cầu cùng ngân sách dự kiến.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#6b7280;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Đã nhận yêu cầu xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    {{ $('Tính mức').first().json.output.emailBodyHtml.replace(/\\n/g, '<br>') }}\n    <p>Để chúng tôi tư vấn đúng nhu cầu hơn, anh/chị có thể trả lời email này và bổ sung thêm nhu cầu cùng ngân sách dự kiến.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -419,8 +422,8 @@
       "parameters": {
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Cấu hình').first().json.staffEmail }}",
-        "subject": "={{ $('Basic LLM Chain').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '' }}{{ $('Chuẩn hoá').first().json.name }} - {{ $('Basic LLM Chain').first().json.output.score }} điểm - cần duyệt lịch xem",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:{{ ({HOT:'#dc2626',WARM:'#f59e0b',COLD:'#6b7280'})[$('Basic LLM Chain').first().json.output.level] }};color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách {{ $('Basic LLM Chain').first().json.output.level }} - cần duyệt lịch xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\"><b>Điểm AI: {{ $('Basic LLM Chain').first().json.output.score }}/100</b> &mdash; {{ $('Basic LLM Chain').first().json.output.reason }}</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\"><b>{{ $('Chuẩn hoá').first().json.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Email</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.email }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Ngân sách</td><td style=\"padding:10px\">{{ Number($('Chuẩn hoá').first().json.budget).toLocaleString('vi-VN') }} VND</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Nhu cầu</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.needs || '(không ghi)' }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Căn nhà</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.name }}, {{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Giờ xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n    </table>\n    <p style=\"margin-top:20px;padding:12px;background:#fffbeb;border-left:4px solid #f59e0b\"><b>Gợi ý của AI:</b> {{ $('Basic LLM Chain').first().json.output.staffNote }}</p>\n    <p style=\"margin-top:20px\">\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=approve\" style=\"background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Duyệt lịch</a>\n      &nbsp;\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=reschedule\" style=\"background:#6b7280;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Đổi giờ</a>\n    </p>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Bấm nút trong vòng 24 giờ. Quá hạn, hệ thống sẽ báo cho quản lý.</div>\n</div>",
+        "subject": "={{ $('Tính mức').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '' }}{{ $('Chuẩn hoá').first().json.name }} - {{ $('Tính mức').first().json.output.score }} điểm - cần duyệt lịch xem",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:{{ ({HOT:'#dc2626',WARM:'#f59e0b',COLD:'#6b7280'})[$('Tính mức').first().json.output.level] }};color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách {{ $('Tính mức').first().json.output.level }} - cần duyệt lịch xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\"><b>Điểm AI: {{ $('Tính mức').first().json.output.score }}/100</b> &mdash; {{ $('Tính mức').first().json.output.reasonHtml }}</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\"><b>{{ $('Chuẩn hoá').first().json.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Email</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.email }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Ngân sách</td><td style=\"padding:10px\">{{ Number($('Chuẩn hoá').first().json.budget).toLocaleString('vi-VN') }} VND</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Nhu cầu</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.needs || '(không ghi)' }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Căn nhà</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.name }}, {{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Giờ xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n    </table>\n    <p style=\"margin-top:20px;padding:12px;background:#fffbeb;border-left:4px solid #f59e0b\"><b>Gợi ý của AI:</b> {{ $('Tính mức').first().json.output.staffNoteHtml }}</p>\n    <p style=\"margin-top:20px\">\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=approve\" style=\"background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Duyệt lịch</a>\n      &nbsp;\n      <a href=\"{{ $execution.resumeUrl }}{{ $execution.resumeUrl.includes('?') ? '&' : '?' }}action=reschedule\" style=\"background:#6b7280;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none\">Đổi giờ</a>\n    </p>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Bấm nút trong vòng 24 giờ. Quá hạn, hệ thống sẽ báo cho quản lý.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -452,7 +455,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"score\": $('Basic LLM Chain').first().json.output.score,\n  \"level\": $('Basic LLM Chain').first().json.output.level,\n  \"reason\": $('Basic LLM Chain').first().json.output.reason,\n  \"aiReply\": $('Basic LLM Chain').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"staffNotified\": true,\n  \"approvalUrl\": $execution.resumeUrl\n} }}",
+        "jsonBody": "={{ {\n  \"score\": $('Tính mức').first().json.output.score,\n  \"level\": $('Tính mức').first().json.output.level,\n  \"reason\": $('Tính mức').first().json.output.reason,\n  \"aiReply\": $('Tính mức').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"staffNotified\": true,\n  \"approvalUrl\": $execution.resumeUrl\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -493,7 +496,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"type\": \"AI_SCORED\",\n  \"note\": $('Basic LLM Chain').first().json.output.level + \" \" + $('Basic LLM Chain').first().json.output.score + \" điểm: \" + $('Basic LLM Chain').first().json.output.reason\n} }}",
+        "jsonBody": "={{ {\n  \"type\": \"AI_SCORED\",\n  \"note\": $('Tính mức').first().json.output.level + \" \" + $('Tính mức').first().json.output.score + \" điểm: \" + $('Tính mức').first().json.output.reason\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -608,7 +611,7 @@
     {
       "parameters": {
         "respondWith": "text",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã gửi email cho khách.</h2></body></html>",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Thông báo</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã gửi email xác nhận cho khách.</h2></body></html>",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -623,7 +626,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3080,
+        3740,
         20
       ],
       "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
@@ -632,7 +635,7 @@
     {
       "parameters": {
         "respondWith": "text",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã báo khách là nhân viên sẽ gọi lại để hẹn giờ khác.</h2></body></html>",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Thông báo</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã báo khách là nhân viên sẽ gọi lại để hẹn giờ khác.</h2></body></html>",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -647,7 +650,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3080,
+        3520,
         200
       ],
       "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
@@ -666,7 +669,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3300,
+        3080,
         20
       ],
       "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
@@ -694,7 +697,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3300,
+        3080,
         200
       ],
       "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
@@ -714,7 +717,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
         "subject": "=[CẢNH BÁO] {{ $('Chuẩn hoá').first().json.name }} chưa được duyệt lịch sau 24 giờ",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#dc2626;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lead chưa được nhân viên duyệt sau 24 giờ</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Nhân viên chưa bấm Duyệt hay Đổi giờ cho yêu cầu dưới đây sau 24 giờ.</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Mã lead</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.leadId }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Mức AI</td><td style=\"padding:10px\">{{ $('Basic LLM Chain').first().json.output.level }} ({{ $('Basic LLM Chain').first().json.output.score }} điểm)</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ luồng 1.</div>\n</div>",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#dc2626;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lead chưa được nhân viên duyệt sau 24 giờ</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Nhân viên chưa bấm Duyệt hay Đổi giờ cho yêu cầu dưới đây sau 24 giờ.</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Mã lead</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.leadId }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Mức AI</td><td style=\"padding:10px\">{{ $('Tính mức').first().json.output.level }} ({{ $('Tính mức').first().json.output.score }} điểm)</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ luồng 1.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -722,7 +725,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3080,
+        3220,
         420
       ],
       "id": "351610fb-49f7-6934-0fca-bda8fab90001",
@@ -751,7 +754,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3520,
+        3300,
         20
       ],
       "id": "e9522c19-4b97-77be-b497-01f4b3554260",
@@ -780,7 +783,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3740,
+        3520,
         20
       ],
       "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
@@ -809,7 +812,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3520,
+        3300,
         200
       ],
       "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
@@ -838,7 +841,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3300,
+        3440,
         420
       ],
       "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
@@ -882,6 +885,79 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out = $input.first().json.output ?? {};\nconst score = Math.round(Number(out.score));\nif (!Number.isFinite(score)) throw new Error('AI trả về điểm không hợp lệ: ' + out.score);\nconst emailBody = String(out.emailBody ?? '').trim();\nif (!emailBody) throw new Error('AI không trả về nội dung email');\nconst s = Math.min(100, Math.max(0, score));\nconst level = s >= 70 ? 'HOT' : s >= 40 ? 'WARM' : 'COLD'; // luôn tính lại từ điểm, không tin level của AI\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nreturn [{\n  json: {\n    output: {\n      score: s,\n      level,\n      reason: String(out.reason ?? '').trim(),\n      emailBody,\n      staffNote: String(out.staffNote ?? '').trim(),\n      // bản đã escape HTML, chỉ dùng khi chèn vào email\n      reasonHtml: esc(out.reason),\n      emailBodyHtml: esc(emailBody),\n      staffNoteHtml: esc(out.staffNote),\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1430,
+        200
+      ],
+      "id": "633f388a-9801-4668-b726-31266f643406",
+      "name": "Tính mức",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-timeout",
+              "leftValue": "={{ !!$json.query?.action }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3000,
+        420
+      ],
+      "id": "d889ade0-56be-4415-bf3f-0ad04e803be3",
+      "name": "Hết giờ thật?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Thông báo</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Liên kết không hợp lệ. Vui lòng dùng nút Duyệt hoặc Đổi giờ trong email.</h2></body></html>",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3220,
+        640
+      ],
+      "id": "7b395417-6f8d-47a0-9742-728943b52728",
+      "name": "Trả lời link sai"
     }
   ],
   "pinData": {},
@@ -1003,7 +1079,7 @@
       "main": [
         [
           {
-            "node": "Mức",
+            "node": "Tính mức",
             "type": "main",
             "index": 0
           }
@@ -1036,6 +1112,13 @@
         [
           {
             "node": "Email khách COLD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
             "type": "main",
             "index": 0
           }
@@ -1158,32 +1241,21 @@
       "main": [
         [
           {
-            "node": "Trả lời duyệt",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Trả lời đổi giờ",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Email cảnh báo quản lý",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trả lời duyệt": {
-      "main": [
-        [
-          {
             "node": "Email chốt lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email báo đổi giờ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hết giờ thật?",
             "type": "main",
             "index": 0
           }
@@ -1212,17 +1284,6 @@
         ]
       ]
     },
-    "Trả lời đổi giờ": {
-      "main": [
-        [
-          {
-            "node": "Email báo đổi giờ",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Email báo đổi giờ": {
       "main": [
         [
@@ -1239,6 +1300,75 @@
         [
           {
             "node": "Ghi log APPROVAL_TIMEOUT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tính mức": {
+      "main": [
+        [
+          {
+            "node": "Mức",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report FAILED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hết giờ thật?": {
+      "main": [
+        [
+          {
+            "node": "Email cảnh báo quản lý",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả lời link sai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trả lời link sai": {
+      "main": [
+        [
+          {
+            "node": "Chờ duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log APPROVED": {
+      "main": [
+        [
+          {
+            "node": "Trả lời duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log RESCHEDULE_REQUESTED": {
+      "main": [
+        [
+          {
+            "node": "Trả lời đổi giờ",
             "type": "main",
             "index": 0
           }

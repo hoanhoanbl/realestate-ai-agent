@@ -985,6 +985,88 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(push_token), '[]'::json) AS tokens FROM users WHERE push_token IS NOT NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2200,
+        520
+      ],
+      "id": "96bc1104-bc13-4374-b5b0-662208830253",
+      "name": "Lấy push token nhân viên",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "p-has",
+              "leftValue": "={{ ($json.tokens ?? []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2420,
+        440
+      ],
+      "id": "4c5040ee-8b12-4959-95d8-0522bf67b2f1",
+      "name": "Có app nhận thông báo?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.tokens.map(t => ({ to: t, sound: 'default', title: ($('Tính mức').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '') + 'Khách mới: ' + $('Chuẩn hoá').first().json.name.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"'), body: $('Tính mức').first().json.output.level + ' ' + $('Tính mức').first().json.output.score + ' điểm. ' + $('Tính mức').first().json.output.reason, data: { leadId: $('Chuẩn hoá').first().json.leadId } })) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2420,
+        600
+      ],
+      "id": "48960905-0192-4ae5-be22-32141c5535d1",
+      "name": "Gửi thông báo đẩy",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
     }
   ],
   "pinData": {},
@@ -1210,7 +1292,7 @@
       "main": [
         [
           {
-            "node": "Lưu kết quả AI",
+            "node": "Lấy push token nhân viên",
             "type": "main",
             "index": 0
           }
@@ -1407,6 +1489,46 @@
         [
           {
             "node": "Email chốt lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy push token nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Có app nhận thông báo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có app nhận thông báo?": {
+      "main": [
+        [
+          {
+            "node": "Gửi thông báo đẩy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lưu kết quả AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi thông báo đẩy": {
+      "main": [
+        [
+          {
+            "node": "Lưu kết quả AI",
             "type": "main",
             "index": 0
           }

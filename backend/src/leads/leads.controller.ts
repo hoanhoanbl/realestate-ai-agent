@@ -4,6 +4,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -39,61 +40,61 @@ export class LeadsController {
 
   @Get(':id')
   findOne(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.leadsService.findDetail(Number(id));
+    return this.leadsService.findDetail(id);
   }
 
   @Put(':id/ai-result')
   updateAiResult(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateAiResultDto,
     @Headers('x-webhook-secret') webhookSecret?: string,
   ): Promise<Lead> {
     this.checkSecret(webhookSecret);
     return this.leadsService.updateAiResult(
-      Number(id),
+      id,
       data,
     );
   }
 
   @Put(':id/automation-status')
   updateAutomationStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateAutomationStatusDto,
     @Headers('x-webhook-secret') webhookSecret?: string,
   ): Promise<Lead> {
     this.checkSecret(webhookSecret);
     return this.leadsService.updateAutomationStatus(
-      Number(id),
+      id,
       data,
     );
   }
 
   @Put(':id/status')
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: UpdateLeadStatusDto,
     @Headers('x-webhook-secret') webhookSecret?: string,
   ): Promise<Lead> {
     this.checkSecret(webhookSecret);
-    return this.leadsService.updateStatus(Number(id), data);
+    return this.leadsService.updateStatus(id, data);
   }
 
   @Post(':id/events')
   addEvent(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: CreateLeadEventDto,
     @Headers('x-webhook-secret') webhookSecret?: string,
   ): Promise<LeadEvent> {
     this.checkSecret(webhookSecret);
-    return this.leadsService.addEvent(Number(id), data);
+    return this.leadsService.addEvent(id, data);
   }
 
   @Get(':id/events')
   findEvents(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<LeadEvent[]> {
-    return this.leadsService.findEvents(Number(id));
+    return this.leadsService.findEvents(id);
   }
 }

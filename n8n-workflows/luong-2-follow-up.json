@@ -70,7 +70,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT 'REMINDER' AS type, l.id AS lead_id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'CONFIRMED'\n  AND v.viewing_time BETWEEN now() AND now() + interval '24 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'REMINDER_SENT')\nUNION ALL\nSELECT 'FEEDBACK', l.id, l.name, l.email, l.phone, l.needs, l.level, v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status IN ('CONFIRMED', 'VIEWED')\n  AND v.viewing_time < now() - interval '1 day'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED')\nUNION ALL\nSELECT 'WARM_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level, v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.level = 'WARM' AND l.status = 'NEW'\n  AND l.created_at < now() - interval '3 days'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'WARM_NUDGE_SENT')\nLIMIT 50;"
+        "query": "SELECT 'REMINDER' AS type, l.id AS lead_id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'CONFIRMED'\n  AND v.viewing_time BETWEEN now() AND now() + interval '24 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'REMINDER_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\nSELECT 'FEEDBACK', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status IN ('CONFIRMED', 'VIEWED')\n  AND v.viewing_time < now() - interval '1 day'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách WARM đã xem nhà, được hỏi cảm nhận hơn 3 ngày mà vẫn chưa tiến triển: nhắc khách\nSELECT 'WARM_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.level = 'WARM' AND l.status = 'VIEWED'\n  AND EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED' AND e.created_at < now() - interval '3 days')\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'WARM_NUDGE_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách HOT/WARM đăng ký hơn 3 ngày mà nhân viên vẫn chưa duyệt lịch: chỉ nhắc NHÂN VIÊN, không gửi gì cho khách\nSELECT 'STAFF_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'NEW' AND l.level IN ('HOT', 'WARM')\n  AND l.created_at < now() - interval '3 days'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'STAFF_NUDGE_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nLIMIT 50;"
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
@@ -154,11 +154,12 @@
       "name": "Lấy thông tin nhà",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc.',\n  WARM_NUDGE: 'Khách đăng ký 3 ngày trước nhưng chưa phản hồi. Hỏi thăm nhẹ nhàng, hỏi thêm nhu cầu cụ thể (khu vực, số phòng), mời khách trả lời email.',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
+        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc.',\n  WARM_NUDGE: 'Khách đã xem nhà và được hỏi cảm nhận cách đây vài ngày nhưng chưa phản hồi. Hỏi thăm nhẹ nhàng, hỏi thêm nhu cầu cụ thể (khu vực, số phòng), mời khách trả lời email.',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NUDGE_SENT', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -179,14 +180,15 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        560,
+        680,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000009",
       "name": "AI soạn email",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -196,7 +198,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        540,
+        660,
         120
       ],
       "id": "11111111-1111-4000-8000-000000000010",
@@ -215,7 +217,7 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.2,
       "position": [
-        700,
+        820,
         120
       ],
       "id": "11111111-1111-4000-8000-000000000011",
@@ -223,12 +225,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst ok = subject.length > 0 && body.length > 0 && body.length <= 1200\n  && body.includes(ctx.name) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Chúng tôi có thể hỗ trợ thêm gì cho anh/chị?', `Chào anh/chị ${ctx.name}, anh/chị có thể cho chúng tôi biết thêm khu vực và số phòng mong muốn để chúng tôi gợi ý căn phù hợp hơn không?`],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nreturn { json: { ...ctx, subject, body, usedFallback: !ok } };"
+        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst ok = subject.length > 0 && body.length > 0 && body.length <= 1200\n  && body.includes(ctx.name) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Chúng tôi có thể hỗ trợ thêm gì cho anh/chị?', `Chào anh/chị ${ctx.name}, anh/chị có thể cho chúng tôi biết thêm khu vực và số phòng mong muốn để chúng tôi gợi ý căn phù hợp hơn không?`],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nreturn { json: { ...ctx, subject, body, bodyHtml: esc(body), usedFallback: !ok } };"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        860,
+        960,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000012",
@@ -239,7 +241,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $json.email }}",
         "subject": "={{ $json.subject }}",
-        "html": "={{ $json.body.replace(/\\n/g, '<br>') }}",
+        "html": "={{ $json.bodyHtml.replace(/\\n/g, '<br>') }}",
         "options": {
           "appendAttribution": false
         }
@@ -247,7 +249,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1060,
+        1160,
         -100
       ],
       "id": "11111111-1111-4000-8000-000000000013",
@@ -260,17 +262,18 @@
           "id": "hfJ9bBGUGsjH8qDP",
           "name": "SMTP account"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Kiểm tra nội dung AI').item.json.lead_id }}/events",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"type\": $('Kiểm tra nội dung AI').item.json.eventType,\n  \"note\": $('Kiểm tra nội dung AI').item.json.subject\n} }}",
+        "jsonBody": "={{ {\n  \"type\": $('Chuẩn bị ngữ cảnh').item.json.eventType,\n  \"note\": $('Chuẩn bị ngữ cảnh').item.json.type === 'STAFF_NUDGE' ? 'Nhắc nhân viên gọi lại khách chưa được duyệt lịch' : $('Kiểm tra nội dung AI').item.json.subject\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -289,7 +292,8 @@
           "id": "iYLrhsH8b8dDkZ0n",
           "name": "Header Auth account"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -305,7 +309,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $('Kiểm tra nội dung AI').item.json.type }}",
+                    "leftValue": "={{ $('Chuẩn bị ngữ cảnh').item.json.type }}",
                     "rightValue": "FEEDBACK",
                     "operator": {
                       "type": "string",
@@ -326,15 +330,23 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $('Kiểm tra nội dung AI').item.json.type }}",
+                    "leftValue": "={{ $('Chuẩn bị ngữ cảnh').item.json.type }}",
                     "rightValue": "WARM_NUDGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $('Chuẩn bị ngữ cảnh').item.json.type }}",
+                    "rightValue": "STAFF_NUDGE",
                     "operator": {
                       "type": "string",
                       "operation": "equals"
                     }
                   }
                 ],
-                "combinator": "and"
+                "combinator": "or"
               }
             }
           ]
@@ -355,7 +367,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Kiểm tra nội dung AI').item.json.lead_id }}/status",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/status",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -379,14 +391,15 @@
           "id": "iYLrhsH8b8dDkZ0n",
           "name": "Header Auth account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Cấu hình').first().json.staffEmail }}",
-        "subject": "=[GỌI LẠI] {{ $('Kiểm tra nội dung AI').item.json.name }} - WARM 3 ngày chưa phản hồi",
-        "html": "=<p>Khách hàng <b>{{ $('Kiểm tra nội dung AI').item.json.name }}</b> (SĐT: {{ $('Kiểm tra nội dung AI').item.json.phone }}) mức WARM đăng ký 3 ngày trước chưa có tiến triển.</p><p><b>Nhu cầu:</b> {{ $('Kiểm tra nội dung AI').item.json.needs || 'Chưa ghi' }}</p><p><b>Email hệ thống vừa gửi:</b></p><blockquote>{{ $('Kiểm tra nội dung AI').item.json.body.replace(/\\n/g, '<br>') }}</blockquote>",
+        "subject": "=[GỌI LẠI] {{ $('Chuẩn bị ngữ cảnh').item.json.name }} - {{ $('Chuẩn bị ngữ cảnh').item.json.type === 'STAFF_NUDGE' ? 'chưa được duyệt lịch sau 3 ngày' : 'WARM chưa phản hồi sau buổi xem' }}",
+        "html": "=<p>Khách hàng <b>{{ $('Chuẩn bị ngữ cảnh').item.json.nameHtml }}</b> (SĐT: {{ $('Chuẩn bị ngữ cảnh').item.json.phoneHtml }}), mức {{ $('Chuẩn bị ngữ cảnh').item.json.level }}, {{ $('Chuẩn bị ngữ cảnh').item.json.type === 'STAFF_NUDGE' ? 'đăng ký hơn 3 ngày nhưng lịch xem chưa được duyệt' : 'đã xem nhà nhưng chưa phản hồi sau khi được hỏi cảm nhận' }}.</p><p><b>Nhu cầu:</b> {{ $('Chuẩn bị ngữ cảnh').item.json.needsHtml || 'Chưa ghi' }}</p>{{ $('Chuẩn bị ngữ cảnh').item.json.type === 'STAFF_NUDGE' ? '' : '<p><b>Email hệ thống vừa gửi:</b></p><blockquote>' + $('Kiểm tra nội dung AI').item.json.bodyHtml.replace(/\\n/g, '<br>') + '</blockquote>' }}",
         "options": {
           "appendAttribution": false
         }
@@ -407,11 +420,12 @@
           "id": "hfJ9bBGUGsjH8qDP",
           "name": "SMTP account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "return { json: $('Kiểm tra nội dung AI').item.json };"
+        "jsCode": "const c = $('Chuẩn bị ngữ cảnh').item.json;\nlet usedFallback = false;\ntry { usedFallback = !!$('Kiểm tra nội dung AI').item.json.usedFallback; } catch (e) { /* nhánh nhắc nhân viên không qua AI */ }\nreturn { json: { ...c, usedFallback } };"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -424,7 +438,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = $input.all().map(i => i.json);\nconst count = t => rows.filter(r => r.type === t).length;\nreturn [{\n  json: {\n    total: rows.length,\n    reminder: count('REMINDER'),\n    feedback: count('FEEDBACK'),\n    warmNudge: count('WARM_NUDGE'),\n    fallback: rows.filter(r => r.usedFallback).length,\n  },\n}];"
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.type === 'ERROR').length;\nconst ok = rows.filter(r => r.type !== 'ERROR');\nconst count = t => ok.filter(r => r.type === t).length;\nreturn [{\n  json: {\n    total: ok.length,\n    failed,\n    reminder: count('REMINDER'),\n    feedback: count('FEEDBACK'),\n    warmNudge: count('WARM_NUDGE'),\n    staffNudge: count('STAFF_NUDGE'),\n    fallback: ok.filter(r => r.usedFallback).length,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -447,7 +461,7 @@
           "conditions": [
             {
               "id": "cond-has-total",
-              "leftValue": "={{ $json.total }}",
+              "leftValue": "={{ $json.total + $json.failed }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -472,8 +486,8 @@
       "parameters": {
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
-        "subject": "=[BÁO CÁO] Đã thực hiện {{ $json.total }} email follow-up tự động",
-        "html": "=<p>Báo cáo tự động từ hệ thống RealEstate AI:</p><ul><li>Tổng số email follow-up đã gửi: <b>{{ $json.total }}</b></li><li>Nhắc lịch xem nhà (REMINDER): <b>{{ $json.reminder }}</b></li><li>Hỏi cảm nhận (FEEDBACK): <b>{{ $json.feedback }}</b></li><li>Nhắc khách tiềm năng (WARM_NUDGE): <b>{{ $json.warmNudge }}</b></li><li>Số lần dùng mẫu dự phòng: <b>{{ $json.fallback }}</b></li></ul>",
+        "subject": "=[BÁO CÁO] Follow-up tự động: {{ $json.total }} việc xong, {{ $json.failed }} lỗi",
+        "html": "=<p>Báo cáo tự động từ hệ thống RealEstate AI:</p><ul><li>Tổng số việc follow-up đã xử lý: <b>{{ $json.total }}</b></li><li>Nhắc lịch xem nhà (REMINDER): <b>{{ $json.reminder }}</b></li><li>Hỏi cảm nhận (FEEDBACK): <b>{{ $json.feedback }}</b></li><li>Nhắc khách WARM sau buổi xem (WARM_NUDGE): <b>{{ $json.warmNudge }}</b></li><li>Nhắc nhân viên duyệt lịch chậm (STAFF_NUDGE): <b>{{ $json.staffNudge }}</b></li><li>Số lần dùng mẫu dự phòng: <b>{{ $json.fallback }}</b></li><li>Khách bị lỗi (sẽ thử lại sau 6 giờ): <b>{{ $json.failed }}</b></li></ul>",
         "options": {
           "appendAttribution": false
         }
@@ -495,6 +509,83 @@
           "name": "SMTP account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-need-mail",
+              "leftValue": "={{ $json.type !== 'STAFF_NUDGE' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        460,
+        -100
+      ],
+      "id": "7ca7a04b-d6d1-4a5a-ab94-8e4f898d66dc",
+      "name": "Cần email khách?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Loop Over Items').item.json.lead_id }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"type\": \"FOLLOWUP_FAILED\",\n  \"note\": $('Loop Over Items').item.json.type + ': ' + String($json.error?.message ?? $json.error ?? 'Lỗi không rõ').slice(0, 200)\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1260,
+        160
+      ],
+      "id": "06520be4-b37e-4cfd-a1b2-1f7a8398917c",
+      "name": "Ghi lỗi follow-up",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const l = $('Loop Over Items').item.json;\nreturn [{ json: { type: 'ERROR', failedType: l.type, lead_id: l.lead_id } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        160
+      ],
+      "id": "5a95a37b-6576-4c7f-9944-ed31992f5bcd",
+      "name": "Gom lỗi"
     }
   ],
   "pinData": {},
@@ -580,6 +671,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -587,7 +685,7 @@
       "main": [
         [
           {
-            "node": "AI soạn email",
+            "node": "Cần email khách?",
             "type": "main",
             "index": 0
           }
@@ -624,6 +722,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -646,6 +751,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -654,6 +766,13 @@
         [
           {
             "node": "Việc thêm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
             "type": "main",
             "index": 0
           }
@@ -739,6 +858,53 @@
           }
         ]
       ]
+    },
+    "Cần email khách?": {
+      "main": [
+        [
+          {
+            "node": "AI soạn email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi lỗi follow-up": {
+      "main": [
+        [
+          {
+            "node": "Gom lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gom lỗi": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
-  }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "errorWfRealestat"
+  },
+  "id": "luong2Realestat0",
+  "active": false,
+  "tags": []
 }

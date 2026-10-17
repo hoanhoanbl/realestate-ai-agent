@@ -74,6 +74,8 @@ export const EVENT_LABELS: Record<string, string> = {
   REMINDER_SENT: "Đã nhắc lịch",
   FEEDBACK_ASKED: "Đã hỏi cảm nhận",
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
+  STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
+  FOLLOWUP_FAILED: "Follow-up bị lỗi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
 

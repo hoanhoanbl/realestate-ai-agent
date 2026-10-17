@@ -78,6 +78,8 @@ export const EVENT_LABELS: Record<string, string> = {
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
+  FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
+  FEEDBACK_ANALYZED: "AI phân tích cảm nhận",
   FOLLOWUP_FAILED: "Follow-up bị lỗi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
@@ -192,6 +194,55 @@ export function updateProperty(id: number, input: Partial<PropertyInput>): Promi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+}
+
+// ---- Cảm nhận sau buổi xem ----
+
+export type FeedbackInterest = "DEPOSIT" | "OTHER" | "NONE";
+
+// Trang công khai của khách: chỉ có tên, căn nhà, giờ xem
+export interface FeedbackInfo {
+  leadName: string;
+  propertyName: string | null;
+  viewingTime: string | null;
+  submitted: boolean;
+}
+
+export function getFeedbackInfo(token: string): Promise<FeedbackInfo> {
+  return request<FeedbackInfo>(`/feedback/${encodeURIComponent(token)}`);
+}
+
+export function submitFeedback(
+  token: string,
+  body: { rating: number; interest: FeedbackInterest; comment?: string },
+): Promise<{ ok: true }> {
+  return request(`/feedback/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// Cho trang chi tiết khách ở admin
+export interface Feedback {
+  id: number;
+  leadId: number;
+  rating: number | null;
+  interest: FeedbackInterest | null;
+  comment: string | null;
+  submittedAt: string | null;
+  aiSentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | null;
+  aiSummary: string | null;
+  aiNextAction: string | null;
+}
+
+export async function getLeadFeedback(leadId: number): Promise<Feedback | null> {
+  // Backend trả rỗng (không có nội dung) khi khách chưa có cảm nhận nào
+  const text = await request<Feedback | null>(`/feedback/lead/${leadId}`).catch((e: unknown) => {
+    if (e instanceof SyntaxError) return null;
+    throw e;
+  });
+  return text;
 }
 
 export function getProperty(id: number): Promise<Property> {

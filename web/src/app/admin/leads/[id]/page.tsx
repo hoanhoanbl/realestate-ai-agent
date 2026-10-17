@@ -14,6 +14,8 @@ import {
   formatVnd,
   getLead,
   getLeadEvents,
+  getLeadFeedback,
+  type Feedback,
   type LeadDetail,
   type LeadEvent,
 } from "@/lib/api";
@@ -70,6 +72,7 @@ function LeadDetailContent() {
 
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [events, setEvents] = useState<LeadEvent[]>([]);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -81,11 +84,12 @@ function LeadDetailContent() {
     let cancelled = false;
 
     function load() {
-      Promise.all([getLead(id), getLeadEvents(id)])
-        .then(([leadData, eventData]) => {
+      Promise.all([getLead(id), getLeadEvents(id), getLeadFeedback(id)])
+        .then(([leadData, eventData, feedbackData]) => {
           if (cancelled) return;
           setLead(leadData);
           setEvents(eventData);
+          setFeedback(feedbackData);
           setError(null);
           setUpdatedAt(new Date());
         })
@@ -198,6 +202,27 @@ function LeadDetailContent() {
                 </>
               )}
             </Card>
+
+            {feedback && feedback.submittedAt && (
+              <Card title="Cảm nhận của khách">
+                <Field label="Đánh giá">
+                  <span className="text-amber-500">{"★".repeat(feedback.rating ?? 0)}</span>
+                  <span className="text-slate-300">{"★".repeat(5 - (feedback.rating ?? 0))}</span>
+                </Field>
+                <Field label="Lựa chọn">
+                  {{ DEPOSIT: "Muốn đặt cọc", OTHER: "Muốn xem căn khác", NONE: "Không còn nhu cầu" }[feedback.interest ?? "NONE"]}
+                </Field>
+                <Field label="Góp ý">{feedback.comment ?? "-"}</Field>
+                {feedback.aiSummary ? (
+                  <div className="rounded-lg bg-blue-50 p-3 text-xs text-slate-700">
+                    <p><b>AI tóm tắt ({feedback.aiSentiment}):</b> {feedback.aiSummary}</p>
+                    <p className="mt-1"><b>Gợi ý:</b> {feedback.aiNextAction}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">AI đang phân tích...</p>
+                )}
+              </Card>
+            )}
 
             <Card title="Trạng thái xử lý">
               <Field label="n8n">

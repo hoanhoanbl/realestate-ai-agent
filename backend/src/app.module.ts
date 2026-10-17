@@ -8,6 +8,7 @@ import { StatsModule } from './stats/stats.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { N8nModule } from './n8n/n8n.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -44,6 +45,8 @@ import { N8nModule } from './n8n/n8n.module';
     AuthModule,
 
     N8nModule,
+
+    FeedbackModule,
   ],
 })
 export class AppModule {}

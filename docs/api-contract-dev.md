@@ -194,6 +194,20 @@ Có **hai cách xác thực**, dùng cho hai đối tượng khác nhau:
 
 Bảng `users`: `id, email (duy nhất), name, password_hash (bcrypt, không bao giờ trả ra API), role (MANAGER | SALE), push_token, created_at`. Hai tài khoản mẫu được tạo khi backend khởi động (email `nhadn2457+quanly@gmail.com` vai MANAGER và `nhadn2457+nhanvien@gmail.com` vai SALE); mật khẩu lấy từ biến `SEED_USER_PASSWORD` trong `.env`. Ký token dùng biến `JWT_SECRET`.
 
+## 3c. API cho web admin và app (dev)
+
+Tất cả cần `Authorization: Bearer <token>` (xem mục 3b). Lỗi nghiệp vụ trả `400`, không tìm thấy `404`.
+
+| Method | Đường dẫn | Mô tả |
+|---|---|---|
+| GET | `/api/stats/funnel` | `{ total, byStatus: {NEW,CONFIRMED,VIEWED,DEPOSIT,SIGNED,LOST}, conversionRate (% đã ký / tổng), pendingApproval (NEW và AI đã chấm), failedAutomation, viewingsToday }` |
+| GET | `/api/viewings/schedule` | Lịch xem kèm khách và căn nhà: `[{ id, viewingTime, leadId, leadName, leadPhone, leadLevel, leadStatus, propertyId, propertyName, propertyAddress }]`, sắp theo giờ xem |
+| PUT | `/api/viewings/:id` | Đổi giờ xem. Body `{ "viewingTime": "ISO 8601" }`. Chỉ khi khách `NEW` hoặc `CONFIRMED`, giờ phải ở tương lai. Ghi `VIEWING_RESCHEDULED`. Khách `CONFIRMED` thì gọi webhook `viewing-admin-action` (`rescheduled`) để n8n báo khách |
+| POST | `/api/leads/:id/approve` | Duyệt lịch. Chỉ khi khách `NEW` và AI không còn `PENDING`. Thử bấm link duyệt của luồng 1 (`via: "resume"`); link hết hạn (401/403/404/409/410) thì gọi webhook `viewing-admin-action` (`approved`, `via: "manual"`). Lỗi khác: `502`. Trả `{ "via": "resume" \| "manual" }` |
+| PUT | `/api/leads/:id/admin-status` | Nhân viên đổi trạng thái. Body `{ "status": "VIEWED" \| "LOST", "note"? }`. `VIEWED` chỉ khi đang `CONFIRMED`; `LOST` không áp dụng cho khách đã `SIGNED`/`LOST`. Ghi `STATUS_CHANGED` kèm tên người làm |
+
+**Webhook backend → n8n (mới):** `POST /webhook/viewing-admin-action` (header `X-Webhook-Secret`), body `{ "event": "approved" | "rescheduled", "leadId": 12, "by": "tên nhân viên" }`. Xem [luồng 1b](luong/luong-1b-chot-lich-thu-cong.md).
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -217,6 +231,7 @@ Gia tri `lead_events.type`:
 | `WARM_NUDGE_SENT` | Luong 2 | Da nhac khach WARM im lang |
 | `STATUS_CHANGED` | Backend tu ghi | Moi lan `PUT /status` |
 | `STAFF_NUDGE_SENT` (dev) | Luong 2 | Đã nhắc nhân viên về khách HOT/WARM chưa được duyệt sau 3 ngày |
+| `VIEWING_RESCHEDULED` (dev) | Backend | Nhân viên đổi giờ xem |
 | `FOLLOWUP_FAILED` (dev) | Luong 2 | Follow-up cho khách này bị lỗi (bỏ qua 6 giờ) |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
@@ -259,6 +274,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/web-admin` | Thêm mục 3c (funnel, schedule, đổi giờ, duyệt, đổi trạng thái), webhook `viewing-admin-action`, event `VIEWING_RESCHEDULED` |
 | `feature/auth` | Thêm bảng `users`, `POST /auth/login`, `GET /auth/me`; khoá các `GET` của admin bằng JWT (mục 3b) |
 | `fix/luong-1`, `fix/luong-2` | Thêm `lead_events.type`: `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED` |
 | `fix/backend-web` | Kiểm tra đầu vào chặt hơn (giờ quá khứ, tên rỗng, SĐT, `:id` không phải số) |

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
@@ -10,6 +11,7 @@ import {
   formatVnd,
   getLeads,
   type Lead,
+  type LeadStatus,
   type Level,
 } from "@/lib/api";
 
@@ -32,7 +34,31 @@ function Flag({ value }: { value: boolean | null | undefined }) {
   return <span className="text-slate-300">-</span>;
 }
 
+const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
+  { value: "ALL", label: "Mọi trạng thái" },
+  { value: "NEW", label: "Mới (chờ duyệt)" },
+  { value: "CONFIRMED", label: "Đã chốt lịch" },
+  { value: "VIEWED", label: "Đã xem nhà" },
+  { value: "DEPOSIT", label: "Muốn đặt cọc" },
+  { value: "SIGNED", label: "Đã ký" },
+  { value: "LOST", label: "Không mua" },
+];
+
+// useSearchParams cần nằm trong Suspense
 export default function LeadsPage() {
+  return (
+    <Suspense fallback={<p className="text-slate-500">Đang tải...</p>}>
+      <LeadsContent />
+    </Suspense>
+  );
+}
+
+function LeadsContent() {
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | LeadStatus>(
+    STATUS_OPTIONS.some((o) => o.value === initialStatus) ? (initialStatus as LeadStatus) : "ALL",
+  );
   const [filter, setFilter] = useState<Filter>("ALL");
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,8 +101,11 @@ export default function LeadsPage() {
   }, [leads]);
 
   const visible = useMemo(
-    () => (leads ?? []).filter((l) => filter === "ALL" || l.level === filter),
-    [leads, filter],
+    () =>
+      (leads ?? []).filter(
+        (l) => (filter === "ALL" || l.level === filter) && (statusFilter === "ALL" || l.status === statusFilter),
+      ),
+    [leads, filter, statusFilter],
   );
 
   return (
@@ -98,7 +127,19 @@ export default function LeadsPage() {
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Lọc theo trạng thái"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "ALL" | LeadStatus)}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         {FILTERS.map((f) => {
           const active = filter === f.value;
           return (
@@ -164,7 +205,7 @@ export default function LeadsPage() {
                 <tr key={lead.id} className="align-top hover:bg-slate-50">
                   <td className="px-3 py-3">
                     <Link
-                      href={`/leads/${lead.id}`}
+                      href={`/admin/leads/${lead.id}`}
                       className="font-medium text-blue-700 hover:underline"
                     >
                       {lead.name}

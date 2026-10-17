@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
+import LeadActions from "@/components/LeadActions";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
@@ -43,7 +44,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function NotFound() {
   return (
     <section>
-      <Link href="/leads" className="text-sm text-blue-600 hover:underline">
+      <Link href="/admin/leads" className="text-sm text-blue-600 hover:underline">
         ← Danh sách khách
       </Link>
       <p className="mt-6 rounded-lg bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200">
@@ -72,6 +73,8 @@ function LeadDetailContent() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  // tăng lên để tải lại ngay sau khi nhân viên bấm một nút
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (invalidId) return;
@@ -103,13 +106,13 @@ function LeadDetailContent() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [id, invalidId]);
+  }, [id, invalidId, version]);
 
   if (invalidId || notFound) return <NotFound />;
 
   return (
     <section>
-      <Link href="/leads" className="text-sm text-blue-600 hover:underline">
+      <Link href="/admin/leads" className="text-sm text-blue-600 hover:underline">
         ← Danh sách khách
       </Link>
 
@@ -144,6 +147,8 @@ function LeadDetailContent() {
               </p>
             )}
           </div>
+
+          <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <Card title="Thông tin khách">

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ViewingsService } from './viewings.service';
 import { CreateViewingDto } from './dto/create-viewing.dto';
 import { Viewing } from './entities/viewing.entity';
@@ -16,6 +17,7 @@ export class ViewingsController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(): Promise<Viewing[]> {
     return this.viewingsService.findAll();
   }

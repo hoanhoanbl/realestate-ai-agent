@@ -49,6 +49,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
     depends_on:

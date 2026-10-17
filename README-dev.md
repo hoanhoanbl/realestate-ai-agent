@@ -30,6 +30,15 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 3. Mở: web http://localhost:3000 · backend http://localhost:8081/api/docs · n8n http://localhost:5678
 4. Import workflow trong `n8n-workflows/` vào n8n, gắn credential (Gemini, SMTP, Header Auth `X-Webhook-Secret`), bật các luồng.
 
+## Tài khoản đăng nhập (web admin, app)
+
+| Vai | Email | Mật khẩu |
+|---|---|---|
+| Quản lý | `nhadn2457+quanly@gmail.com` | giá trị `SEED_USER_PASSWORD` trong file `.env` |
+| Nhân viên | `nhadn2457+nhanvien@gmail.com` | giống trên |
+
+Hai tài khoản được tạo tự động khi backend khởi động lần đầu. Cần đặt `JWT_SECRET` và `SEED_USER_PASSWORD` trong `.env` (xem `.env.example`).
+
 ## Email thử nghiệm
 
 Toàn bộ thư về hộp `nhadn2457@gmail.com` nhờ địa chỉ có dấu cộng: quản lý `+quanly`, nhân viên `+nhanvien`, khách thử `+khach1`, `+khach2`...

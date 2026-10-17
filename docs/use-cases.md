@@ -25,7 +25,7 @@ Cột "Luồng" ghi luồng n8n xử lý use case đó (để trống nếu ch�
 | UC-K03 | Đăng ký lịch xem nhà | Điền form (họ tên, email, số điện thoại, giờ muốn xem, nhu cầu) ở trang chi tiết nhà | 1 | Tuần 1 |
 | UC-K04 | Nhận email xác nhận | Nhận email "đã nhận yêu cầu", sau đó nhận email chốt lịch khi nhân viên duyệt | 1 | Tuần 2 |
 | UC-K05 | Nhận nhắc lịch xem | Nhận email nhắc trước giờ xem 24 giờ | 2 | Tuần 2 |
-| UC-K06 | Gửi cảm nhận sau buổi xem | Trả lời email hỏi cảm nhận mà hệ thống gửi sau buổi xem | 2 | Tuần 2 |
+| UC-K06 | Gửi cảm nhận sau buổi xem | Mở nút "Gửi cảm nhận" trong email hỏi cảm nhận, chọn số sao, lựa chọn (đặt cọc / xem căn khác / không còn nhu cầu), góp ý | 2, 5 | Dev |
 | UC-K07 | Ký hợp đồng đặt cọc online | Mở link `/sign/[token]` trong email, xem lại hợp đồng và ký | 3 | Luồng 3 |
 | UC-K08 | Nhận xác nhận đã ký | Nhận email xác nhận kèm bản hợp đồng đã ký | 3 | Luồng 3 |
 
@@ -82,3 +82,30 @@ Các việc này không do người bấm, nhưng là kết quả mà actor nh�
 | Document signing | UC-K07, UC-K08, UC-S08, UC-Q04, UC-Q05 |
 | Lead follow-up | UC-K06, UC-S02, UC-S05, UC-S06, UC-S10, SYS-05 |
 | Sales analytics | UC-Q02, UC-Q06 |
+
+## 5. Trạng thái trên nhánh `dev`
+
+Tất cả use case đã có trên `dev`. Bảng cho biết làm ở đâu và đọc tài liệu nào.
+
+| Use case | Ở đâu trên `dev` | Tài liệu |
+|---|---|---|
+| UC-K01, K02 | Web khách `/` (lọc theo thành phố, loại, giá), `/nha/[id]` | `README-dev.md` |
+| UC-K03, K04 | Form đặt lịch ở `/nha/[id]`; luồng 1 gửi email | [luồng 1](luong/luong-1-dat-lich.md) |
+| UC-K05 | Luồng 2 nhắc lịch trước 24 giờ | [luồng 2](luong/luong-2-follow-up.md) |
+| UC-K06 | Trang `/cam-nhan/[token]`; luồng 5 phân tích | [luồng 5](luong/luong-5-cam-nhan.md) |
+| UC-K07, K08 | Trang `/ky/[token]` (vẽ chữ ký); luồng 3 gửi email xác nhận | [luồng 3](luong/luong-3-hop-dong.md) |
+| UC-S01, Q01 | `/admin/login`, app (đăng nhập), JWT | `api-contract-dev.md` mục 3b |
+| UC-S02 | Email nhân viên (luồng 1) và **thông báo đẩy** trên app | luồng 1, `app/README.md` |
+| UC-S03 | Nút Duyệt trên email, web admin, app; luồng 1 và 1b | [luồng 1b](luong/luong-1b-chot-lich-thu-cong.md) |
+| UC-S04 | Nút Đổi giờ ở `/admin/lich-xem`, chi tiết khách, app | luồng 1b |
+| UC-S05, S06, Q08 | `/admin/leads`, `/admin/leads/[id]` (có dòng thời gian) | |
+| UC-S07 | Nút Đã xem nhà / Khách không đến / Mất khách | |
+| UC-S08 | Nút Tạo hợp đồng đặt cọc ở chi tiết khách | luồng 3 |
+| UC-S09, S10 | App: màn Hôm nay, nút Gọi và Email | `app/README.md` |
+| UC-Q02 | `/admin` (phễu theo trạng thái, việc tồn) | |
+| UC-Q03 | `/admin/nha` (thêm, sửa, ẩn) | `api-contract-dev.md` mục 3d |
+| UC-Q04, Q05 | `/admin/hop-dong`, `/admin/hop-dong/[id]` hoặc nút trong email | luồng 3 |
+| UC-Q06 | Luồng 4 + trang `/admin/bao-cao` | [luồng 4](luong/luong-4-bao-cao.md) |
+| UC-Q07 | Error workflow | [error-workflow](luong/error-workflow.md) |
+
+**Chưa kiểm tra trên thiết bị thật:** app Expo (cần chạy bằng Expo Go trên điện thoại). Mọi phần còn lại đã chạy thử với n8n, Gemini và email thật.

@@ -86,6 +86,7 @@ sequenceDiagram
 | 9 | Mức (Switch) | Rẽ ba nhánh theo HOT / WARM / COLD (có nhánh dự phòng báo `FAILED`) | |
 | 10 | Email khách HOT/WARM/COLD | Gửi email "đã nhận yêu cầu" (nội dung hơi khác mỗi mức) | |
 | 11 | Email nhân viên | Gửi điểm, tóm tắt, hai nút Duyệt và Đổi giờ | |
+| 11b | Lấy push token → Gửi thông báo đẩy | Nếu có nhân viên đã cài app: gửi thông báo "Khách mới" qua Expo Push. Lỗi ở bước này bị bỏ qua, không ảnh hưởng luồng. **Đặt trước bước chờ duyệt**, vì n8n không chạy nhánh song song sau khi một nhánh đã dừng chờ |
 | 12 | Lưu kết quả AI | Gọi backend lưu điểm và link duyệt | `score, level, reason, aiReply, approvalUrl`, `COMPLETED` |
 | 13 | Ghi log AI_SCORED | Ghi dòng thời gian | `lead_events` |
 | 14 | Chờ duyệt (Wait) | Dừng, chờ nhân viên bấm link, tối đa 24 giờ | |

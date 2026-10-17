@@ -42,6 +42,10 @@ Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 
 Khu khách không có đường dẫn sang khu admin; nhân viên tự gõ `/admin`.
 
+## App nhân viên
+
+Thư mục `app/` (Expo, chạy bằng Expo Go): việc hôm nay, duyệt lịch, gọi khách, thông báo đẩy khi có khách mới. Xem [app/README.md](app/README.md).
+
 ## Chạy
 
 1. Cài Docker Desktop. Sao chép `.env.example` thành `.env`, điền giá trị.

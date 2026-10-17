@@ -274,6 +274,15 @@ Bảng `contracts`: `id, lead_id, property_id, title, content, deposit_amount, p
 Bảng `weekly_reports`: `id, period_start (date), period_end (date), metrics (jsonb), analysis (jsonb), alerts (jsonb), created_at`.
 Tài khoản database chỉ đọc cho AI Agent: `backend/sql/readonly-role.sql`.
 
+## 3h. Thông báo đẩy cho app nhân viên (dev)
+
+| Method | Đường dẫn | Ai gọi được | Mô tả |
+|---|---|---|---|
+| POST | `/api/users/me/push-token` | Đã đăng nhập | Body `{ "token": "ExponentPushToken[...]" }`. Sai định dạng: `400`. Lưu vào `users.push_token` |
+| DELETE | `/api/users/me/push-token` | Đã đăng nhập | Gỡ token (khi đăng xuất khỏi app) |
+
+n8n (luồng 1) đọc `users.push_token` rồi gọi Expo Push API. Xem [app/README.md](../app/README.md).
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -343,6 +352,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/app-nhan-vien` | Thêm mục 3h (push token), thư mục `app/` |
 | `feature/luong-4-bao-cao` | Thêm mục 3g (báo cáo), bảng `weekly_reports`, webhook `report-requested`, tài khoản DB chỉ đọc `n8n_readonly` |
 | `feature/luong-3-hop-dong` | Thêm mục 3f (hợp đồng, ký online), bảng `contracts`, webhook `contract-requested`, event `CONTRACT_*` |
 | `feature/cam-nhan` | Thêm mục 3e (feedback), bảng `feedbacks`, webhook `feedback-submitted`, event `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, biến `PUBLIC_WEB_URL` |

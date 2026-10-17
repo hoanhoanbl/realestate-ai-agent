@@ -147,6 +147,10 @@ export function getProperties(): Promise<Property[]> {
   return request<Property[]>("/properties");
 }
 
+export function getProperty(id: number): Promise<Property> {
+  return request<Property>(`/properties/${id}`);
+}
+
 export function getLeads(level?: Level): Promise<Lead[]> {
   const query = level ? `?level=${level}` : "";
   return request<Lead[]>(`/leads${query}`);

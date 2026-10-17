@@ -82,16 +82,18 @@ sequenceDiagram
 | 5 | Lấy thông tin nhà | Gọi backend lấy tên, giá, diện tích căn khách chọn | |
 | 6 | Ghép dữ liệu | Tính ngân sách so với giá căn (%) để AI tham khảo | |
 | 7 | Basic LLM Chain (Gemini) | Chấm điểm 0–100, xếp HOT/WARM/COLD, viết email, viết gợi ý cho nhân viên | |
-| 8 | Mức (Switch) | Rẽ ba nhánh theo HOT / WARM / COLD | |
-| 9 | Email khách HOT/WARM/COLD | Gửi email "đã nhận yêu cầu" (nội dung hơi khác mỗi mức) | |
-| 10 | Email nhân viên | Gửi điểm, tóm tắt, hai nút Duyệt và Đổi giờ | |
-| 11 | Lưu kết quả AI | Gọi backend lưu điểm và link duyệt | `score, level, reason, aiReply, approvalUrl`, `COMPLETED` |
-| 12 | Ghi log AI_SCORED | Ghi dòng thời gian | `lead_events` |
-| 13 | Chờ duyệt (Wait) | Dừng, chờ nhân viên bấm link, tối đa 24 giờ | |
-| 14 | Kết quả duyệt (Switch) | Rẽ: approve / reschedule / hết giờ | |
-| 15 | Email chốt lịch + Cập nhật CONFIRMED + log APPROVED | Chốt lịch cho khách | `leads.status = CONFIRMED` |
-| 16 | Email báo đổi giờ + log | Báo khách sẽ hẹn lại | `lead_events` |
-| 17 | Email cảnh báo quản lý + log | Báo quản lý khi quá hạn | `lead_events` |
+| 8 | Tính mức (Code) | **Không tin cấp độ AI trả về**: tự tính lại từ điểm (≥70 HOT, 40–69 WARM, <40 COLD), kiểm tra email AI không rỗng, escape HTML. Lỗi thì báo `FAILED` | |
+| 9 | Mức (Switch) | Rẽ ba nhánh theo HOT / WARM / COLD (có nhánh dự phòng báo `FAILED`) | |
+| 10 | Email khách HOT/WARM/COLD | Gửi email "đã nhận yêu cầu" (nội dung hơi khác mỗi mức) | |
+| 11 | Email nhân viên | Gửi điểm, tóm tắt, hai nút Duyệt và Đổi giờ | |
+| 12 | Lưu kết quả AI | Gọi backend lưu điểm và link duyệt | `score, level, reason, aiReply, approvalUrl`, `COMPLETED` |
+| 13 | Ghi log AI_SCORED | Ghi dòng thời gian | `lead_events` |
+| 14 | Chờ duyệt (Wait) | Dừng, chờ nhân viên bấm link, tối đa 24 giờ | |
+| 15 | Kết quả duyệt (Switch) | Rẽ: approve / reschedule / còn lại | |
+| 15b | Hết giờ thật? (IF) | Nhánh "còn lại": nếu không có `action` là **hết 24 giờ** → cảnh báo quản lý. Nếu có `action` nhưng sai → trả trang lỗi 400 và **quay lại chờ** (link vẫn dùng được) | |
+| 16 | Email chốt lịch → Cập nhật CONFIRMED → log APPROVED → Trả lời duyệt | Chốt lịch cho khách; **trang "đã ghi nhận" chỉ hiện sau khi email đã gửi** | `leads.status = CONFIRMED` |
+| 17 | Email báo đổi giờ → log → Trả lời đổi giờ | Báo khách sẽ hẹn lại | `lead_events` |
+| 18 | Email cảnh báo quản lý → log | Báo quản lý khi quá hạn | `lead_events` |
 
 ## 5. Nối với hệ thống
 
@@ -103,6 +105,7 @@ sequenceDiagram
 ## 6. Khi lỗi thì sao?
 
 - Mọi node gọi dịch vụ ngoài (Gemini, email, HTTP) đều **thử lại 3 lần, cách 5 giây**.
+- Email gửi cho nhân viên và khách đã được **escape HTML** (tên, nhu cầu khách nhập, nội dung AI) để khách không chèn được link hay mã vào thư.
 - Vẫn lỗi thì nhánh lỗi gọi `PUT .../automation-status` với `FAILED`, để khách không kẹt ở `PENDING`.
 - Lỗi khác ngoài dự kiến: **Error workflow** gửi email cho quản lý (xem `error-workflow.md`).
 

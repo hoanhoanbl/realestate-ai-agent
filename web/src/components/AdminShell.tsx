@@ -16,6 +16,7 @@ const LINKS: NavLink[] = [
   { href: "/admin", label: "Tổng quan", exact: true },
   { href: "/admin/leads", label: "Khách hàng" },
   { href: "/admin/lich-xem", label: "Lịch xem" },
+  { href: "/admin/nha", label: "Quản lý nhà", roles: ["MANAGER"] },
 ];
 
 const ROLE_LABEL: Record<Role, string> = { MANAGER: "Quản lý", SALE: "Nhân viên" };

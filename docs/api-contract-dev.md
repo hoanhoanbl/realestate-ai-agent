@@ -208,6 +208,19 @@ Tất cả cần `Authorization: Bearer <token>` (xem mục 3b). Lỗi nghiệp 
 
 **Webhook backend → n8n (mới):** `POST /webhook/viewing-admin-action` (header `X-Webhook-Secret`), body `{ "event": "approved" | "rescheduled", "leadId": 12, "by": "tên nhân viên" }`. Xem [luồng 1b](luong/luong-1b-chot-lich-thu-cong.md).
 
+## 3d. Quản lý nhà (dev)
+
+| Method | Đường dẫn | Ai gọi được | Mô tả |
+|---|---|---|---|
+| GET | `/api/properties` | Công khai | Chỉ các căn **không bị ẩn** (`status != HIDDEN`) |
+| GET | `/api/properties/:id` | Công khai | Một căn, kể cả căn đã ẩn (n8n cần đọc lại căn của các lịch cũ) |
+| GET | `/api/properties/admin/all` | Đã đăng nhập | Tất cả, gồm cả căn đã ẩn |
+| POST | `/api/properties` | Quản lý | Thêm căn. Body `{ name, address, price (số nguyên >= 1), area (> 0), type, status? }`. `type`: `APARTMENT`, `TOWNHOUSE`, `VILLA`, `SHOPHOUSE`, `LAND` |
+| PUT | `/api/properties/:id` | Quản lý | Sửa (gửi các trường cần đổi). `status`: `AVAILABLE` hoặc `HIDDEN` |
+| DELETE | `/api/properties/:id` | Quản lý | Xoá mềm: chuyển `HIDDEN`, giữ nguyên các lịch xem đã đặt |
+
+`POST /api/viewings` với căn không `AVAILABLE` trả `400`. Nhân viên (`SALE`) gọi POST/PUT/DELETE trả `403`.
+
 ## 4. Du lieu (4 bang)
 
 | Bang | Truong chinh |
@@ -274,6 +287,7 @@ Gia tri trang thai:
 
 | Nhánh | Nội dung |
 |---|---|
+| `feature/quan-ly-nha` | Thêm mục 3d (thêm, sửa, ẩn nhà), `GET /properties` ẩn căn HIDDEN, đặt lịch căn không AVAILABLE trả 400 |
 | `feature/web-admin` | Thêm mục 3c (funnel, schedule, đổi giờ, duyệt, đổi trạng thái), webhook `viewing-admin-action`, event `VIEWING_RESCHEDULED` |
 | `feature/auth` | Thêm bảng `users`, `POST /auth/login`, `GET /auth/me`; khoá các `GET` của admin bằng JWT (mục 3b) |
 | `fix/luong-1`, `fix/luong-2` | Thêm `lead_events.type`: `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED` |

@@ -164,6 +164,36 @@ export function getProperties(): Promise<Property[]> {
   return request<Property[]>("/properties");
 }
 
+export interface PropertyInput {
+  name: string;
+  address: string;
+  price: number;
+  area: number;
+  type: string;
+  status?: string;
+}
+
+// Gồm cả căn đã ẩn (chỉ admin)
+export function getAdminProperties(): Promise<Property[]> {
+  return request<Property[]>("/properties/admin/all");
+}
+
+export function createProperty(input: PropertyInput): Promise<Property> {
+  return request<Property>("/properties", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateProperty(id: number, input: Partial<PropertyInput>): Promise<Property> {
+  return request<Property>(`/properties/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 export function getProperty(id: number): Promise<Property> {
   return request<Property>(`/properties/${id}`);
 }

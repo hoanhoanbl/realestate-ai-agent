@@ -241,7 +241,7 @@ Vong doi `contracts.status`: `DRAFTING` (cho n8n soan) -> `PENDING_APPROVAL` (ch
 
 ### 6.1. Nhan vien va quan ly (web admin)
 
-**Hien tai** cac API nay tam dung header `X-Webhook-Secret` vi chua co dang nhap. Khi co JWT se doi: `POST`/`GET /contracts` cho `SALE` va `MANAGER`; `approve`, `reject` chi `MANAGER` (nhan vien goi: `403`).
+Can `Authorization: Bearer <token>` (JWT cua nhan vien hoac quan ly, lay tu `POST /api/auth/login`). `POST`, `GET /contracts` va `GET /contracts/{id}` cho `SALE` va `MANAGER`; `approve`, `reject` chi `MANAGER` (nhan vien goi: `403`). Chua dang nhap: `401`.
 
 | Method | Duong dan | Mo ta |
 |---|---|---|

@@ -4,21 +4,23 @@
 
 | Nhánh | Vai trò |
 |---|---|
-| `main` | Bản của nhóm, **là bản được chấm**. Tài liệu ở đây (`README.md`, `docs/api-contract.md`, `docs/tong-quan-du-an.md`, `docs/tuan-*.md`) giữ nguyên, không sửa. |
+| `main` | Bản của nhóm, **là bản được chấm**. Giữ nguyên, không sửa từ `dev`. |
 | `dev` | **Bản mẫu chạy ở local** để xem toàn cảnh hệ thống khi đã làm đủ. Không push, không deploy. Sau này nhóm làm lại trên `main` dựa theo `dev`. |
 
-### Quy tắc đọc tài liệu khi đang ở `dev`
+### Tài liệu trên `dev`
 
-Trên `dev`, các file có hậu tố `-dev` và thư mục `docs/luong/` **thay thế** file cùng tên của `main`:
+Trên `dev`, tài liệu của `main` **không còn nằm ở đây**. Những file sau là bản hiện hành:
 
-| Đọc cái này (dev) | Thay cho (main) |
+| File | Nội dung |
 |---|---|
-| `README-dev.md` | `README.md` |
-| `docs/api-contract-dev.md` | `docs/api-contract.md` |
-| `docs/luong/*.md` | mục "Bốn luồng n8n" trong `docs/tong-quan-du-an.md` |
-| `docs/use-cases.md` | (mới, chỉ có ở `dev`) |
+| `README.md`, `README-dev.md` | Điểm vào; cách chạy |
+| `docs/tong-quan-du-an.md` | Bài toán, kiến trúc, 6 luồng (đã viết lại cho `dev`) |
+| `docs/api-contract-dev.md` | API và dữ liệu (thay `docs/api-contract.md` của `main`; giữ hậu tố `-dev` để không lẫn khi chép sang `main`) |
+| `docs/luong/*.md` | Từng luồng n8n, kiểu swimlane |
+| `docs/use-cases.md` | Use case của 3 actor |
+| `docs/phoi-hop.md` | Hai người chia việc và quy tắc Git trên `main` |
 
-Các file cũ vẫn nằm đó **để đối chiếu với `main`**, nhưng trên `dev` có thể đã lỗi thời. Khi hai bên mâu thuẫn, bản `-dev` thắng.
+Các kế hoạch tuần cũ (`tuan-1.md`, `tuan-2.md`) và bản `api-contract.md` cũ đã bị xóa khỏi `dev` vì lỗi thời; muốn xem thì mở nhánh `main` hoặc lịch sử Git. Khi `dev` và `main` mâu thuẫn, `dev` là bản mới hơn.
 
 ## Quy trình Git trên `dev`
 

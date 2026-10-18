@@ -1,4 +1,6 @@
 -- Xoá dữ liệu mẫu cũ (chỉ các lead dùng email +demo)
+DELETE FROM contracts   WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
+DELETE FROM feedbacks   WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM lead_events WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM viewings    WHERE lead_id IN (SELECT id FROM leads WHERE email LIKE 'nhadn2457+demo%');
 DELETE FROM leads       WHERE email LIKE 'nhadn2457+demo%';
@@ -17,9 +19,18 @@ WITH l AS (
   RETURNING id)
 INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() - interval '2 days', 'NEW' FROM l;
 
--- WARM_NUDGE: WARM, đăng ký 4 ngày trước, chưa tiến triển
+-- STAFF_NUDGE: HOT/WARM, đăng ký 4 ngày trước, nhân viên vẫn chưa duyệt (chỉ nhắc nhân viên, không gửi khách)
 WITH l AS (
   INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status, created_at)
   VALUES ('Lê Minh Ấm', 'nhadn2457+demo3@gmail.com', '0900000003', 3000000000, '', 55, 'WARM', 'Dữ liệu mẫu', 'NEW', 'COMPLETED', now() - interval '4 days')
   RETURNING id)
 INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() + interval '3 days', 'NEW' FROM l;
+
+-- WARM_NUDGE: WARM, đã xem nhà, được hỏi cảm nhận 4 ngày trước nhưng chưa phản hồi
+WITH l AS (
+  INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status)
+  VALUES ('Phạm Thị Lặng', 'nhadn2457+demo4@gmail.com', '0900000004', 2500000000, 'Căn hộ gần chợ', 60, 'WARM', 'Dữ liệu mẫu', 'VIEWED', 'COMPLETED')
+  RETURNING id),
+v AS (
+  INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() - interval '6 days', 'NEW' FROM l RETURNING lead_id)
+INSERT INTO lead_events (lead_id, type, note, created_at) SELECT lead_id, 'FEEDBACK_ASKED', 'Dữ liệu mẫu', now() - interval '4 days' FROM v;

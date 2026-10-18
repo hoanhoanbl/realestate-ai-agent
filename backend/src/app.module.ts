@@ -8,6 +8,7 @@ import { StatsModule } from './stats/stats.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { N8nModule } from './n8n/n8n.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
@@ -45,6 +46,8 @@ import { ContractsModule } from './contracts/contracts.module';
     AuthModule,
 
     N8nModule,
+
+    FeedbackModule,
 
     ContractsModule,
   ],

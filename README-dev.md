@@ -1,6 +1,6 @@
 # README-dev — chạy bản `dev` ở local
 
-> Đây là bản mẫu để xem toàn cảnh hệ thống. `README.md` gốc (của `main`) giữ nguyên. Đọc `CLAUDE.md` để biết quy tắc nhánh.
+> Bản mẫu `dev` để xem toàn cảnh hệ thống. Đọc `CLAUDE.md` để biết quy tắc nhánh.
 
 ## Hệ thống làm gì?
 
@@ -14,15 +14,13 @@ Khách hàng · Nhân viên sale · Quản lý. Danh sách use case: [docs/use-c
 
 | Luồng | Tài liệu | Tình trạng trên `dev` |
 |---|---|---|
-| 1. Đặt lịch xem nhà | [luong-1](docs/luong/luong-1-dat-lich.md) | Có (đang sửa lỗi) |
-| 2. Follow-up tự động | [luong-2](docs/luong/luong-2-follow-up.md) | Có (đang sửa lỗi) |
+| 1. Đặt lịch xem nhà | [luong-1](docs/luong/luong-1-dat-lich.md) | Có |
+| 2. Follow-up tự động | [luong-2](docs/luong/luong-2-follow-up.md) | Có |
 | 1b. Chốt lịch / đổi giờ từ web admin | [luong-1b](docs/luong/luong-1b-chot-lich-thu-cong.md) | Có |
 | Error workflow | [error-workflow](docs/luong/error-workflow.md) | Có |
 | 3. Hợp đồng đặt cọc | [luong-3](docs/luong/luong-3-hop-dong.md) | Có |
 | 4. Báo cáo kinh doanh | [luong-4](docs/luong/luong-4-bao-cao.md) | Có |
 | 5. Cảm nhận sau buổi xem | [luong-5](docs/luong/luong-5-cam-nhan.md) | Có |
-
-Bảng này được cập nhật khi mỗi nhánh được merge vào `dev`.
 
 ## Các trang web
 
@@ -70,6 +68,8 @@ Toàn bộ thư về hộp `nhadn2457@gmail.com` nhờ địa chỉ có dấu c�
 ## Tài liệu
 
 - [CLAUDE.md](CLAUDE.md): quy tắc nhánh `dev`
+- [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md): bài toán, kiến trúc, 6 luồng
 - [docs/api-contract-dev.md](docs/api-contract-dev.md): API và dữ liệu
+- [docs/phoi-hop.md](docs/phoi-hop.md): hai người chia việc và quy tắc Git
 - [docs/use-cases.md](docs/use-cases.md): use case
 - [docs/luong/](docs/luong/): từng luồng, kiểu swimlane

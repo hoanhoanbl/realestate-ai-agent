@@ -33,7 +33,7 @@ sequenceDiagram
 
 ## 4. Nối với hệ thống
 
-Mỗi luồng muốn được giám sát phải chọn "Error workflow" trong **Settings** của luồng đó. Luồng 1 đã gắn; luồng 2 sẽ gắn ở nhánh `fix/luong-2`.
+Mỗi luồng muốn được giám sát phải chọn "Error workflow" trong **Settings** của luồng đó. Tất cả các luồng (1, 1b, 2, 3, 4, 5) đều đã gắn.
 
 ## 5. Cách chạy thử
 

@@ -191,3 +191,41 @@ export function formatDateTime(iso: string): string {
     year: "numeric",
   });
 }
+
+// ---- Khu khách ----
+
+export function getProperty(id: number): Promise<Property> {
+  return request<Property>(`/properties/${id}`);
+}
+
+// GET /sign/:token: nội dung hợp đồng cho khách xem trước khi ký
+export interface SignInfo {
+  title: string | null;
+  content: string | null;
+  customerName: string;
+  propertyName: string | null;
+  depositAmount: string | number;
+  status: "DRAFTING" | "PENDING_APPROVAL" | "SENT" | "SIGNED" | "REJECTED" | "EXPIRED";
+  expiresAt: string | null;
+  signedAt: string | null;
+  signerName: string | null;
+}
+
+export function getSignInfo(token: string): Promise<SignInfo> {
+  return request<SignInfo>(`/sign/${encodeURIComponent(token)}`);
+}
+
+export interface SignatureInput {
+  signerName: string;
+  // Ảnh PNG dạng data URL
+  signature: string;
+  agree: true;
+}
+
+export function submitSignature(token: string, input: SignatureInput): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/sign/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}

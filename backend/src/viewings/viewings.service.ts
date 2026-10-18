@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,6 +12,7 @@ import { Viewing } from './entities/viewing.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { Property } from '../properties/entities/property.entity';
 import { CreateViewingDto } from './dto/create-viewing.dto';
+import { parseViewingTime } from './viewing-time';
 
 @Injectable()
 export class ViewingsService {
@@ -39,19 +39,7 @@ export class ViewingsService {
       throw new NotFoundException(`Property with id ${propertyId} not found`);
     }
 
-    // Ensure VN timezone (+07:00) if no timezone offset or Z suffix is present
-    let normalizedViewingTime = viewingTime.trim();
-    if (
-      !normalizedViewingTime.endsWith('Z') &&
-      !/[+-]\d{2}:?\d{2}$/.test(normalizedViewingTime)
-    ) {
-      normalizedViewingTime = `${normalizedViewingTime}+07:00`;
-    }
-
-    const viewingDate = new Date(normalizedViewingTime);
-    if (Number.isNaN(viewingDate.getTime())) {
-      throw new BadRequestException('Invalid viewingTime format');
-    }
+    const { text: normalizedViewingTime, date: viewingDate } = parseViewingTime(viewingTime);
 
     const eventId = crypto.randomUUID();
 

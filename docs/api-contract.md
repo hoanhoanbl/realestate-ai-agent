@@ -1,8 +1,8 @@
 # Hop dong API giua Backend, n8n va Web
 
-File nay la "luat chung" cua ca nhom (n8n, backend, web). **Neu file nay va cac file ke hoach tuan (`tuan-*.md`) mau thuan nhau thi file nay thang.**
+File nay la "luat chung" cua ca nhom (n8n, backend, web).
 
-Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Request, (3) nguoi kia bam Approve roi moi merge, (4) ghi mot dong vao muc "Lich su thay doi" o cuoi file. Khong sua thang tren `main`. Quy trinh day du xem muc "Cach phoi hop" trong `tuan-1.md`.
+Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Request, (3) nguoi kia bam Approve roi moi merge, (4) ghi mot dong vao muc "Lich su thay doi" o cuoi file. Khong sua thang tren `main`.
 
 ## Quy uoc chung
 

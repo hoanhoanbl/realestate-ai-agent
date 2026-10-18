@@ -5,6 +5,9 @@ import { PropertiesModule } from './properties/properties.module';
 import { LeadsModule } from './leads/leads.module';
 import { ViewingsModule } from './viewings/viewings.module';
 import { StatsModule } from './stats/stats.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { N8nModule } from './n8n/n8n.module';
 import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
@@ -36,6 +39,12 @@ import { ContractsModule } from './contracts/contracts.module';
     ViewingsModule,
 
     StatsModule,
+
+    UsersModule,
+
+    AuthModule,
+
+    N8nModule,
 
     ContractsModule,
   ],

@@ -126,9 +126,12 @@ export class ViewingsService {
       this.logger.error(
         `Failed to trigger n8n webhook for lead ${lead.id} after ${maxRetries} attempts. Setting automationStatus to FAILED.`,
       );
-      lead.automationStatus = 'FAILED';
-      lead.automationError = `Không gọi được n8n sau ${maxRetries} lần thử`;
-      await this.leadRepository.save(lead);
+      // Chỉ cập nhật 2 cột này. Không save(lead) cả bản ghi: sau vài giây nhân viên có thể đã đổi
+      // trạng thái khách, save cả bản ghi cũ sẽ ghi đè trạng thái đó về NEW.
+      await this.leadRepository.update(lead.id, {
+        automationStatus: 'FAILED',
+        automationError: `Không gọi được n8n sau ${maxRetries} lần thử`,
+      });
     }
   }
 

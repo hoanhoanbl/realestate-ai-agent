@@ -31,6 +31,7 @@ services:
       # Trong container, backend duoc goi bang ten service, khong dung localhost
       BACKEND_URL: http://backend:8081
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
@@ -49,6 +50,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
     depends_on:

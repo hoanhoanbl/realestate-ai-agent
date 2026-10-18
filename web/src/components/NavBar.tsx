@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/", label: "Đăng ký xem nhà", exact: true },
+  { href: "/", label: "Trang khách", exact: true },
   { href: "/leads", label: "Danh sách khách", exact: false },
   { href: "/stats", label: "Thống kê", exact: false },
 ];

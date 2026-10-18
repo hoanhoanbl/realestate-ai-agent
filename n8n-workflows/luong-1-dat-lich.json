@@ -458,7 +458,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2200,
+        2860,
         200
       ],
       "id": "c801e0de-d265-ea9a-e465-03e3649fdd43",
@@ -479,7 +479,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2420,
+        3080,
         420
       ],
       "id": "20748b55-d231-43ca-8be2-0ac8a6781c96",
@@ -499,7 +499,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2420,
+        3080,
         200
       ],
       "id": "2fedf074-d5dd-821e-9926-37817d9854a6",
@@ -528,7 +528,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2640,
+        3300,
         200
       ],
       "id": "104b5506-6c34-cb62-ea94-3edc48e8b379",
@@ -599,7 +599,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        2860,
+        3520,
         200
       ],
       "id": "70c2fc47-5216-f69a-38db-07e917337b03",
@@ -623,7 +623,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3080,
+        3740,
         20
       ],
       "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
@@ -647,7 +647,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3080,
+        3740,
         200
       ],
       "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
@@ -666,7 +666,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3300,
+        3960,
         20
       ],
       "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
@@ -694,7 +694,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3300,
+        3960,
         200
       ],
       "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
@@ -722,7 +722,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3080,
+        3740,
         420
       ],
       "id": "351610fb-49f7-6934-0fca-bda8fab90001",
@@ -751,7 +751,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3520,
+        4180,
         20
       ],
       "id": "e9522c19-4b97-77be-b497-01f4b3554260",
@@ -780,7 +780,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3740,
+        4400,
         20
       ],
       "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
@@ -809,7 +809,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3520,
+        4180,
         200
       ],
       "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
@@ -838,7 +838,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3300,
+        3960,
         420
       ],
       "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
@@ -882,6 +882,88 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(push_token), '[]'::json) AS tokens FROM users WHERE push_token IS NOT NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2200,
+        200
+      ],
+      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a01",
+      "name": "Lấy push token nhân viên",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1f7a3b2-has-token",
+              "leftValue": "={{ ($json.tokens ?? []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2420,
+        200
+      ],
+      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a02",
+      "name": "Có app nhận thông báo?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.tokens.map(t => ({ to: t, sound: 'default', title: ($('Basic LLM Chain').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '') + 'Khách mới: ' + $('Chuẩn hoá').first().json.name, body: $('Basic LLM Chain').first().json.output.level + ' ' + $('Basic LLM Chain').first().json.output.score + ' điểm. ' + $('Basic LLM Chain').first().json.output.reason, data: { leadId: $('Chuẩn hoá').first().json.leadId } })) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2640,
+        120
+      ],
+      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a03",
+      "name": "Gửi thông báo đẩy",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
     }
   ],
   "pinData": {},
@@ -1100,7 +1182,7 @@
       "main": [
         [
           {
-            "node": "Lưu kết quả AI",
+            "node": "Lấy push token nhân viên",
             "type": "main",
             "index": 0
           }
@@ -1239,6 +1321,46 @@
         [
           {
             "node": "Ghi log APPROVAL_TIMEOUT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy push token nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Có app nhận thông báo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có app nhận thông báo?": {
+      "main": [
+        [
+          {
+            "node": "Gửi thông báo đẩy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lưu kết quả AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi thông báo đẩy": {
+      "main": [
+        [
+          {
+            "node": "Lưu kết quả AI",
             "type": "main",
             "index": 0
           }

@@ -1,3 +1,5 @@
+import { clearSession, getToken, type SessionUser } from "@/lib/auth";
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/api";
 
@@ -74,6 +76,17 @@ export const EVENT_LABELS: Record<string, string> = {
   REMINDER_SENT: "Đã nhắc lịch",
   FEEDBACK_ASKED: "Đã hỏi cảm nhận",
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
+  STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
+  VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
+  FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
+  FEEDBACK_ANALYZED: "AI phân tích cảm nhận",
+  CONTRACT_CREATED: "Tạo hợp đồng",
+  CONTRACT_DRAFTED: "Hợp đồng soạn xong",
+  CONTRACT_SENT: "Hợp đồng gửi khách ký",
+  CONTRACT_SIGNED: "Khách ký hợp đồng",
+  CONTRACT_REJECTED: "Hợp đồng bị từ chối",
+  CONTRACT_EXPIRED: "Hợp đồng hết hạn",
+  FOLLOWUP_FAILED: "Follow-up bị lỗi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
 
@@ -114,9 +127,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Gửi kèm token đăng nhập (nếu có). API công khai bỏ qua header này.
+  const token = getToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init });
+    res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init, headers });
   } catch {
     throw new ApiError(
       `Không kết nối được backend (${API_URL}). Hãy kiểm tra backend đã chạy chưa.`,
@@ -125,6 +143,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    // Token hết hạn: xoá phiên và đưa về trang đăng nhập
+    if (res.status === 401 && token) {
+      clearSession();
+      if (!window.location.pathname.startsWith("/admin/login")) {
+        // tải lại cả trang để xoá sạch dữ liệu của phiên cũ
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = "/admin/login";
+      }
+    }
     let message = `Lỗi ${res.status}`;
     try {
       const body = await res.json();
@@ -143,6 +170,216 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getProperties(): Promise<Property[]> {
   return request<Property[]>("/properties");
+}
+
+export interface PropertyInput {
+  name: string;
+  address: string;
+  price: number;
+  area: number;
+  type: string;
+  status?: string;
+}
+
+// Gồm cả căn đã ẩn (chỉ admin)
+export function getAdminProperties(): Promise<Property[]> {
+  return request<Property[]>("/properties/admin/all");
+}
+
+export function createProperty(input: PropertyInput): Promise<Property> {
+  return request<Property>("/properties", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateProperty(id: number, input: Partial<PropertyInput>): Promise<Property> {
+  return request<Property>(`/properties/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// ---- Cảm nhận sau buổi xem ----
+
+export type FeedbackInterest = "DEPOSIT" | "OTHER" | "NONE";
+
+// Trang công khai của khách: chỉ có tên, căn nhà, giờ xem
+export interface FeedbackInfo {
+  leadName: string;
+  propertyName: string | null;
+  viewingTime: string | null;
+  submitted: boolean;
+}
+
+export function getFeedbackInfo(token: string): Promise<FeedbackInfo> {
+  return request<FeedbackInfo>(`/feedback/${encodeURIComponent(token)}`);
+}
+
+export function submitFeedback(
+  token: string,
+  body: { rating: number; interest: FeedbackInterest; comment?: string },
+): Promise<{ ok: true }> {
+  return request(`/feedback/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// Cho trang chi tiết khách ở admin
+export interface Feedback {
+  id: number;
+  leadId: number;
+  rating: number | null;
+  interest: FeedbackInterest | null;
+  comment: string | null;
+  submittedAt: string | null;
+  aiSentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | null;
+  aiSummary: string | null;
+  aiNextAction: string | null;
+}
+
+export async function getLeadFeedback(leadId: number): Promise<Feedback | null> {
+  // Backend trả rỗng (không có nội dung) khi khách chưa có cảm nhận nào
+  const text = await request<Feedback | null>(`/feedback/lead/${leadId}`).catch((e: unknown) => {
+    if (e instanceof SyntaxError) return null;
+    throw e;
+  });
+  return text;
+}
+
+// ---- Hợp đồng đặt cọc ----
+
+export type ContractStatus = "DRAFTING" | "PENDING_APPROVAL" | "SENT" | "SIGNED" | "REJECTED" | "EXPIRED";
+
+export interface ContractRow {
+  id: number;
+  status: ContractStatus;
+  depositAmount: string | number;
+  createdAt: string;
+  signedAt: string | null;
+  leadId: number;
+  leadName: string;
+  propertyName: string;
+}
+
+export interface ContractDetail {
+  id: number;
+  leadId: number;
+  title: string | null;
+  content: string | null;
+  depositAmount: string | number;
+  propertyPrice: string | number;
+  status: ContractStatus;
+  aiReview: string | null;
+  rejectReason: string | null;
+  approvedBy: string | null;
+  createdBy: string | null;
+  signerName: string | null;
+  signature: string | null;
+  signedAt: string | null;
+  signedIp: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  signUrl: string | null;
+  lead: { id: number; name: string; email: string; phone: string } | null;
+  property: Property | null;
+}
+
+export function getContracts(): Promise<ContractRow[]> {
+  return request<ContractRow[]>("/contracts");
+}
+
+export function getContract(id: number): Promise<ContractDetail> {
+  return request<ContractDetail>(`/contracts/${id}`);
+}
+
+export function createContract(leadId: number, depositAmount: number): Promise<{ id: number }> {
+  return request<{ id: number }>("/contracts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ leadId, depositAmount }),
+  });
+}
+
+export function approveContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/approve`, { method: "POST" });
+}
+
+export function rejectContract(id: number, reason: string): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// Trang ký công khai của khách
+export interface SignInfo {
+  title: string | null;
+  content: string | null;
+  customerName: string;
+  propertyName: string | null;
+  depositAmount: string | number;
+  status: ContractStatus;
+  expiresAt: string | null;
+  signedAt: string | null;
+  signerName: string | null;
+}
+
+export function getSignInfo(token: string): Promise<SignInfo> {
+  return request<SignInfo>(`/sign/${encodeURIComponent(token)}`);
+}
+
+export function submitSignature(
+  token: string,
+  body: { signerName: string; signature: string; agree: boolean },
+): Promise<{ ok: true }> {
+  return request(`/sign/${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// ---- Báo cáo kinh doanh (chỉ quản lý) ----
+
+export interface ReportRow {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  headline: string | null;
+  alertCount: number;
+}
+
+export interface ReportDetail {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  metrics: Record<string, unknown>;
+  analysis: Record<string, unknown>;
+  alerts: string[];
+}
+
+export function getReports(): Promise<ReportRow[]> {
+  return request<ReportRow[]>("/reports");
+}
+
+export function getReport(id: number): Promise<ReportDetail> {
+  return request<ReportDetail>(`/reports/${id}`);
+}
+
+export function runReportNow(): Promise<{ ok: true }> {
+  return request("/reports/run", { method: "POST" });
+}
+
+export function getProperty(id: number): Promise<Property> {
+  return request<Property>(`/properties/${id}`);
 }
 
 export function getLeads(level?: Level): Promise<Lead[]> {
@@ -172,6 +409,78 @@ export function createViewing(
   });
 }
 
+// ---- Khu quản trị (cần đăng nhập) ----
+
+export interface LoginResult {
+  accessToken: string;
+  user: SessionUser;
+}
+
+export function login(email: string, password: string): Promise<LoginResult> {
+  return request<LoginResult>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export interface Funnel {
+  total: number;
+  byStatus: Record<LeadStatus, number>;
+  conversionRate: number;
+  pendingApproval: number;
+  failedAutomation: number;
+  viewingsToday: number;
+}
+
+export function getFunnel(): Promise<Funnel> {
+  return request<Funnel>("/stats/funnel");
+}
+
+export interface ScheduleRow {
+  id: number;
+  viewingTime: string;
+  leadId: number;
+  leadName: string;
+  leadPhone: string;
+  leadLevel: Level | null;
+  leadStatus: LeadStatus;
+  propertyId: number;
+  propertyName: string;
+  propertyAddress: string;
+}
+
+export function getSchedule(): Promise<ScheduleRow[]> {
+  return request<ScheduleRow[]>("/viewings/schedule");
+}
+
+export function approveLead(id: number): Promise<{ via: "resume" | "manual" }> {
+  return request(`/leads/${id}/approve`, { method: "POST" });
+}
+
+export function setLeadStatus(id: number, status: "VIEWED" | "LOST", note?: string): Promise<Lead> {
+  return request<Lead>(`/leads/${id}/admin-status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, note }),
+  });
+}
+
+export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {
+  return request<Viewing>(`/viewings/${viewingId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ viewingTime }),
+  });
+}
+
+// ISO (UTC) -> "YYYY-MM-DDTHH:mm" theo giờ Việt Nam, dùng cho ô datetime-local
+export function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).replace(" ", "T").slice(0, 16);
+}
+
 export function formatVnd(value: string | number): string {
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
@@ -189,43 +498,5 @@ export function formatDateTime(iso: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  });
-}
-
-// ---- Khu khách ----
-
-export function getProperty(id: number): Promise<Property> {
-  return request<Property>(`/properties/${id}`);
-}
-
-// GET /sign/:token: nội dung hợp đồng cho khách xem trước khi ký
-export interface SignInfo {
-  title: string | null;
-  content: string | null;
-  customerName: string;
-  propertyName: string | null;
-  depositAmount: string | number;
-  status: "DRAFTING" | "PENDING_APPROVAL" | "SENT" | "SIGNED" | "REJECTED" | "EXPIRED";
-  expiresAt: string | null;
-  signedAt: string | null;
-  signerName: string | null;
-}
-
-export function getSignInfo(token: string): Promise<SignInfo> {
-  return request<SignInfo>(`/sign/${encodeURIComponent(token)}`);
-}
-
-export interface SignatureInput {
-  signerName: string;
-  // Ảnh PNG dạng data URL
-  signature: string;
-  agree: true;
-}
-
-export function submitSignature(token: string, input: SignatureInput): Promise<{ ok: true }> {
-  return request<{ ok: true }>(`/sign/${encodeURIComponent(token)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
   });
 }

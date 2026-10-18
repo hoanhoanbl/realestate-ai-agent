@@ -8,8 +8,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 import * as crypto from 'crypto';
 import { Contract } from './entities/contract.entity';
 import {
@@ -21,6 +19,8 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
+import { N8nService } from '../n8n/n8n.service';
+import type { AuthUser } from '../auth/auth.types';
 
 const SIGN_VALID_DAYS = 7;
 
@@ -38,35 +38,8 @@ export class ContractsService {
     @InjectRepository(Property)
     private readonly propertyRepository: Repository<Property>,
     private readonly leadsService: LeadsService,
-    private readonly httpService: HttpService,
+    private readonly n8nService: N8nService,
   ) {}
-
-  // ---- Gọi n8n (tạm viết ngay tại đây; sau này chuyển sang N8nService dùng chung) ----
-
-  // Địa chỉ n8n mà BACKEND nhìn thấy (trong Docker là http://n8n:5678), lấy gốc từ N8N_WEBHOOK_URL
-  private n8nOrigin(): string {
-    return new URL(process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/viewing-requested').origin;
-  }
-
-  private async callWebhook(path: string, payload: Record<string, unknown>): Promise<void> {
-    await firstValueFrom(
-      this.httpService.post(`${this.n8nOrigin()}/webhook/${path}`, payload, {
-        headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': process.env.WEBHOOK_SECRET || '' },
-        timeout: 15000,
-      }),
-    );
-  }
-
-  // Bấm "link tiếp tục" (resumeUrl) của lần chạy n8n đang chờ. resumeUrl có thể mang địa chỉ công khai, đổi sang địa chỉ nội bộ.
-  private async resume(resumeUrl: string, action: string, extra: Record<string, string> = {}): Promise<void> {
-    const u = new URL(resumeUrl);
-    const base = new URL(this.n8nOrigin());
-    u.protocol = base.protocol;
-    u.host = base.host;
-    u.searchParams.set('action', action);
-    for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, v);
-    await firstValueFrom(this.httpService.get(u.toString(), { timeout: 60000 }));
-  }
 
   // ---- Lấy hợp đồng, kèm các cột bị ẩn mặc định ----
 
@@ -87,7 +60,7 @@ export class ContractsService {
 
   // ---- Nhân viên tạo hợp đồng ----
 
-  async create(dto: CreateContractDto, actor: string): Promise<Contract> {
+  async create(dto: CreateContractDto, user: AuthUser): Promise<Contract> {
     const lead = await this.leadsService.findOne(dto.leadId);
     if (lead.status !== 'VIEWED') {
       throw new BadRequestException('Chỉ tạo hợp đồng cho khách đã xem nhà (trạng thái VIEWED)');
@@ -112,14 +85,14 @@ export class ContractsService {
         depositAmount: dto.depositAmount,
         propertyPrice: Number(property.price),
         status: 'DRAFTING',
-        createdBy: actor,
+        createdBy: user.name,
       }),
     );
 
-    await this.leadsService.updateStatus(lead.id, { status: 'DEPOSIT', note: `Tạo hợp đồng #${contract.id} (bởi ${actor})` });
-    await this.leadsService.addEvent(lead.id, { type: 'CONTRACT_CREATED', note: `Hợp đồng #${contract.id}, cọc ${dto.depositAmount.toLocaleString('vi-VN')} đ (bởi ${actor})` });
+    await this.leadsService.updateStatus(lead.id, { status: 'DEPOSIT', note: `Tạo hợp đồng #${contract.id} (bởi ${user.name})` });
+    await this.leadsService.addEvent(lead.id, { type: 'CONTRACT_CREATED', note: `Hợp đồng #${contract.id}, cọc ${dto.depositAmount.toLocaleString('vi-VN')} đ (bởi ${user.name})` });
 
-    this
+    this.n8nService
       .callWebhook('contract-requested', { contractId: contract.id })
       .catch((err) => this.logger.error(`Không gọi được luồng 3 cho hợp đồng ${contract.id}: ${err.message}`));
 
@@ -173,7 +146,7 @@ export class ContractsService {
     }
     if (!contract.resumeUrl) throw new BadRequestException('Hợp đồng chưa có bản nháp từ n8n');
     try {
-      await this.resume(contract.resumeUrl, action, extra);
+      await this.n8nService.resume(contract.resumeUrl, action, extra);
     } catch (err: any) {
       const status = err?.response?.status;
       if ([401, 403, 404, 409, 410].includes(status)) {
@@ -183,14 +156,14 @@ export class ContractsService {
     }
   }
 
-  async approve(id: number, actor: string): Promise<{ ok: true }> {
-    await this.contractRepository.update(id, { approvedBy: actor });
+  async approve(id: number, user: AuthUser): Promise<{ ok: true }> {
+    await this.contractRepository.update(id, { approvedBy: user.name });
     await this.resumeApproval(id, 'approve');
     return { ok: true };
   }
 
-  async reject(id: number, reason: string, actor: string): Promise<{ ok: true }> {
-    await this.resumeApproval(id, 'reject', { reason: `${reason} (bởi ${actor})` });
+  async reject(id: number, reason: string, user: AuthUser): Promise<{ ok: true }> {
+    await this.resumeApproval(id, 'reject', { reason: `${reason} (bởi ${user.name})` });
     return { ok: true };
   }
 
@@ -302,7 +275,7 @@ export class ContractsService {
 
     // Báo cho n8n (luồng 3 đang chờ khách ký) gửi email xác nhận. n8n lỗi không làm mất chữ ký đã lưu.
     if (contract.resumeUrl) {
-      this
+      this.n8nService
         .resume(contract.resumeUrl, 'signed')
         .catch((err) => this.logger.error(`Không báo được n8n hợp đồng ${contract.id} đã ký: ${err.message}`));
     }

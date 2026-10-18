@@ -1,4 +1,6 @@
 import {
+  BadGatewayException,
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,6 +10,8 @@ import { Lead } from './entities/lead.entity';
 import { LeadEvent } from './entities/lead-event.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { Property } from '../properties/entities/property.entity';
+import { N8nService } from '../n8n/n8n.service';
+import type { AuthUser } from '../auth/auth.types';
 
 @Injectable()
 export class LeadsService {
@@ -20,6 +24,7 @@ export class LeadsService {
     private readonly viewingRepository: Repository<Viewing>,
     @InjectRepository(Property)
     private readonly propertyRepository: Repository<Property>,
+    private readonly n8nService: N8nService,
   ) {}
 
   findAll(level?: string): Promise<Lead[]> {
@@ -141,6 +146,59 @@ export class LeadsService {
     return this.leadEventRepository.find({
       where: { leadId: id },
       order: { createdAt: 'ASC' },
+    });
+  }
+
+  // Nhân viên bấm Duyệt trên web admin / app. n8n vẫn là nơi xử lý: gửi email chốt lịch, đổi trạng thái, ghi log.
+  async approve(id: number, user: AuthUser): Promise<{ via: 'resume' | 'manual' }> {
+    const lead = await this.leadRepository
+      .createQueryBuilder('l')
+      .addSelect('l.approvalUrl')
+      .where('l.id = :id', { id })
+      .getOne();
+    if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
+    if (lead.status !== 'NEW') {
+      throw new BadRequestException('Chỉ duyệt được khách đang ở trạng thái NEW');
+    }
+    if (lead.automationStatus === 'PENDING') {
+      throw new BadRequestException('AI chưa chấm điểm xong, chưa duyệt được');
+    }
+
+    // Cách 1: bấm link duyệt của lần chạy n8n đang chờ (giống nút trong email)
+    if (lead.approvalUrl) {
+      try {
+        await this.n8nService.resume(lead.approvalUrl, 'approve');
+        return { via: 'resume' };
+      } catch (err: any) {
+        const status = err?.response?.status;
+        // Link đã hết hạn / đã dùng thì chuyển sang cách 2. Lỗi khác (vd. 500) thì báo lên, không gửi trùng.
+        if (![401, 403, 404, 409, 410].includes(status)) {
+          throw new BadGatewayException(`n8n báo lỗi khi duyệt: ${err?.message ?? status}`);
+        }
+      }
+    }
+
+    // Cách 2: luồng chốt lịch thủ công của n8n (nhân viên bỏ quá 24 giờ, hoặc đã bấm "Đổi giờ" trong email)
+    try {
+      await this.n8nService.callWebhook('viewing-admin-action', { event: 'approved', leadId: id, by: user.name });
+    } catch {
+      throw new BadGatewayException('Không gọi được n8n để chốt lịch');
+    }
+    return { via: 'manual' };
+  }
+
+  // Nhân viên tự đặt trạng thái VIEWED (đã xem) hoặc LOST (mất khách / khách không đến)
+  async adminSetStatus(id: number, data: { status: string; note?: string }, user: AuthUser): Promise<Lead> {
+    const lead = await this.findOne(id);
+    if (data.status === 'VIEWED' && lead.status !== 'CONFIRMED') {
+      throw new BadRequestException('Chỉ đánh dấu "đã xem" được khi khách đã chốt lịch (CONFIRMED)');
+    }
+    if (data.status === 'LOST' && (lead.status === 'SIGNED' || lead.status === 'LOST')) {
+      throw new BadRequestException('Khách này đã ký hoặc đã mất, không đổi được');
+    }
+    return this.updateStatus(id, {
+      status: data.status,
+      note: `${data.note ? data.note + ' ' : ''}(bởi ${user.name})`,
     });
   }
 }

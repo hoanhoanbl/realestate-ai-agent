@@ -23,6 +23,9 @@ Khach dang ky xem nha (web khu khach; app chi danh cho nhan vien)
   -> n8n goi nguoc Backend de cap nhat diem (automationStatus = COMPLETED, kem approvalUrl)
   -> Nhan vien bam Duyet -> n8n gui email chot lich, PUT status = CONFIRMED
   -> Neu n8n hong giua chung (truoc khi cap nhat diem): n8n bao Backend automationStatus = FAILED
+Luong 1 con gui thong bao day Expo cho nhan vien (doc `users.push_token`, bo qua neu chua co app/bang `users`).
+Luong 1b (nhan vien chot lich tren web admin, khong qua link email): backend POST webhook `viewing-admin-action` (muc 7).
+Luong 3 (hop dong dat coc): nhan vien tao hop dong -> n8n soan + AI ra soat -> quan ly duyet -> khach ky online -> email xac nhan (muc 6).
 Luong 2 (moi gio): doc DB, gui email nhac lich / hoi cam nhan / nhac khach WARM, ghi lead_events.
 ```
 
@@ -151,8 +154,13 @@ Chung cho moi callback:
 | PUT | `/api/leads/{id}/status` | n8n doi trang thai ban hang (muc 2.3, can `X-Webhook-Secret`) |
 | POST | `/api/leads/{id}/events` | n8n ghi su kien (muc 2.4, can `X-Webhook-Secret`) |
 | GET | `/api/leads/{id}/events` | Dong thoi gian cua lead, cu nhat truoc (tuan 2; trang `/leads/[id]` tren web dung) |
+| POST, GET | `/api/contracts` | Tao hop dong dat coc / danh sach hop dong (muc 6) |
+| GET | `/api/contracts/{id}` | Chi tiet hop dong (muc 6) |
+| POST | `/api/contracts/{id}/approve`, `/reject` | Quan ly duyet / tu choi hop dong (muc 6) |
+| PUT, POST | `/api/contracts/{id}/draft`, `/issue-token`, `/rejected`, `/expired` | n8n (luong 3) goi nguoc (muc 6) |
+| GET, POST | `/api/sign/{token}` | Cong khai: khach xem va ky hop dong qua link trong email (muc 6) |
 
-**Web chi duoc goi cac API trong bang nay.** Can API moi thi bao backend va them vao bang truoc (xem quy tac doi hop dong o dau file).
+**Web chi duoc goi cac API trong bang nay.** Moi `{id}` trong duong dan phai la so nguyen, sai thi `400`. Can API moi thi bao backend va them vao bang truoc (xem quy tac doi hop dong o dau file).
 
 ### `POST /api/viewings`
 
@@ -170,12 +178,12 @@ Request:
 }
 ```
 
-- `needs` la tuy chon. `email` phai dung dinh dang. `budget` la so nguyen >= 0. `propertyId` phai ton tai. `viewingTime` la chuoi ISO 8601; neu khong kem mui gio thi backend hieu la gio Viet Nam.
+- `needs` la tuy chon. `name` khong duoc trong (backend cat khoang trang hai dau). `email` phai dung dinh dang. `phone` gom 8 den 15 ky tu trong `0-9`, `+`, khoang trang, `.`, `-`. `budget` la so nguyen >= 0. `propertyId` phai ton tai. `viewingTime` la chuoi ISO 8601; neu khong kem mui gio thi backend hieu la gio Viet Nam, va **phai o trong tuong lai** (gio da qua: `400`).
 - Thanh cong: `201` va tra `{ "viewing": {...}, "lead": {...} }`. Luc nay `lead.automationStatus = "PENDING"` va `score`, `level`, `reason`, `aiReply`, `emailSent`, `staffNotified` deu la `null`.
-- Sai du lieu: `400` (email sai dinh dang, thieu truong). Khong tim thay bat dong san: `404`.
+- Sai du lieu: `400` (ten trong, email hoac so dien thoai sai dinh dang, gio xem da qua, thieu truong). Khong tim thay bat dong san: `404`.
 - Backend goi n8n **bat dong bo**: n8n loi khong lam hong viec luu lead.
 
-## 4. Du lieu (4 bang)
+## 4. Du lieu (5 bang)
 
 | Bang | Truong chinh |
 |---|---|
@@ -183,6 +191,7 @@ Request:
 | `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, automationStatus, automationError, eventId, createdAt, approvalUrl (tuan 2, khong tra ra o GET) |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
 | `lead_events` (tuan 2) | id, leadId, type, note, createdAt (cot DB: `lead_id`, `created_at` kieu `timestamptz`) |
+| `contracts` (luong 3) | id, leadId, propertyId, title, content, depositAmount, propertyPrice, status, aiReview, rejectReason, resumeUrl (an), signToken (an), expiresAt, approvedBy, createdBy, signerName, signature (chi o trang chi tiet), signedAt, signedIp, createdAt, updatedAt |
 
 Gia tri `lead_events.type`:
 
@@ -196,6 +205,7 @@ Gia tri `lead_events.type`:
 | `FEEDBACK_ASKED` | Luong 2 | Da hoi cam nhan sau buoi xem |
 | `WARM_NUDGE_SENT` | Luong 2 | Da nhac khach WARM im lang |
 | `STATUS_CHANGED` | Backend tu ghi | Moi lan `PUT /status` |
+| `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED` | Backend tu ghi | Cac moc cua hop dong (muc 6). n8n khong ghi cac loai nay |
 
 Tat ca khoa JSON deu camelCase, ke ca doi tuong `viewing`.
 
@@ -225,6 +235,58 @@ Gia tri trang thai:
 - Nhanh loi khi goi nguoc Backend that bai (vi du lead khong ton tai): workflow ket thuc o node `Callback failed`, khong lam treo. (Day la truong hop duy nhat khong bao FAILED duoc, vi chinh Backend khong nhan duoc.)
 - Theo doi: dung `automationStatus`, bang `lead_events` (tuan 2), log cua Backend, tab Executions cua n8n va Error workflow (gui email quan ly khi mot luong loi).
 
+## 6. Hop dong dat coc (luong 3)
+
+Vong doi `contracts.status`: `DRAFTING` (cho n8n soan) -> `PENDING_APPROVAL` (cho quan ly duyet) -> `SENT` (da gui khach ky) -> `SIGNED`; hoac `REJECTED` / `EXPIRED`. Trang thai khach di kem: tao hop dong -> `DEPOSIT`; khach ky -> `SIGNED`; tu choi hoac het han -> quay ve `VIEWED`.
+
+### 6.1. Nhan vien va quan ly (web admin)
+
+**Hien tai** cac API nay tam dung header `X-Webhook-Secret` vi chua co dang nhap. Khi co JWT se doi: `POST`/`GET /contracts` cho `SALE` va `MANAGER`; `approve`, `reject` chi `MANAGER` (nhan vien goi: `403`).
+
+| Method | Duong dan | Mo ta |
+|---|---|---|
+| POST | `/api/contracts` | Body `{ "leadId": 12, "depositAmount": 280000000 }`. Khach phai dang `VIEWED`, chua co hop dong dang xu ly (`409`), coc <= gia nha. Tao hop dong `DRAFTING`, khach sang `DEPOSIT`, goi webhook `contract-requested` (muc 6.3). Tra `201` va hop dong |
+| GET | `/api/contracts` | Danh sach (id, status, depositAmount, createdAt, signedAt, leadId, leadName, propertyName), moi nhat truoc |
+| GET | `/api/contracts/{id}` | Chi tiet kem `lead`, `property`, `signUrl` (chi khi `SENT`). Khong tra `resumeUrl`, `signToken` |
+| POST | `/api/contracts/{id}/approve` | Duyet: backend bam link `resumeUrl` cua luong 3 dang cho. Hop dong phai `PENDING_APPROVAL`, neu khong `400`. Link da het han: `409`. n8n khong goi duoc: `502` |
+| POST | `/api/contracts/{id}/reject` | Body `{ "reason": "..." }` (bat buoc, toi da 300 ky tu). Dieu kien nhu `approve` |
+
+### 6.2. n8n goi nguoc (can `X-Webhook-Secret`, sai: `401`)
+
+| Method | Duong dan | Body | Tac dung |
+|---|---|---|---|
+| PUT | `/api/contracts/{id}/draft` | `{ "title", "content", "aiReview", "resumeUrl" }` | Luu ban nhap, doi sang `PENDING_APPROVAL`. Chi khi dang `DRAFTING` |
+| POST | `/api/contracts/{id}/issue-token` | | Cap token ky (48 ky tu, han 7 ngay), doi sang `SENT`. Tra `{ "token", "signUrl", "expiresAt" }`. `signUrl` dung bien `PUBLIC_WEB_URL` |
+| PUT | `/api/contracts/{id}/rejected` | `{ "reason" }` | Doi sang `REJECTED`, khach ve `VIEWED` |
+| PUT | `/api/contracts/{id}/expired` | `{ "reason"? }` | Doi sang `EXPIRED` (tu `PENDING_APPROVAL` hoac `SENT`), khach ve `VIEWED`. Goi lan hai: `400` |
+
+`aiReview` la chuoi JSON `{ "riskLevel": "LOW" | "MEDIUM" | "HIGH", "notes": [..] }`. `resumeUrl` la `$execution.resumeUrl` cua lan chay n8n dang cho; backend dung chung link nay cho ca duyet va khi khach ky xong (`action=signed`).
+
+### 6.3. Backend -> n8n
+
+`POST {n8n}/webhook/contract-requested`, header `X-Webhook-Secret`, body `{ "contractId": 5 }`. Backend goi bat dong bo, loi chi ghi log.
+
+### 6.4. Khach ky (cong khai, khong dang nhap)
+
+| Method | Duong dan | Mo ta |
+|---|---|---|
+| GET | `/api/sign/{token}` | Tra `title`, `content`, `customerName`, `propertyName`, `depositAmount`, `status` (`EXPIRED` neu qua han), `expiresAt`, `signedAt`, `signerName`. Token sai: `404` |
+| POST | `/api/sign/{token}` | Body `{ "signerName", "signature", "agree": true }`. `signature` la anh PNG dang data URL (`data:image/png;base64,...`, toi da 90000 ky tu). `agree` phai la `true`. Luu thoi diem ky va IP, hop dong `SIGNED`, khach `SIGNED`, roi bam `resumeUrl` de n8n gui email xac nhan. Thanh cong: `201`. Ky lan hai: `409`. Qua han hoac khong con `SENT`: `400` |
+
+Chu ky van duoc luu du n8n loi luc khach ky; chi thieu email xac nhan (backend ghi log).
+
+## 7. Luong 1b: chot lich thu cong
+
+Webhook `POST {n8n}/webhook/viewing-admin-action`, header `X-Webhook-Secret`, body:
+
+```json
+{ "event": "approved", "leadId": 12, "by": "Ten nhan vien" }
+```
+
+- `event`: `approved` (nhan vien duyet tren web admin khi link email het han hoac da dung) hoac `rescheduled` (nhan vien da doi gio cho khach `CONFIRMED`).
+- `approved`: n8n gui email chot lich cho khach, `PUT /leads/{id}/status` = `CONFIRMED`, ghi su kien `APPROVED`. `rescheduled`: n8n gui email bao gio moi (backend tu ghi `VIEWING_RESCHEDULED`).
+- n8n doc DB truc tiep (khach, gio xem moi nhat, can nha), ghi qua API backend. Nguoi goi webhook nay la API duyet va doi gio o phia admin.
+
 ## Lich su thay doi
 
 | Ngay | Ai sua | Noi dung |
@@ -232,3 +294,4 @@ Gia tri trang thai:
 | 09/10/2026 | Ca nhom (dong bo voi code da merge len `main`) | `viewing` da camelCase; `automation-status` da co; `viewingTime` gui sang n8n co `+07:00`; them kieu du lieu tra ve (budget/price/area la chuoi); them `GET /api/viewings`, `automationError`, `eventId`; ro rang moi nhanh loi n8n phai bao `FAILED` |
 | 09/10/2026 (lan 2) | Ca nhom | Doi ten hop dong cho dung pham vi (ca Web); `leads.budget` trong phan hoi `POST` ghi la "co the la so" (chua kiem chung khi chay that); web hien `automationError` khi `FAILED` |
 | 12/10/2026 | Hoang (Hau duyet) | Tuan 2: them `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `GET /properties/{id}`; bang `lead_events`; cac gia tri `leads.status`; `staffNotified` gui cho moi muc; `createdAt` da la `timestamptz`; `approvalUrl` trong `ai-result`; `PUT /status` trung trang thai thi bo qua; `GET /leads/{id}` tra them `viewing`, `property`; sua phan "Tong quan luong" cho dung luong tuan 2 |
+| 19/10/2026 | Hoang (Hau duyet) | Them luat kiem tra `POST /viewings` (ten, SDT, gio xem phai o tuong lai) va `{id}` phai la so nguyen; them bang `contracts`, muc 6 (hop dong dat coc, luong 3) va muc 7 (luong 1b); luong 1 them thong bao day Expo |

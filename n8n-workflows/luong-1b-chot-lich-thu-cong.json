@@ -1,0 +1,422 @@
+{
+  "name": "luong-1b-chot-lich-thu-cong",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "viewing-admin-action",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        200
+      ],
+      "id": "6bd55ea2-563f-42c1-9491-707f727ab9a1",
+      "name": "Webhook",
+      "webhookId": "35337943-08a0-4a75-8863-0f047a93913a",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "backendUrl",
+              "value": "http://backend:8081",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        200
+      ],
+      "id": "cd65190a-81cb-480b-ac6e-e46776d7d66d",
+      "name": "Cấu hình"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const b = $('Webhook').first().json.body ?? {};\nconst leadId = Number(b.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) throw new Error('leadId không hợp lệ: ' + b.leadId);\nif (!['approved', 'rescheduled'].includes(b.event)) throw new Error('event không hợp lệ: ' + b.event);\nreturn [{ json: { leadId, event: b.event, by: String(b.by ?? 'nhân viên').slice(0, 100) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ],
+      "id": "a68872f5-1770-4f50-be8f-326eecc1baad",
+      "name": "Chuẩn hoá"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT l.id AS lead_id, l.name, l.email, l.phone, l.status, v.viewing_time,\n       p.name AS property_name, p.address AS property_address\nFROM leads l\nJOIN viewings v ON v.lead_id = l.id\nJOIN properties p ON p.id = v.property_id\nWHERE l.id = $1::int\nORDER BY v.id DESC LIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ $json.leadId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        660,
+        200
+      ],
+      "id": "effb0c01-1cd6-4b35-b3c1-97b0268e3937",
+      "name": "Lấy dữ liệu lịch",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b-has",
+              "leftValue": "={{ $json.lead_id }}",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        200
+      ],
+      "id": "9b5ba736-3594-4f51-8549-4199b2bac9d1",
+      "name": "Có khách?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Không tìm thấy khách hoặc lịch xem cho lead {{ $('Chuẩn hoá').first().json.leadId }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        380
+      ],
+      "id": "e5670df4-8f20-4cc5-9275-83f5e704ef32",
+      "name": "Không tìm thấy khách"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const q = $input.first().json;\nconst k = $('Chuẩn hoá').first().json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst timeText = DateTime.fromISO(new Date(q.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\");\nreturn [{ json: { leadId: k.leadId, event: k.event, by: k.by, email: q.email, nameHtml: esc(q.name), phoneHtml: esc(q.phone),\n  propertyNameHtml: esc(q.property_name), addressHtml: esc(q.property_address), timeText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ],
+      "id": "58a3ea74-bb6e-49c9-bbca-a7ecd3c40879",
+      "name": "Chuẩn bị"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b-ev",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1320,
+        200
+      ],
+      "id": "d455b6a6-9780-4f3e-8e7d-a28ff3502abb",
+      "name": "Duyệt hay đổi giờ?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn bị').first().json.email }}",
+        "subject": "Xác nhận lịch xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\"><div style=\"background:#16a34a;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã được xác nhận</div><div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\"><p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn bị').first().json.nameHtml }}, nhân viên đã xác nhận lịch xem nhà của anh/chị. Rất mong được đón anh/chị đúng giờ.</p><table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\"><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.propertyNameHtml }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.addressHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.timeText }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.nameHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.phoneHtml }}</td></tr></table></div><div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div></div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1540,
+        80
+      ],
+      "id": "1deb7951-77df-4af4-8c87-99ce63c5f363",
+      "name": "Email chốt lịch",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị').first().json.leadId }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"CONFIRMED\", \"note\": \"Nhân viên duyệt từ web admin\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        80
+      ],
+      "id": "32fd5357-3a76-479e-837f-20da21dc9aba",
+      "name": "Cập nhật CONFIRMED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị').first().json.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"APPROVED\", \"note\": \"Duyệt lịch từ web admin bởi \" + $('Chuẩn bị').first().json.by } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        80
+      ],
+      "id": "7fb2ed31-8ede-4f03-9ac3-5731d045aed5",
+      "name": "Ghi log APPROVED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn bị').first().json.email }}",
+        "subject": "Lịch xem nhà đã được đổi giờ",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\"><div style=\"background:#f59e0b;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã đổi giờ</div><div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\"><p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn bị').first().json.nameHtml }}, nhân viên vừa đổi giờ xem nhà của anh/chị sang thời gian mới dưới đây. Nếu không thuận tiện, anh/chị vui lòng liên hệ nhân viên.</p><table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\"><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.propertyNameHtml }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.addressHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.timeText }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.nameHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.phoneHtml }}</td></tr></table></div><div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div></div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1540,
+        320
+      ],
+      "id": "c148d005-dd76-47f3-83a9-7c751f2dc291",
+      "name": "Email báo giờ mới",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn hoá": {
+      "main": [
+        [
+          {
+            "node": "Lấy dữ liệu lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy dữ liệu lịch": {
+      "main": [
+        [
+          {
+            "node": "Có khách?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có khách?": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Không tìm thấy khách",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn bị": {
+      "main": [
+        [
+          {
+            "node": "Duyệt hay đổi giờ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duyệt hay đổi giờ?": {
+      "main": [
+        [
+          {
+            "node": "Email chốt lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email báo giờ mới",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email chốt lịch": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật CONFIRMED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật CONFIRMED": {
+      "main": [
+        [
+          {
+            "node": "Ghi log APPROVED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "errorWfRealestat"
+  },
+  "id": "luong1bRealestat",
+  "tags": []
+}

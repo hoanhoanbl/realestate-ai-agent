@@ -1,8 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { hash } from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
 
 // Tài khoản mẫu cho bản dev. Mật khẩu lấy từ biến SEED_USER_PASSWORD, không ghi trong code.
 const SEED_USERS: { email: string; name: string; role: UserRole }[] = [
@@ -46,6 +47,34 @@ export class UsersService implements OnModuleInit {
 
   findById(id: number): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  findAll(): Promise<User[]> {
+    return this.userRepository.find({
+      order: { id: 'ASC' },
+    });
+  }
+
+  async create(dto: CreateUserDto): Promise<User> {
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.userRepository.exists({ where: { email } });
+    if (exists) {
+      throw new ConflictException(`Email ${email} đã được sử dụng trong hệ thống`);
+    }
+
+    const passwordHash = await hash(dto.password, 10);
+    const user = this.userRepository.create({
+      email,
+      name: dto.name.trim(),
+      role: dto.role,
+      passwordHash,
+      pushToken: null,
+    });
+
+    const saved = await this.userRepository.save(user);
+    // Ẩn passwordHash khỏi kết quả trả về
+    delete (saved as any).passwordHash;
+    return saved;
   }
 
   async setPushToken(id: number, token: string | null): Promise<void> {

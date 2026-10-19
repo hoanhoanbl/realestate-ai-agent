@@ -5,8 +5,6 @@ Môn: Chuyên đề 2, No-code / Low-code Automation (n8n). Nhóm: **Hoàng**, *
 Các tài liệu khác:
 
 - [api-contract.md](api-contract.md): luật chung về dữ liệu và API. Mâu thuẫn thì file đó thắng.
-- [tuan-1.md](tuan-1.md): kế hoạch tuần 1 (demo giữa kỳ 10/10).
-- [tuan-2.md](tuan-2.md): kế hoạch tuần 2 (luồng 1, luồng 2, API mới).
 
 ## 1. Yêu cầu của môn
 

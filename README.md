@@ -19,7 +19,7 @@ Chi tiet dinh dang JSON: [docs/api-contract.md](docs/api-contract.md)
 | `backend/` | API, ket noi PostgreSQL |
 | `web/` | Giao dien web |
 | `n8n-workflows/` | File workflow n8n (export JSON) |
-| `docs/` | Tai lieu: hop dong API (`api-contract.md`), tong quan (`tong-quan-du-an.md`), ke hoach tung tuan (`tuan-1.md`, `tuan-2.md`) |
+| `docs/` | Tai lieu: hop dong API (`api-contract.md`), tong quan (`tong-quan-du-an.md`) |
 | `docker-compose.yml` | PostgreSQL + n8n + backend + web |
 
 ## Chay local
@@ -39,5 +39,5 @@ docker compose up -d --build
 
 ## Quy uoc Git
 
-- Phan cong va quy tac phoi hop: xem `docs/tuan-1.md`, muc "Cach phoi hop" (van ap dung). Viec tuan nay: `docs/tuan-2.md`.
+- Moi viec mot nhanh `feature/...` hoac `fix/...`, mo Pull Request, nguoi kia bam Approve roi moi merge. Khong push thang vao `main`.
 - Khong commit file `.env`.

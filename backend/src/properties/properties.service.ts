@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Property } from './entities/property.entity';
+import { CreatePropertyDto, UpdatePropertyDto } from './dto/create-property.dto';
 
 @Injectable()
 export class PropertiesService implements OnModuleInit {
@@ -114,8 +115,25 @@ export class PropertiesService implements OnModuleInit {
     }
   }
 
+  // Công khai: không trả các căn đã ẩn
   findAll(): Promise<Property[]> {
-    return this.propertyRepository.find();
+    return this.propertyRepository.find({ where: { status: Not('HIDDEN') }, order: { id: 'ASC' } });
+  }
+
+  findAllAdmin(): Promise<Property[]> {
+    return this.propertyRepository.find({ order: { id: 'ASC' } });
+  }
+
+  create(dto: CreatePropertyDto): Promise<Property> {
+    return this.propertyRepository.save(
+      this.propertyRepository.create({ ...dto, status: dto.status ?? 'AVAILABLE' }),
+    );
+  }
+
+  async update(id: number, dto: UpdatePropertyDto): Promise<Property> {
+    const property = await this.findOne(id);
+    Object.assign(property, dto);
+    return this.propertyRepository.save(property);
   }
 
   async findOne(id: number): Promise<Property> {

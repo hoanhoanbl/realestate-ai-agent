@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Contract } from './entities/contract.entity';
 import { ContractsController, SignController } from './contracts.controller';
@@ -10,7 +9,7 @@ import { Property } from '../properties/entities/property.entity';
 import { LeadsModule } from '../leads/leads.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Contract, Lead, Viewing, Property]), HttpModule, LeadsModule],
+  imports: [TypeOrmModule.forFeature([Contract, Lead, Viewing, Property]), LeadsModule],
   controllers: [ContractsController, SignController],
   providers: [ContractsService],
 })

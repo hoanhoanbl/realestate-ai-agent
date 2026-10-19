@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,7 +13,11 @@ import { Viewing } from './entities/viewing.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { Property } from '../properties/entities/property.entity';
 import { CreateViewingDto } from './dto/create-viewing.dto';
+import { UpdateViewingDto } from './dto/update-viewing.dto';
 import { parseViewingTime } from './viewing-time';
+import { LeadsService } from '../leads/leads.service';
+import { N8nService } from '../n8n/n8n.service';
+import type { AuthUser } from '../auth/auth.types';
 
 @Injectable()
 export class ViewingsService {
@@ -26,6 +31,8 @@ export class ViewingsService {
     @InjectRepository(Property)
     private readonly propertyRepository: Repository<Property>,
     private readonly httpService: HttpService,
+    private readonly leadsService: LeadsService,
+    private readonly n8nService: N8nService,
   ) {}
 
   async create(createViewingDto: CreateViewingDto): Promise<{ viewing: Viewing; lead: Lead }> {
@@ -37,6 +44,9 @@ export class ViewingsService {
 
     if (!property) {
       throw new NotFoundException(`Property with id ${propertyId} not found`);
+    }
+    if (property.status !== 'AVAILABLE') {
+      throw new BadRequestException('Căn nhà này hiện không nhận đặt lịch xem');
     }
 
     const { text: normalizedViewingTime, date: viewingDate } = parseViewingTime(viewingTime);
@@ -137,5 +147,62 @@ export class ViewingsService {
 
   findAll(): Promise<Viewing[]> {
     return this.viewingRepository.find();
+  }
+
+  // Lịch xem kèm thông tin khách và căn nhà, cho trang "Lịch xem" của admin
+  async findSchedule() {
+    return this.viewingRepository
+      .createQueryBuilder('v')
+      .innerJoin(Lead, 'l', 'l.id = v.lead_id')
+      .innerJoin(Property, 'p', 'p.id = v.property_id')
+      .select([
+        'v.id AS "id"',
+        'v.viewing_time AS "viewingTime"',
+        'v.lead_id AS "leadId"',
+        'l.name AS "leadName"',
+        'l.phone AS "leadPhone"',
+        'l.level AS "leadLevel"',
+        'l.status AS "leadStatus"',
+        'p.id AS "propertyId"',
+        'p.name AS "propertyName"',
+        'p.address AS "propertyAddress"',
+      ])
+      .orderBy('v.viewing_time', 'ASC')
+      .getRawMany();
+  }
+
+  // Nhân viên đổi giờ xem. Khách đã chốt lịch (CONFIRMED) thì n8n gửi email báo giờ mới.
+  async update(id: number, dto: UpdateViewingDto, user: AuthUser): Promise<Viewing> {
+    const viewing = await this.viewingRepository.findOne({ where: { id } });
+    if (!viewing) throw new NotFoundException(`Viewing with id ${id} not found`);
+
+    const lead = await this.leadsService.findOne(viewing.leadId);
+    if (lead.status !== 'NEW' && lead.status !== 'CONFIRMED') {
+      throw new BadRequestException('Chỉ đổi giờ được khi khách đang ở trạng thái NEW hoặc CONFIRMED');
+    }
+
+    const { date } = parseViewingTime(dto.viewingTime);
+    const fmt = (d: Date) => d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const oldTime = viewing.viewingTime;
+    viewing.viewingTime = date;
+    const saved = await this.viewingRepository.save(viewing);
+
+    await this.leadsService.addEvent(lead.id, {
+      type: 'VIEWING_RESCHEDULED',
+      note: `${fmt(oldTime)} -> ${fmt(date)} (bởi ${user.name})`,
+    });
+
+    if (lead.status === 'CONFIRMED') {
+      try {
+        await this.n8nService.callWebhook('viewing-admin-action', {
+          event: 'rescheduled',
+          leadId: lead.id,
+          by: user.name,
+        });
+      } catch {
+        this.logger.warn(`Đã đổi giờ cho lead ${lead.id} nhưng chưa báo được khách (n8n lỗi)`);
+      }
+    }
+    return saved;
   }
 }

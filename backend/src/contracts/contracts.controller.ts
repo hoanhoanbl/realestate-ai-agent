@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Ip, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Ip,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ContractsService } from './contracts.service';
 import {
   CreateContractDto,
@@ -7,45 +18,50 @@ import {
   RejectContractDto,
   SignContractDto,
 } from './dto/contract.dto';
-import { WebhookSecretGuard } from './webhook-secret.guard';
-
-// Tên người thao tác, tạm cố định cho tới khi có đăng nhập (sẽ lấy từ req.user.name)
-const ACTOR = 'Nhân viên';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
+import type { AuthUser } from '../auth/auth.types';
 
 @Controller('contracts')
 export class ContractsController {
   constructor(private readonly contractsService: ContractsService) {}
 
-  // --- Admin: tạm bảo vệ bằng X-Webhook-Secret, đổi sang JwtAuthGuard (và @Roles('MANAGER') cho approve/reject) khi có auth ---
+  // --- Nhân viên, quản lý (đã đăng nhập) ---
 
   @Post()
-  @UseGuards(WebhookSecretGuard)
-  create(@Body() dto: CreateContractDto) {
-    return this.contractsService.create(dto, ACTOR);
+  @UseGuards(JwtAuthGuard)
+  create(@Body() dto: CreateContractDto, @Req() req: { user: AuthUser }) {
+    return this.contractsService.create(dto, req.user);
   }
 
   @Get()
-  @UseGuards(WebhookSecretGuard)
+  @UseGuards(JwtAuthGuard)
   findAll() {
     return this.contractsService.findAll();
   }
 
   @Get(':id')
-  @UseGuards(WebhookSecretGuard)
+  @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.contractsService.findDetail(id);
   }
 
+  // --- Chỉ quản lý ---
+
   @Post(':id/approve')
-  @UseGuards(WebhookSecretGuard)
-  approve(@Param('id', ParseIntPipe) id: number) {
-    return this.contractsService.approve(id, ACTOR);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  approve(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.contractsService.approve(id, req.user);
   }
 
   @Post(':id/reject')
-  @UseGuards(WebhookSecretGuard)
-  reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectContractDto) {
-    return this.contractsService.reject(id, dto.reason, ACTOR);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectContractDto, @Req() req: { user: AuthUser }) {
+    return this.contractsService.reject(id, dto.reason, req.user);
   }
 
   // --- Cho n8n (X-Webhook-Secret) ---

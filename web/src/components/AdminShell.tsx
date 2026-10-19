@@ -19,6 +19,7 @@ const LINKS: NavLink[] = [
   { href: "/admin/hop-dong", label: "Hợp đồng" },
   { href: "/admin/bao-cao", label: "Báo cáo", roles: ["MANAGER"] },
   { href: "/admin/nha", label: "Quản lý nhà", roles: ["MANAGER"] },
+  { href: "/admin/tai-khoan", label: "Phân quyền", roles: ["MANAGER"] },
 ];
 
 const ROLE_LABEL: Record<Role, string> = { MANAGER: "Quản lý", SALE: "Nhân viên" };
@@ -70,9 +71,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             })}
           </ul>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-slate-600">
+            <span className="text-slate-700 font-medium">
               {session.user.name}{" "}
-              <span className="text-xs text-slate-400">({ROLE_LABEL[session.user.role]})</span>
+              <span
+                className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  session.user.role === "MANAGER"
+                    ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300"
+                    : "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
+                }`}
+              >
+                {ROLE_LABEL[session.user.role]}
+              </span>
             </span>
             <button
               type="button"

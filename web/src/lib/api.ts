@@ -500,3 +500,32 @@ export function formatDateTime(iso: string): string {
     year: "numeric",
   });
 }
+
+// ---- Quản lý tài khoản & phân quyền (chỉ quản lý) ----
+
+export interface UserAccount {
+  id: number;
+  email: string;
+  name: string;
+  role: "MANAGER" | "SALE";
+  pushToken: string | null;
+  createdAt: string;
+}
+
+export function getUsers(): Promise<UserAccount[]> {
+  return request<UserAccount[]>("/users");
+}
+
+export function createUser(data: {
+  email: string;
+  name: string;
+  password: string;
+  role: "MANAGER" | "SALE";
+}): Promise<UserAccount> {
+  return request<UserAccount>("/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+

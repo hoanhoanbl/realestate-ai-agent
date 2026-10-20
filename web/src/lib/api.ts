@@ -42,6 +42,9 @@ export interface Lead {
   automationStatus: AutomationStatus;
   automationError?: string | null;
   status: LeadStatus;
+  source: string | null;
+  mauticContactId?: number | null;
+  mauticPoints?: number;
   createdAt: string;
 }
 
@@ -76,6 +79,7 @@ export const EVENT_LABELS: Record<string, string> = {
   REMINDER_SENT: "Đã nhắc lịch",
   FEEDBACK_ASKED: "Đã hỏi cảm nhận",
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
+  WARM_NURTURE_STARTED: "Bắt đầu nuôi khách WARM (Mautic)",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
@@ -87,6 +91,8 @@ export const EVENT_LABELS: Record<string, string> = {
   CONTRACT_REJECTED: "Hợp đồng bị từ chối",
   CONTRACT_EXPIRED: "Hợp đồng hết hạn",
   FOLLOWUP_FAILED: "Follow-up bị lỗi",
+  MAUTIC_SYNCED: "Đồng bộ sang Mautic",
+  MAUTIC_SCORE_CHANGED: "Điểm Mautic thay đổi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
 
@@ -102,6 +108,7 @@ export interface CreateViewingInput {
   needs?: string;
   propertyId: number;
   viewingTime: string;
+  source?: string;
 }
 
 export interface CreateViewingResult {
@@ -529,3 +536,17 @@ export function createUser(data: {
   });
 }
 
+// Nhãn nguồn khách cho hiển thị
+export const SOURCE_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  zalo: "Zalo",
+  google: "Google",
+  tiktok: "TikTok",
+  referral: "Giới thiệu",
+  direct: "Trực tiếp",
+};
+
+export function sourceLabel(source: string | null): string {
+  if (!source) return "Trực tiếp";
+  return SOURCE_LABELS[source] ?? source;
+}

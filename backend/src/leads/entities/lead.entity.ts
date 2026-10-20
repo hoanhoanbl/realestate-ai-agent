@@ -55,6 +55,15 @@ export class Lead {
   @Column({ type: 'varchar', length: 50, default: 'NEW' })
   status: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  source: string | null;
+
+  @Column({ name: 'mautic_contact_id', type: 'integer', nullable: true })
+  mauticContactId: number | null;
+
+  @Column({ name: 'mautic_points', type: 'integer', default: 0 })
+  mauticPoints: number;
+
   @Column({ name: 'approval_url', type: 'text', nullable: true, select: false })
   approvalUrl: string | null;
 

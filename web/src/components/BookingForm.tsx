@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createViewing, formatVnd, type Lead, type Property } from "@/lib/api";
 
@@ -46,6 +47,9 @@ function validate(form: FormState): string | null {
 
 // Form đặt lịch xem MỘT căn nhà cụ thể (đặt ở trang chi tiết nhà)
 export default function BookingForm({ property }: { property: Property }) {
+  const searchParams = useSearchParams();
+  const utmSource = searchParams.get("utm_source") || undefined;
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +83,7 @@ export default function BookingForm({ property }: { property: Property }) {
         needs: form.needs.trim() || undefined,
         propertyId: property.id,
         viewingTime,
+        source: utmSource,
       });
       setCreated(result.lead);
     } catch (e: unknown) {

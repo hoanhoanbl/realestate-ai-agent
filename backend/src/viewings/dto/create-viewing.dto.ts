@@ -28,4 +28,9 @@ export class CreateViewingDto {
 
   @IsISO8601()
   viewingTime: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  source?: string;
 }

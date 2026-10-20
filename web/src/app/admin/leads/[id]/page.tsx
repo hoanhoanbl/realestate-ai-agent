@@ -15,6 +15,7 @@ import {
   getLead,
   getLeadEvents,
   getLeadFeedback,
+  sourceLabel,
   type Feedback,
   type LeadDetail,
   type LeadEvent,
@@ -158,6 +159,7 @@ function LeadDetailContent() {
             <Card title="Thông tin khách">
               <Field label="Số điện thoại">{lead.phone}</Field>
               <Field label="Email">{lead.email}</Field>
+              <Field label="Nguồn khách">{sourceLabel(lead.source)}</Field>
               <Field label="Ngân sách">{formatVnd(lead.budget)}</Field>
               <Field label="Nhu cầu">{lead.needs ?? "-"}</Field>
               <Field label="Tạo lúc">{formatDateTime(lead.createdAt)}</Field>

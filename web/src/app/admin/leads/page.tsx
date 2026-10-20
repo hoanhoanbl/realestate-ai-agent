@@ -10,6 +10,7 @@ import {
   formatDateTime,
   formatVnd,
   getLeads,
+  sourceLabel,
   type Lead,
   type LeadStatus,
   type Level,
@@ -28,23 +29,30 @@ const FILTERS: { value: Filter; label: string }[] = [
 const POLL_PENDING_MS = 5000;
 const POLL_IDLE_MS = 20000;
 
-function Flag({ value }: { value: boolean | null | undefined }) {
-  if (value === true) return <span className="text-emerald-600">✓</span>;
-  if (value === false) return <span className="text-slate-400">✗</span>;
-  return <span className="text-slate-300">-</span>;
-}
-
 const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
-  { value: "ALL", label: "Mọi trạng thái" },
-  { value: "NEW", label: "Mới (chờ duyệt)" },
-  { value: "CONFIRMED", label: "Đã chốt lịch" },
-  { value: "VIEWED", label: "Đã xem nhà" },
-  { value: "DEPOSIT", label: "Muốn đặt cọc" },
-  { value: "SIGNED", label: "Đã ký" },
-  { value: "LOST", label: "Không mua" },
+  { value: "ALL", label: "Mọi trạng thái bán hàng" },
+  { value: "NEW", label: "Mới (NEW)" },
+  { value: "CONFIRMED", label: "Đã chốt lịch (CONFIRMED)" },
+  { value: "VIEWED", label: "Đã xem (VIEWED)" },
+  { value: "DEPOSIT", label: "Muốn cọc (DEPOSIT)" },
+  { value: "SIGNED", label: "Đã ký (SIGNED)" },
+  { value: "LOST", label: "Mất khách (LOST)" },
 ];
 
-// useSearchParams cần nằm trong Suspense
+function Flag({ value }: { value: boolean | null }) {
+  if (value === null) return <span className="text-slate-400">-</span>;
+  return value ? (
+    <span className="text-emerald-600 font-semibold" title="Có">
+      ✓
+    </span>
+  ) : (
+    <span className="text-slate-400" title="Chưa">
+      ✕
+    </span>
+  );
+}
+
+// useSearchParams() cần nằm trong Suspense để Next.js không cảnh báo khi build
 export default function LeadsPage() {
   return (
     <Suspense fallback={<p className="text-slate-500">Đang tải...</p>}>
@@ -55,16 +63,19 @@ export default function LeadsPage() {
 
 function LeadsContent() {
   const searchParams = useSearchParams();
-  const initialStatus = searchParams.get("status");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | LeadStatus>(
-    STATUS_OPTIONS.some((o) => o.value === initialStatus) ? (initialStatus as LeadStatus) : "ALL",
-  );
-  const [filter, setFilter] = useState<Filter>("ALL");
+  const initialFilter = (searchParams.get("level") as Level) || "ALL";
+
+  const [filter, setFilter] = useState<Filter>(initialFilter);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | LeadStatus>("ALL");
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const hasPending = (leads ?? []).some((l) => l.automationStatus === "PENDING");
+  // Có lead nào đang PENDING (chờ AI chấm điểm) thì tự tải lại thường xuyên hơn
+  const hasPending = useMemo(
+    () => leads?.some((l) => l.automationStatus === "PENDING") ?? false,
+    [leads],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -83,8 +94,10 @@ function LeadsContent() {
         });
     }
 
+    const interval = hasPending ? POLL_PENDING_MS : POLL_IDLE_MS;
+    const timer = setInterval(load, interval);
     load();
-    const timer = setInterval(load, hasPending ? POLL_PENDING_MS : POLL_IDLE_MS);
+
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -173,9 +186,9 @@ function LeadsContent() {
       )}
 
       {leads !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[1000px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-600">
               <tr>
                 <th className="px-3 py-3">Khách</th>
                 <th className="px-3 py-3">Ngân sách</th>
@@ -212,6 +225,11 @@ function LeadsContent() {
                     </Link>
                     <div className="text-xs text-slate-500">{lead.email}</div>
                     <div className="text-xs text-slate-500">{lead.phone}</div>
+                    {lead.source && (
+                      <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                        {sourceLabel(lead.source)}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     {formatVnd(lead.budget)}

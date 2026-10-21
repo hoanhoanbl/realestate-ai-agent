@@ -12,3 +12,8 @@
 n8n.{$PUBLIC_HOST} {
 	reverse_proxy n8n:5678
 }
+
+# Mautic (chi chay khi deploy kem docker-compose.mautic.yml)
+mautic.{$PUBLIC_HOST} {
+	reverse_proxy mautic_web:80
+}

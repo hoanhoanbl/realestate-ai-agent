@@ -1,5 +1,7 @@
 # Production (VM tren GCP): chay bang
 #   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# Kem Mautic (docker-compose.mautic.yml cua Hau):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.mautic.yml --env-file .env up -d --build
 # Khac voi docker-compose.yml (local): khong mo cong DB/backend/web/n8n ra ngoai,
 # chi Caddy nhan cong 80/443 va tu cap HTTPS.
 services:
@@ -34,6 +36,9 @@ services:
       # Trong container, backend duoc goi bang ten service
       BACKEND_URL: http://backend:8081
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PUBLIC_WEB_URL: https://${PUBLIC_HOST}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SALE_CHAT_ID: ${TELEGRAM_SALE_CHAT_ID:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
@@ -50,6 +55,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
+      PUBLIC_WEB_URL: https://${PUBLIC_HOST}
+      N8N_LEAD_CHANGED_URL: ${N8N_LEAD_CHANGED_URL:-}
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
     depends_on:

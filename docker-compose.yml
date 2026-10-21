@@ -49,6 +49,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
+      N8N_LEAD_CHANGED_URL: ${N8N_LEAD_CHANGED_URL:-http://n8n:5678/webhook/lead-changed}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       JWT_SECRET: ${JWT_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}

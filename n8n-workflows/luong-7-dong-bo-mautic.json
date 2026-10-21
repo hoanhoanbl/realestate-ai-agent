@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "lead-changed",
+        "responseMode": "responseNode",
         "authentication": "headerAuth",
         "options": {}
       },
@@ -45,6 +46,12 @@
               "name": "webhookSecret",
               "value": "={{ $env.WEBHOOK_SECRET || 'hoanghauQueen' }}",
               "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "mauticAuth",
+              "value": "={{ 'Basic ' + Buffer.from(($env.MAUTIC_API_USER || 'admin') + ':' + ($env.MAUTIC_API_PASSWORD || 'HoanghauQueen@2026')).toString('base64') }}",
+              "type": "string"
             }
           ]
         },
@@ -62,7 +69,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = $('Webhook').first().json.body ?? {};\nconst leadId = Number(body.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) {\n  throw new Error('leadId không hợp lệ: ' + body.leadId);\n}\nconst name = (body.name || '').trim();\nconst parts = name.split(' ');\nconst firstname = parts.length > 1 ? parts[parts.length - 1] : name;\nconst lastname = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';\nconst email = (body.email || '').trim().toLowerCase();\nconst phone = (body.phone || '').trim();\nconst level = (body.level || 'NEW').toUpperCase();\nconst status = (body.status || 'NEW').toUpperCase();\nconst source = (body.source || 'direct').toLowerCase();\nconst score = Number(body.score) || 0;\nconst trigger = body.trigger || 'unknown';\nconst tags = [level, status, source].filter(Boolean);\n\nreturn [{\n  json: {\n    leadId,\n    name,\n    firstname,\n    lastname,\n    email,\n    phone,\n    level,\n    status,\n    source,\n    score,\n    trigger,\n    tags\n  }\n}];"
+        "jsCode": "const body = $('Webhook').first().json.body ?? {};\nconst leadId = Number(body.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) {\n  throw new Error('leadId không hợp lệ: ' + body.leadId);\n}\nconst name = (body.name || '').trim();\nconst parts = name.split(' ');\nconst firstname = parts.length > 1 ? parts[parts.length - 1] : name;\nconst lastname = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';\nconst email = (body.email || '').trim().toLowerCase();\nconst phone = (body.phone || '').trim();\nconst level = (body.level || 'NEW').toUpperCase();\nconst status = (body.status || 'NEW').toUpperCase();\nconst source = (body.source || 'direct').toLowerCase();\nconst score = Number(body.score) || 0;\nconst trigger = body.trigger || 'unknown';\n\nconst allStatuses = ['NEW', 'CONFIRMED', 'VIEWED', 'DEPOSIT', 'SIGNED', 'LOST'];\nconst removeStatusTags = allStatuses.filter(s => s !== status).map(s => `-${s}`);\nconst tags = [level, status, source, ...removeStatusTags].filter(Boolean);\n\nreturn [{\n  json: {\n    leadId,\n    name,\n    firstname,\n    lastname,\n    email,\n    phone,\n    level,\n    status,\n    source,\n    score,\n    trigger,\n    tags\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -77,6 +84,19 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Cấu hình').first().json.mauticAuth }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -105,8 +125,7 @@
       "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "alwaysOutputData": true
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -145,9 +164,22 @@
       "parameters": {
         "method": "PATCH",
         "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/{{ Object.keys($('Tìm Contact Mautic').first().json.contacts)[0] }}/edit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Cấu hình').first().json.mauticAuth }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"phone\": \"{{ $('Chuẩn hoá dữ liệu').first().json.phone }}\",\n  \"points\": {{ $('Chuẩn hoá dữ liệu').first().json.score }},\n  \"tags\": {{ JSON.stringify($('Chuẩn hoá dữ liệu').first().json.tags) }}\n}",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Chuẩn hoá dữ liệu').first().json.phone }}\",\n  \"tags\": {{ JSON.stringify($('Chuẩn hoá dữ liệu').first().json.tags) }}\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -167,9 +199,22 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/new",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Cấu hình').first().json.mauticAuth }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"firstname\": \"{{ $('Chuẩn hoá dữ liệu').first().json.firstname }}\",\n  \"lastname\": \"{{ $('Chuẩn hoá dữ liệu').first().json.lastname }}\",\n  \"email\": \"{{ $('Chuẩn hoá dữ liệu').first().json.email }}\",\n  \"phone\": \"{{ $('Chuẩn hoá dữ liệu').first().json.phone }}\",\n  \"points\": {{ $('Chuẩn hoá dữ liệu').first().json.score }},\n  \"tags\": {{ JSON.stringify($('Chuẩn hoá dữ liệu').first().json.tags) }}\n}",
+        "jsonBody": "={\n  \"firstname\": \"{{ $('Chuẩn hoá dữ liệu').first().json.firstname }}\",\n  \"lastname\": \"{{ $('Chuẩn hoá dữ liệu').first().json.lastname }}\",\n  \"email\": \"{{ $('Chuẩn hoá dữ liệu').first().json.email }}\",\n  \"phone\": \"{{ $('Chuẩn hoá dữ liệu').first().json.phone }}\",\n  \"tags\": {{ JSON.stringify($('Chuẩn hoá dữ liệu').first().json.tags) }}\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -236,6 +281,19 @@
       "parameters": {
         "method": "PATCH",
         "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/{{ $('Gom ID Contact').first().json.contactId }}/edit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Cấu hình').first().json.mauticAuth }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"tags\": [\"vip-prospect\"]\n}",
@@ -249,8 +307,44 @@
       ],
       "id": "70010001-0000-4000-8000-000000000010",
       "name": "Gắn Tag VIP",
+      "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn hoá dữ liệu').first().json.leadId }}/mautic",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ mauticContactId: $('Gom ID Contact').first().json.contactId }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        240
+      ],
+      "id": "70010001-0000-4000-8000-000000000014",
+      "name": "Lưu mautic_contact_id Backend",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
       "waitBetweenTries": 3000
     },
     {
@@ -272,17 +366,18 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"MAUTIC_SYNCED\",\n  \"note\": \"Đã đồng bộ Contact #\" + ($('Gom ID Contact').first().json.contactId || 'unknown') + \" (tags: \" + $('Chuẩn hoá dữ liệu').first().json.tags.join(', ') + \")\"\n}",
+        "jsonBody": "={{ JSON.stringify({\n  type: 'MAUTIC_SYNCED',\n  note: 'Đã đồng bộ Contact #' + ($('Gom ID Contact').first().json.contactId || 'unknown') + ' (tags: ' + $('Chuẩn hoá dữ liệu').first().json.tags.join(', ') + ')'\n}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2020,
+        2240,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000011",
       "name": "Ghi nhận Event Backend",
+      "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000
@@ -290,13 +385,13 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"ok\": true,\n  \"leadId\": {{ $('Chuẩn hoá dữ liệu').first().json.leadId }},\n  \"mauticContactId\": {{ $('Gom ID Contact').first().json.contactId || null }},\n  \"tags\": {{ JSON.stringify($('Chuẩn hoá dữ liệu').first().json.tags) }}\n}",
+        "responseBody": "={{ JSON.stringify({\n  ok: true,\n  leadId: $('Chuẩn hoá dữ liệu').first().json.leadId,\n  mauticContactId: $('Gom ID Contact').first().json.contactId || null,\n  tags: $('Chuẩn hoá dữ liệu').first().json.tags\n}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2240,
+        2460,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000012",
@@ -321,13 +416,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"type\": \"FOLLOWUP_FAILED\",\n  \"note\": \"Lỗi đồng bộ Mautic cho lead #\" + $('Chuẩn hoá dữ liệu').first().json.leadId + \": \" + ($json.error?.message || $json.message || 'Mautic không phản hồi')\n}",
+        "jsonBody": "={{ JSON.stringify({\n  type: 'FOLLOWUP_FAILED',\n  note: 'Lỗi đồng bộ Mautic cho lead #' + $('Chuẩn hoá dữ liệu').first().json.leadId + ': ' + ($json.error?.message || $json.message || 'Mautic không phản hồi')\n}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1360,
+        1460,
         480
       ],
       "id": "70010001-0000-4000-8000-000000000013",
@@ -462,7 +557,7 @@
         ],
         [
           {
-            "node": "Ghi nhận Event Backend",
+            "node": "Lưu mautic_contact_id Backend",
             "type": "main",
             "index": 0
           }
@@ -473,7 +568,32 @@
       "main": [
         [
           {
+            "node": "Lưu mautic_contact_id Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Báo lỗi Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu mautic_contact_id Backend": {
+      "main": [
+        [
+          {
             "node": "Ghi nhận Event Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Báo lỗi Backend",
             "type": "main",
             "index": 0
           }
@@ -488,12 +608,22 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Báo lỗi Backend",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
-  "pinData": {},
+  "active": false,
   "settings": {
-    "executionOrder": "v1"
-  }
+    "executionOrder": "v1",
+    "errorWorkflow": "errorWfRealestat"
+  },
+  "id": "luong7Realestat0",
+  "tags": []
 }

@@ -18,6 +18,7 @@ import { UpdateAutomationStatusDto } from './dto/update-automation-status.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { CreateLeadEventDto } from './dto/create-lead-event.dto';
 import { AdminStatusDto } from './dto/admin-status.dto';
+import { UpdateMauticDto } from './dto/update-mautic.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthUser } from '../auth/auth.types';
 import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
@@ -89,6 +90,15 @@ export class LeadsController {
     @Body() data: UpdateLeadStatusDto,
   ): Promise<Lead> {
     return this.leadsService.updateStatus(id, data);
+  }
+
+  @Put(':id/mautic')
+  @UseGuards(WebhookSecretGuard)
+  updateMautic(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: UpdateMauticDto,
+  ): Promise<Lead> {
+    return this.leadsService.updateMautic(id, data);
   }
 
   @Post(':id/events')

@@ -134,6 +134,20 @@ export class LeadsService {
     return saved;
   }
 
+  async updateMautic(
+    id: number,
+    data: { mauticContactId?: number; mauticPoints?: number },
+  ): Promise<Lead> {
+    const lead = await this.findOne(id);
+    if (data.mauticContactId !== undefined) {
+      lead.mauticContactId = data.mauticContactId;
+    }
+    if (data.mauticPoints !== undefined) {
+      lead.mauticPoints = data.mauticPoints;
+    }
+    return this.leadRepository.save(lead);
+  }
+
   async addEvent(
     id: number,
     data: { type: string; note?: string },

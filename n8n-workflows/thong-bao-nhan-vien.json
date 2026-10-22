@@ -1,0 +1,267 @@
+{
+  "name": "thong-bao-nhan-vien",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "b1f0a001-0000-4000-8000-000000000000",
+      "name": "Khi được gọi"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1f0a002-0000-4000-8000-000000000001",
+              "name": "staffEmail",
+              "value": "nhadn2457+nhanvien@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "b1f0a002-0000-4000-8000-000000000002",
+              "name": "telegramChatId",
+              "value": "={{ $env.TELEGRAM_SALE_CHAT_ID || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b1f0a002-0000-4000-8000-000000000003",
+              "name": "telegramEnabled",
+              "value": "={{ !!$env.TELEGRAM_BOT_TOKEN && !!$env.TELEGRAM_SALE_CHAT_ID }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "id": "b1f0a002-0000-4000-8000-000000000000",
+      "name": "Cấu hình"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Đầu vào (1 item):\n// { leadId?, level?, title, message, actions?: [{label, url}], emailTo?, emailHtml? }\nconst cfg = $('Cấu hình').first().json;\nconst input = $('Khi được gọi').first().json;\n\nconst title = String(input.title ?? '').trim();\nconst message = String(input.message ?? '').trim();\nif (!title || !message) {\n  throw new Error('Thông báo nhân viên: thiếu title hoặc message');\n}\n\nconst level = ['HOT', 'WARM', 'COLD'].includes(input.level) ? input.level : null;\nconst actions = (Array.isArray(input.actions) ? input.actions : [])\n  .filter((a) => a && a.label && /^https?:\\/\\//.test(String(a.url ?? '')))\n  .map((a) => ({ label: String(a.label).slice(0, 40), url: String(a.url) }));\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst prefix = level === 'HOT' ? '[ƯU TIÊN] ' : '';\nconst subject = title.startsWith(prefix) ? title : prefix + title;\n\n// Email: dùng HTML của luồng gọi nếu có, không thì dựng từ message + nút\nconst emailHtml = input.emailHtml\n  ? String(input.emailHtml)\n  : '<div style=\"font-family:Arial,sans-serif;max-width:600px;line-height:1.6\">'\n    + '<p><b>' + esc(subject) + '</b></p>'\n    + '<p>' + esc(message).replace(/\\n/g, '<br>') + '</p>'\n    + actions.map((a) => '<a href=\"' + esc(a.url) + '\" style=\"display:inline-block;margin-right:8px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">' + esc(a.label) + '</a>').join('')\n    + '</div>';\n\n// Telegram chỉ nhận nút bấm với link https. Link khác (vd. localhost khi chạy local) ghi thành dòng chữ.\nconst buttons = actions.filter((a) => a.url.startsWith('https://'));\nconst textLinks = actions.filter((a) => !a.url.startsWith('https://'));\nconst icon = { HOT: '🔴', WARM: '🟠', COLD: '⚪' }[level] ?? '🔔';\nlet text = icon + ' <b>' + esc(subject) + '</b>\\n\\n' + esc(message);\nif (textLinks.length) text += '\\n\\n' + textLinks.map((a) => esc(a.label) + ': ' + esc(a.url)).join('\\n');\nif (text.length > 4000) text = text.slice(0, 3990) + '…';\n\nconst telegram = {\n  chat_id: cfg.telegramChatId,\n  text,\n  parse_mode: 'HTML',\n  disable_web_page_preview: true,\n};\nif (buttons.length) {\n  telegram.reply_markup = { inline_keyboard: [buttons.map((b) => ({ text: b.label, url: b.url }))] };\n}\n\nreturn [{\n  json: {\n    leadId: input.leadId ?? null,\n    level,\n    emailTo: input.emailTo || cfg.staffEmail,\n    subject,\n    emailHtml,\n    telegram,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "id": "b1f0a003-0000-4000-8000-000000000000",
+      "name": "Chuẩn hoá"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $json.emailTo }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.emailHtml }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        300
+      ],
+      "id": "b1f0a004-0000-4000-8000-000000000000",
+      "name": "Email nhân viên",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b1f0a005-0000-4000-8000-000000000001",
+              "leftValue": "={{ $('Cấu hình').first().json.telegramEnabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        300
+      ],
+      "id": "b1f0a005-0000-4000-8000-000000000000",
+      "name": "Có Telegram?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Chuẩn hoá').first().json.telegram) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        200
+      ],
+      "id": "b1f0a006-0000-4000-8000-000000000000",
+      "name": "Gửi Telegram",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ran = $('Gửi Telegram').isExecuted;\nconst tg = ran ? $('Gửi Telegram').first().json : null;\nreturn [{\n  json: {\n    emailSent: true,\n    telegramSent: !!tg && tg.ok === true,\n    telegramSkipped: !ran,\n    telegramError: tg && tg.ok !== true ? (tg.error?.message ?? tg.description ?? 'Lỗi Telegram') : null,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ],
+      "id": "b1f0a007-0000-4000-8000-000000000000",
+      "name": "Kết quả"
+    },
+    {
+      "parameters": {
+        "content": "## Thông báo nhân viên (dùng chung)\nGọi bằng node **Execute Workflow** (Run once with all items, 1 item).\n\nĐầu vào:\n`{ leadId?, level?, title, message, actions?: [{label, url}], emailTo?, emailHtml? }`\n\n- Email luôn gửi (lỗi thì sub-workflow báo lỗi cho luồng gọi).\n- Telegram chỉ gửi khi có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID`; lỗi Telegram KHÔNG làm hỏng luồng gọi.\n- Nút Telegram chỉ nhận link https; link khác ghi thành chữ.\n\nKết quả: `{ emailSent, telegramSent, telegramSkipped, telegramError }`",
+        "height": 320,
+        "width": 560
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -60
+      ],
+      "id": "b1f0a008-0000-4000-8000-000000000000",
+      "name": "Ghi chú"
+    }
+  ],
+  "connections": {
+    "Khi được gọi": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn hoá": {
+      "main": [
+        [
+          {
+            "node": "Email nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Có Telegram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Gửi Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi Telegram": {
+      "main": [
+        [
+          {
+            "node": "Kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "b1f0a000-0000-4000-8000-000000000001",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "thongBaoNhanVien",
+  "tags": []
+}

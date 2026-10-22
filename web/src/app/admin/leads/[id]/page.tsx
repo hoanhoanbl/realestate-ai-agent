@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
+import ContactButtons from "@/components/ContactButtons";
 import LeadActions from "@/components/LeadActions";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
@@ -157,6 +158,7 @@ function LeadDetailContent() {
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <Card title="Thông tin khách">
+              <ContactButtons phone={lead.phone} email={lead.email} />
               <Field label="Số điện thoại">{lead.phone}</Field>
               <Field label="Email">{lead.email}</Field>
               <Field label="Nguồn khách">{sourceLabel(lead.source)}</Field>

@@ -23,8 +23,8 @@
           "assignments": [
             { "id": "c1", "name": "backendUrl", "value": "http://backend:8081", "type": "string" },
             { "id": "c2", "name": "mauticUrl", "value": "http://mautic_web:80/api", "type": "string" },
-            { "id": "c3", "name": "webhookSecret", "value": "hoanghauQueen", "type": "string" },
-            { "id": "c4", "name": "mauticAuth", "value": "Basic YWRtaW46SG9hbmdoYXVRdWVlbkAyMDI2", "type": "string" }
+            { "id": "c3", "name": "webhookSecret", "value": "={{ $env.WEBHOOK_SECRET }}", "type": "string" },
+            { "id": "c4", "name": "mauticAuth", "value": "={{ 'Basic ' + (($env.MAUTIC_API_USER || '') + ':' + ($env.MAUTIC_API_PASSWORD || '')).base64Encode() }}", "type": "string" }
           ]
         },
         "options": { "validateCredentials": true }

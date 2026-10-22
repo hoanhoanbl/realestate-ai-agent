@@ -35,6 +35,9 @@ services:
       # Bot Telegram bao nhan vien (sub-workflow thong-bao-nhan-vien). De trong thi chi gui email
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_SALE_CHAT_ID: ${TELEGRAM_SALE_CHAT_ID:-}
+      # Tai khoan API Mautic cho luong 7 (Basic auth)
+      MAUTIC_API_USER: ${MAUTIC_API_USER:-}
+      MAUTIC_API_PASSWORD: ${MAUTIC_API_PASSWORD:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n

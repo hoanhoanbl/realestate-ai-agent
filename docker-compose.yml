@@ -57,8 +57,6 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
       SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
-      # Webhook L7 (dong bo Mautic). De trong thi backend khong goi
-      N8N_LEAD_CHANGED_URL: ${N8N_LEAD_CHANGED_URL:-}
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
     depends_on:

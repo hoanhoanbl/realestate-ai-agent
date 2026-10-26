@@ -151,6 +151,14 @@ Chung cho moi callback:
 - `mauticPoints`: Diem tuong tac Mautic (L8 dong bo ve).
 - Tra `200` va lead sau khi cap nhat.
 
+### 2.6. Tra cứu lead theo Mautic contact (L8 Mautic báo về)
+
+`GET /api/leads/by-mautic/{contactId}?email={email}`
+
+- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`.
+- Query param: `email` (tùy chọn).
+- Tra `200` và Object `Lead` nếu tìm thấy, hoặc `null` nếu chưa liên kết.
+
 ## 3. API backend (toi thieu cho demo)
 
 | Method | Duong dan | Mo ta |
@@ -158,6 +166,7 @@ Chung cho moi callback:
 | POST | `/api/viewings` | Khach dang ky xem nha; tao lead + viewing, goi webhook n8n (nhan kem `source`) |
 | GET | `/api/leads` | Danh sach khach (loc theo `?level=HOT`), moi nhat truoc |
 | GET | `/api/leads/{id}` | Chi tiet mot khach (tra them viewing, property, source, mauticContactId) |
+| GET | `/api/leads/by-mautic/{contactId}` | n8n tra cuu lead theo Mautic contact (muc 2.6, can `X-Webhook-Secret`) |
 | PUT | `/api/leads/{id}/ai-result` | n8n cap nhat ket qua AI (muc 2.1) |
 | PUT | `/api/leads/{id}/automation-status` | n8n bao loi (muc 2.2) |
 | GET | `/api/properties` | Danh sach bat dong san |

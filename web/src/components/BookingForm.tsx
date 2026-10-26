@@ -12,6 +12,7 @@ interface FormState {
   budget: string;
   needs: string;
   viewingTime: string;
+  consent: boolean;
 }
 
 const EMPTY_FORM: FormState = {
@@ -21,6 +22,7 @@ const EMPTY_FORM: FormState = {
   budget: "",
   needs: "",
   viewingTime: "",
+  consent: true,
 };
 
 const INPUT =
@@ -41,6 +43,9 @@ function validate(form: FormState): string | null {
   if (!form.viewingTime) return "Vui lòng chọn giờ xem nhà.";
   if (new Date(form.viewingTime).getTime() < Date.now()) {
     return "Giờ xem nhà phải ở trong tương lai.";
+  }
+  if (!form.consent) {
+    return "Vui lòng đồng ý với điều khoản xử lý dữ liệu và nhận email tư vấn (theo Nghị định 13/2023/NĐ-CP).";
   }
   return null;
 }
@@ -210,6 +215,19 @@ export default function BookingForm({ property }: { property: Property }) {
           value={form.viewingTime}
           onChange={(e) => update("viewingTime", e.target.value)}
         />
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+        <input
+          id="consent"
+          type="checkbox"
+          checked={form.consent}
+          onChange={(e) => update("consent", e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+        />
+        <label htmlFor="consent" className="cursor-pointer select-none leading-relaxed">
+          Tôi đồng ý cho phép RealEstate AI xử lý thông tin cá nhân và gửi email cập nhật bất động sản, lịch xem nhà theo quy định tại <b>Nghị định 13/2023/NĐ-CP</b>.
+        </label>
       </div>
 
       {error && (

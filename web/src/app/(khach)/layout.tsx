@@ -1,9 +1,11 @@
 import Link from "next/link";
+import MauticTracking from "@/components/MauticTracking";
 
 // Khu dành cho khách: không cần đăng nhập, không có đường dẫn sang khu quản trị
 export default function KhachLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <MauticTracking />
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" className="text-lg font-bold text-slate-900">

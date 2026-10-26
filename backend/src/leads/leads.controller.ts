@@ -92,6 +92,15 @@ export class LeadsController {
     return this.leadsService.updateStatus(id, data);
   }
 
+  @Get('by-mautic/:contactId')
+  @UseGuards(WebhookSecretGuard)
+  findByMautic(
+    @Param('contactId', ParseIntPipe) contactId: number,
+    @Query('email') email?: string,
+  ): Promise<Lead | null> {
+    return this.leadsService.findByMauticId(contactId, email);
+  }
+
   @Put(':id/mautic')
   @UseGuards(WebhookSecretGuard)
   updateMautic(

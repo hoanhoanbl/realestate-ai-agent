@@ -134,6 +134,22 @@ export class LeadsService {
     return saved;
   }
 
+  async findByMauticId(contactId: number, email?: string): Promise<Lead | null> {
+    let lead = await this.leadRepository.findOne({
+      where: { mauticContactId: contactId },
+    });
+    if (!lead && email) {
+      lead = await this.leadRepository.findOne({
+        where: { email: email.trim().toLowerCase() },
+      });
+      if (lead && !lead.mauticContactId) {
+        lead.mauticContactId = contactId;
+        await this.leadRepository.save(lead);
+      }
+    }
+    return lead;
+  }
+
   async updateMautic(
     id: number,
     data: { mauticContactId?: number; mauticPoints?: number },

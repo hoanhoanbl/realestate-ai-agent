@@ -6,7 +6,7 @@
 # chi Caddy nhan cong 80/443 va tu cap HTTPS.
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16 # postgres 16 kem san extension vector (RAG)
     container_name: realestate-db
     restart: unless-stopped
     environment:
@@ -15,6 +15,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
@@ -39,6 +40,9 @@ services:
       PUBLIC_WEB_URL: https://${PUBLIC_HOST}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_SALE_CHAT_ID: ${TELEGRAM_SALE_CHAT_ID:-}
+      # Bot Telegram cho khach (luong 6), tach rieng bot sale. Secret de Telegram ky webhook
+      TELEGRAM_KHACH_BOT_TOKEN: ${TELEGRAM_KHACH_BOT_TOKEN:-}
+      TELEGRAM_KHACH_WEBHOOK_SECRET: ${TELEGRAM_KHACH_WEBHOOK_SECRET:-}
       # Tai khoan API Mautic cho luong 7 (Basic auth)
       MAUTIC_API_USER: ${MAUTIC_API_USER:-}
       MAUTIC_API_PASSWORD: ${MAUTIC_API_PASSWORD:-}

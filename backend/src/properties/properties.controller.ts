@@ -7,11 +7,13 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { Property } from './entities/property.entity';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/create-property.dto';
+import { SearchPropertyDto } from './dto/search-property.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -20,10 +22,10 @@ import { Roles } from '../auth/roles.decorator';
 export class PropertiesController {
   constructor(private readonly propertiesService: PropertiesService) {}
 
-  // Công khai: chỉ các căn không bị ẩn
+  // Công khai: chỉ các căn không bị ẩn. Lọc tuỳ chọn: ?q=&minPrice=&maxPrice=&minArea=&type=&limit=
   @Get()
-  findAll(): Promise<Property[]> {
-    return this.propertiesService.findAll();
+  findAll(@Query() filter: SearchPropertyDto): Promise<Property[]> {
+    return this.propertiesService.findAll(filter);
   }
 
   // Cho admin: gồm cả căn đã ẩn (phải khai báo trước ':id')

@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, Suspense } from "react";
+import { MAUTIC_PUBLIC_URL } from "@/lib/mautic";
 
 declare global {
   interface Window {
@@ -15,7 +16,17 @@ function MauticTrackingInner() {
   const pathname = usePathname();
 
   // Khi chuyển trang trong SPA Next.js, gửi sự kiện pageview mới cho Mautic
+  // Không theo dõi các đường dẫn chứa token nhạy cảm (ký HĐ, cảm nhận) hoặc trang admin
   useEffect(() => {
+    if (
+      !pathname ||
+      pathname.startsWith("/ky") ||
+      pathname.startsWith("/cam-nhan") ||
+      pathname.startsWith("/admin")
+    ) {
+      return;
+    }
+
     if (typeof window !== "undefined" && typeof window.mt === "function") {
       window.mt("send", "pageview");
     }
@@ -25,9 +36,6 @@ function MauticTrackingInner() {
 }
 
 export default function MauticTracking() {
-  const mauticUrl =
-    process.env.NEXT_PUBLIC_MAUTIC_URL || "https://mautic.136-85-40-9.sslip.io";
-
   return (
     <>
       <Script
@@ -38,8 +46,7 @@ export default function MauticTracking() {
             (function(w,d,t,u,n,a,m){w['MauticTrackingObject']=n;
                 w[n]=w[n]||function(){(w[n].q=w[n].q||[]).push(arguments)},a=d.createElement(t),
                 m=d.getElementsByTagName(t)[0];a.async=1;a.src=u;m.parentNode.insertBefore(a,m)
-            })(window,document,'script','${mauticUrl}/mtc.js','mt');
-            mt('send', 'pageview');
+            })(window,document,'script','${MAUTIC_PUBLIC_URL}/mtc.js','mt');
           `,
         }}
       />

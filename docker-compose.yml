@@ -71,17 +71,21 @@ services:
         condition: service_healthy
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081/api}
+        NEXT_PUBLIC_MAUTIC_URL: ${NEXT_PUBLIC_MAUTIC_URL:-http://localhost:8082}
     container_name: realestate-web
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8081/api
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081/api}
+      NEXT_PUBLIC_MAUTIC_URL: ${NEXT_PUBLIC_MAUTIC_URL:-http://localhost:8082}
     depends_on:
       - backend
 
 volumes:
   db_data:
   n8n_data:
-

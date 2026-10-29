@@ -1,13 +1,13 @@
 import LevelBadge from "@/components/LevelBadge";
 import type { LeadDetail } from "@/lib/api";
+import { MAUTIC_PUBLIC_URL } from "@/lib/mautic";
 
 interface MauticScoreCardProps {
   lead: LeadDetail;
 }
 
 export default function MauticScoreCard({ lead }: MauticScoreCardProps) {
-  const mauticUrl =
-    process.env.NEXT_PUBLIC_MAUTIC_URL || "https://mautic.136-85-40-9.sslip.io";
+  const mauticUrl = MAUTIC_PUBLIC_URL;
   const points = lead.mauticPoints ?? 0;
   const score = lead.score ?? null;
   const isHot = lead.level === "HOT" || (score !== null && score >= 75);

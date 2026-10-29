@@ -45,7 +45,7 @@
             {
               "id": "c2",
               "name": "mauticUrl",
-              "value": "http://mautic_web:80/api",
+              "value": "={{ $env.MAUTIC_URL || 'http://mautic_web:80/api' }}",
               "type": "string"
             },
             {
@@ -183,7 +183,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc. Cuối email có nút \"Gửi cảm nhận\", hãy mời khách bấm nút đó và KHÔNG tự chèn đường link.',\n  WARM_NUDGE: 'Khách WARM đã xem nhà cách đây vài ngày nhưng chưa phản hồi. Viết đoạn mở đầu ngắn 2-3 câu hỏi thăm nhẹ nhàng và hỏi thêm nhu cầu (khu vực, mức giá, số phòng) để chèn vào email nuôi dưỡng tự động. Xưng chúng tôi, gọi anh/chị ' + lead.name + '.',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
+        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc. Cuối email có nút \"Gửi cảm nhận\", hãy mời khách bấm nút đó và KHÔNG tự chèn đường link.',\n  WARM_NUDGE: 'Khách WARM đã xem nhà cách đây vài ngày nhưng chưa phản hồi. Viết ĐÚNG 2 câu mở đầu ngắn gọn (dưới 250 ký tự), KHÔNG viết lời chào mở đầu (không \"Chào anh/chị\"), KHÔNG viết lời chào kết thúc, chỉ hỏi thăm nhẹ nhàng về căn nhà đã xem và hỏi thêm nhu cầu (khu vực, giá, số phòng).',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -291,7 +291,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Bạn là nhân viên chăm sóc khách hàng của một văn phòng bất động sản.\nMục đích email: {{ $('Chuẩn bị ngữ cảnh').item.json.purpose }}\n\nKhách: {{ $('Chuẩn bị ngữ cảnh').item.json.name }}\nCăn nhà: {{ $('Chuẩn bị ngữ cảnh').item.json.propertyName }}, {{ $('Chuẩn bị ngữ cảnh').item.json.propertyAddress }}\nGiờ xem: {{ $('Chuẩn bị ngữ cảnh').item.json.viewingTimeText }}\nNhu cầu khách ghi: {{ $('Chuẩn bị ngữ cảnh').item.json.needs || '(không ghi)' }}\n\nYêu cầu: tiếng Việt, thân thiện, xưng \"chúng tôi\", gọi khách là \"anh/chị {{ $('Chuẩn bị ngữ cảnh').item.json.name }}\", tối đa 6 câu, không bịa thông tin không có ở trên.\nChỉ trả về JSON: {\"subject\": \"...\", \"body\": \"...\"}",
+        "text": "=Bạn là nhân viên chăm sóc khách hàng của một văn phòng bất động sản.\nMục đích: {{ $('Chuẩn bị ngữ cảnh').item.json.purpose }}\n\nKhách: {{ $('Chuẩn bị ngữ cảnh').item.json.name }}\nCăn nhà: {{ $('Chuẩn bị ngữ cảnh').item.json.propertyName }}, {{ $('Chuẩn bị ngữ cảnh').item.json.propertyAddress }}\nGiờ xem: {{ $('Chuẩn bị ngữ cảnh').item.json.viewingTimeText }}\nNhu cầu khách ghi: {{ $('Chuẩn bị ngữ cảnh').item.json.needs || '(không ghi)' }}\n\nYêu cầu: tiếng Việt, thân thiện, không bịa thông tin không có ở trên.\nChỉ trả về JSON: {\"subject\": \"...\", \"body\": \"...\"}",
         "hasOutputParser": true,
         "batching": {}
       },
@@ -343,7 +343,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst ok = subject.length > 0 && body.length > 0 && body.length <= 1200\n  && body.includes(ctx.name) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Chúng tôi có thể hỗ trợ thêm gì cho anh/chị?', `Chào anh/chị ${ctx.name}, anh/chị có thể cho chúng tôi biết thêm khu vực và số phòng mong muốn để chúng tôi gợi ý căn phù hợp hơn không?`],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nreturn { json: { ...ctx, subject, body, bodyHtml: esc(body), usedFallback: !ok } };"
+        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst isWarm = ctx.type === 'WARM_NUDGE';\nconst ok = subject.length > 0 && body.length > 0 && body.length <= (isWarm ? 300 : 1200)\n  && (isWarm || body.includes(ctx.name)) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Gợi ý thêm căn nhà phù hợp', 'Chúng tôi muốn hỏi thăm cảm nhận của anh/chị về buổi xem nhà hôm trước và tìm hiểu thêm nhu cầu cụ thể để gợi ý các căn phù hợp hơn.'],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nif (isWarm) {\n  body = body.replace(/^(Chào\\s+[^,\\.\\n]+[,\\.\\n]\\s*)+/i, '').trim();\n  if (body.length > 250) body = body.slice(0, 247) + '...';\n}\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst bodyHtml = esc(body).replace(/\\n+/g, '<br>');\nreturn { json: { ...ctx, subject, body, bodyHtml, usedFallback: !ok } };"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -389,8 +389,8 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/new",
+        "method": "={{ $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id ? 'PATCH' : 'POST' }}",
+        "url": "={{ $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id ? ($('Cấu hình').first().json.mauticUrl + '/contacts/' + $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id + '/edit') : ($('Cấu hình').first().json.mauticUrl + '/contacts/new') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -406,7 +406,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  email: $json.email,\n  ai_nudge_text: $json.body,\n  tags: ['nuoi-warm', 'WARM']\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  email: $json.email,\n  ai_nudge_text: $json.bodyHtml,\n  tags: ['nuoi-warm', 'WARM']\n}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -598,48 +598,13 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Webhook-Secret",
-              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  type: 'STAFF_NUDGE_SENT',\n  note: 'Nhắc nhân viên gọi lại khách chưa được duyệt lịch sau 3 ngày'\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        780,
-        140
-      ],
-      "id": "22222222-2222-4000-8000-000000000004",
-      "name": "Ghi log STAFF_NUDGE",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const lead = $('Chuẩn bị ngữ cảnh').item.json;\nconst cfg = $('Cấu hình').first().json;\n\nreturn [{\n  json: {\n    leadId: lead.lead_id,\n    level: lead.level || 'WARM',\n    title: `[GỌI LẠI] ${lead.name} chưa được duyệt lịch sau 3 ngày`,\n    message: `Khách hàng ${lead.name} (SĐT: ${lead.phone || 'Chưa có'}, Email: ${lead.email}), mức ${lead.level}, đã đăng ký hơn 3 ngày nhưng lịch xem nhà chưa được nhân viên duyệt.\\n- Nhu cầu: ${lead.needs || 'Chưa ghi'}\\n- Căn nhà quan tâm: ${lead.propertyName}`,\n    actions: [\n      { label: 'Xem chi tiết khách', url: `${cfg.publicWebUrl}/admin/leads/${lead.lead_id}` }\n    ]\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        980,
+        780,
         140
       ],
       "id": "22222222-2222-4000-8000-000000000005",
@@ -667,11 +632,46 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1180,
+        980,
         140
       ],
       "id": "22222222-2222-4000-8000-000000000006",
       "name": "Thông báo nhân viên",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  type: 'STAFF_NUDGE_SENT',\n  note: 'Nhắc nhân viên gọi lại khách chưa được duyệt lịch sau 3 ngày'\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        140
+      ],
+      "id": "22222222-2222-4000-8000-000000000004",
+      "name": "Ghi log STAFF_NUDGE",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
       "onError": "continueErrorOutput"
     },
     {
@@ -926,25 +926,7 @@
         ],
         [
           {
-            "node": "Ghi log STAFF_NUDGE",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log STAFF_NUDGE": {
-      "main": [
-        [
-          {
             "node": "Chuẩn bị thông báo NV",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Ghi lỗi follow-up",
             "type": "main",
             "index": 0
           }
@@ -966,7 +948,32 @@
       "main": [
         [
           {
+            "node": "Ghi log STAFF_NUDGE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log STAFF_NUDGE": {
+      "main": [
+        [
+          {
             "node": "Gom kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
             "type": "main",
             "index": 0
           }

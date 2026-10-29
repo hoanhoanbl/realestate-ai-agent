@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
-import { getFunnel, getStats, type Funnel, type LeadStatus, type Stats } from "@/lib/api";
+import { getFunnel, getLeads, getStats, type Funnel, type Lead, type LeadStatus, type Stats } from "@/lib/api";
 
 const POLL_MS = 15000;
 
@@ -40,16 +40,18 @@ function Kpi({ label, value, hint, tone = "slate", href }: {
 export default function OverviewPage() {
   const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     function load() {
-      Promise.all([getFunnel(), getStats()])
-        .then(([f, s]) => {
+      Promise.all([getFunnel(), getStats(), getLeads()])
+        .then(([f, s, l]) => {
           if (cancelled) return;
           setFunnel(f);
           setStats(s);
+          setLeads(l);
           setError(null);
         })
         .catch((e: unknown) => {
@@ -63,6 +65,22 @@ export default function OverviewPage() {
       clearInterval(timer);
     };
   }, []);
+
+  const matrix = useMemo(() => {
+    let vipHot = 0;
+    let coolingHot = 0;
+    let breakthrough = 0;
+    let nurturing = 0;
+    for (const l of leads ?? []) {
+      const isHot = l.level === "HOT";
+      const isHigh = (l.mauticPoints ?? 0) >= 20;
+      if (isHot && isHigh) vipHot++;
+      else if (isHot && !isHigh) coolingHot++;
+      else if (!isHot && isHigh) breakthrough++;
+      else nurturing++;
+    }
+    return { vipHot, coolingHot, breakthrough, nurturing };
+  }, [leads]);
 
   const max = funnel ? Math.max(1, ...FUNNEL_ORDER.map((s) => funnel.byStatus[s])) : 1;
 
@@ -136,6 +154,92 @@ export default function OverviewPage() {
                   </li>
                 </ul>
               )}
+            </div>
+          </div>
+
+          {/* Ma trận 2 trục: AI Score & Mautic Points */}
+          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold uppercase text-slate-700">
+                  Ma trận 2 trục (AI Score × Mautic Points)
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Đối chiếu giữa độ tiềm năng AI chấm ban đầu và mức độ tương tác thực tế từ Mautic Marketing Automation.
+                </p>
+              </div>
+              <Link
+                href="/admin/leads?filter=VIP_HOT"
+                className="text-xs font-semibold text-blue-600 hover:underline"
+              >
+                Xem khách ưu tiên chốt cọc →
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Link
+                href="/admin/leads?filter=VIP_HOT"
+                className="group rounded-lg border border-rose-200 bg-rose-50/60 p-4 transition hover:bg-rose-50 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-700">🚀 Ưu tiên số 1</span>
+                  <span className="rounded-full bg-rose-200 px-2 py-0.5 text-xs font-bold text-rose-800">
+                    {matrix.vipHot}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-medium text-slate-800">HOT + Mautic ≥ 20 pts</p>
+                <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
+                  Ngân sách cao và tương tác sôi nổi. Nên gọi chốt cọc ngay!
+                </p>
+              </Link>
+
+              <Link
+                href="/admin/leads?level=HOT"
+                className="group rounded-lg border border-amber-200 bg-amber-50/60 p-4 transition hover:bg-amber-50 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-700">⏳ Tiềm năng đang nguội</span>
+                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-800">
+                    {matrix.coolingHot}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-medium text-slate-800">HOT + Mautic &lt; 20 pts</p>
+                <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
+                  Hồ sơ tốt nhưng ít mở mail. Đề xuất sale gọi thăm dò lại.
+                </p>
+              </Link>
+
+              <Link
+                href="/admin/leads?filter=HIGH_ENGAGEMENT"
+                className="group rounded-lg border border-purple-200 bg-purple-50/60 p-4 transition hover:bg-purple-50 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-700">🔥 Tương tác bứt phá</span>
+                  <span className="rounded-full bg-purple-200 px-2 py-0.5 text-xs font-bold text-purple-800">
+                    {matrix.breakthrough}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-medium text-slate-800">WARM/COLD + Mautic ≥ 20 pts</p>
+                <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
+                  Xem lại nhà nhiều lần. Cơ hội nâng cấp lead lên HOT!
+                </p>
+              </Link>
+
+              <Link
+                href="/admin/leads"
+                className="group rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:bg-slate-100 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">📨 Nuôi dưỡng tự động</span>
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-800">
+                    {matrix.nurturing}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-medium text-slate-800">WARM/COLD + Mautic &lt; 20 pts</p>
+                <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">
+                  Đang trong chuỗi email Mautic. Tiếp tục theo dõi tự động.
+                </p>
+              </Link>
             </div>
           </div>
         </>

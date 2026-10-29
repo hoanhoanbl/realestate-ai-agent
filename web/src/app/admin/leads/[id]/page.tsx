@@ -7,6 +7,7 @@ import ContactButtons from "@/components/ContactButtons";
 import LeadActions from "@/components/LeadActions";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
+import MauticScoreCard from "@/components/MauticScoreCard";
 import StatusBadge from "@/components/StatusBadge";
 import {
   ApiError,
@@ -155,6 +156,10 @@ function LeadDetailContent() {
           </div>
 
           <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
+
+          <div className="mt-5">
+            <MauticScoreCard lead={lead} />
+          </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <Card title="Thông tin khách">

@@ -16,13 +16,15 @@ import {
   type Level,
 } from "@/lib/api";
 
-type Filter = "ALL" | Level;
+type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "ALL", label: "Tất cả" },
   { value: "HOT", label: "HOT" },
   { value: "WARM", label: "WARM" },
   { value: "COLD", label: "COLD" },
+  { value: "HIGH_ENGAGEMENT", label: "🔥 Tương tác cao (Mautic ≥ 20)" },
+  { value: "VIP_HOT", label: "🚀 Ưu tiên chốt cọc" },
 ];
 
 // Còn khách chờ chấm điểm thì tải lại nhanh, không thì thưa hơn
@@ -105,19 +107,40 @@ function LeadsContent() {
   }, [hasPending]);
 
   const counts = useMemo(() => {
-    const result = { ALL: 0, HOT: 0, WARM: 0, COLD: 0 };
+    const result: Record<Filter, number> = {
+      ALL: 0,
+      HOT: 0,
+      WARM: 0,
+      COLD: 0,
+      HIGH_ENGAGEMENT: 0,
+      VIP_HOT: 0,
+    };
     for (const lead of leads ?? []) {
       result.ALL += 1;
       if (lead.level) result[lead.level] += 1;
+      const pts = lead.mauticPoints ?? 0;
+      if (pts >= 20) result.HIGH_ENGAGEMENT += 1;
+      if (lead.level === "HOT" && pts >= 20) result.VIP_HOT += 1;
     }
     return result;
   }, [leads]);
 
   const visible = useMemo(
     () =>
-      (leads ?? []).filter(
-        (l) => (filter === "ALL" || l.level === filter) && (statusFilter === "ALL" || l.status === statusFilter),
-      ),
+      (leads ?? []).filter((l) => {
+        if (statusFilter !== "ALL" && l.status !== statusFilter) return false;
+        if (filter === "ALL") return true;
+        if (filter === "HOT" || filter === "WARM" || filter === "COLD") {
+          return l.level === filter;
+        }
+        if (filter === "HIGH_ENGAGEMENT") {
+          return (l.mauticPoints ?? 0) >= 20;
+        }
+        if (filter === "VIP_HOT") {
+          return l.level === "HOT" && (l.mauticPoints ?? 0) >= 20;
+        }
+        return true;
+      }),
     [leads, filter, statusFilter],
   );
 
@@ -193,8 +216,8 @@ function LeadsContent() {
                 <th className="px-3 py-3">Khách</th>
                 <th className="px-3 py-3">Ngân sách</th>
                 <th className="px-3 py-3">Nhu cầu</th>
-                <th className="px-3 py-3 text-center">Điểm</th>
-                <th className="px-3 py-3">Mức</th>
+                <th className="px-3 py-3 text-center">Điểm AI</th>
+                <th className="px-3 py-3 text-center">Tương tác Mautic</th>
                 <th className="px-3 py-3">Lý do AI</th>
                 <th className="px-3 py-3 text-center">Email</th>
                 <th className="px-3 py-3 text-center">Báo NV</th>
@@ -237,11 +260,34 @@ function LeadsContent() {
                   <td className="max-w-[200px] px-3 py-3 text-slate-600">
                     {lead.needs ?? "-"}
                   </td>
-                  <td className="px-3 py-3 text-center font-semibold">
-                    {lead.score ?? "-"}
+                  <td className="px-3 py-3 text-center">
+                    <div className="font-semibold text-slate-900">
+                      {lead.score !== null ? `${lead.score}/100` : "-"}
+                    </div>
+                    <div className="mt-1">
+                      <LevelBadge level={lead.level} />
+                    </div>
                   </td>
-                  <td className="px-3 py-3">
-                    <LevelBadge level={lead.level} />
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        (lead.mauticPoints ?? 0) >= 20
+                          ? "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-300"
+                          : (lead.mauticPoints ?? 0) > 0
+                            ? "bg-slate-100 text-slate-700"
+                            : "text-slate-400"
+                      }`}
+                    >
+                      {(lead.mauticPoints ?? 0) >= 20 ? "🔥 " : ""}
+                      +{(lead.mauticPoints ?? 0)} pts
+                    </span>
+                    {lead.level === "HOT" && (lead.mauticPoints ?? 0) >= 20 && (
+                      <div className="mt-1">
+                        <span className="inline-block rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                          🚀 Ưu tiên
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td className="max-w-[260px] px-3 py-3 text-slate-600">
                     {lead.reason ?? "-"}

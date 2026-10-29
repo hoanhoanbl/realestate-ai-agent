@@ -13,6 +13,20 @@
     "Helvetica Neue", Arial, sans-serif;
 }
 
+/* Màu thương hiệu: đổi ở đây là cả web đổi theo (dùng bg-brand-600, text-brand-700...) */
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 10px 24px -6px rgb(15 23 42 / 0.12);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

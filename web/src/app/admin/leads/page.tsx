@@ -18,14 +18,52 @@ import {
 } from "@/lib/api";
 import { normalizeText } from "@/lib/property";
 
-type Filter = "ALL" | Level;
+// Mức AI chấm + hai nhóm theo điểm tương tác Mautic (Hậu, trục thứ hai)
+type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
+
+// Ngưỡng điểm Mautic coi là tương tác cao
+const ENGAGED_POINTS = 20;
 
 const FILTERS: { value: Filter; label: string; dot?: string }[] = [
   { value: "ALL", label: "Tất cả" },
   { value: "HOT", label: "HOT", dot: "bg-red-500" },
   { value: "WARM", label: "WARM", dot: "bg-amber-400" },
   { value: "COLD", label: "COLD", dot: "bg-sky-400" },
+  { value: "HIGH_ENGAGEMENT", label: `🔥 Tương tác cao (Mautic ≥ ${ENGAGED_POINTS})` },
+  { value: "VIP_HOT", label: "🚀 Ưu tiên chốt cọc" },
 ];
+
+function isEngaged(lead: Lead): boolean {
+  return (lead.mauticPoints ?? 0) >= ENGAGED_POINTS;
+}
+
+function matchesFilter(lead: Lead, filter: Filter): boolean {
+  if (filter === "ALL") return true;
+  if (filter === "HIGH_ENGAGEMENT") return isEngaged(lead);
+  if (filter === "VIP_HOT") return lead.level === "HOT" && isEngaged(lead);
+  return lead.level === filter;
+}
+
+// Điểm tương tác Mautic: nổi bật khi vượt ngưỡng, kèm nhãn ưu tiên nếu khách cũng HOT
+function MauticPoints({ lead }: { lead: Lead }) {
+  const pts = lead.mauticPoints ?? 0;
+  const engaged = pts >= ENGAGED_POINTS;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span
+        title="Điểm tương tác Mautic (mở mail, bấm link, xem trang)"
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+          engaged ? "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-300" : pts > 0 ? "bg-slate-100 text-slate-700" : "text-slate-400"
+        }`}
+      >
+        {engaged ? "🔥 " : ""}+{pts} pts
+      </span>
+      {lead.level === "HOT" && engaged && (
+        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">🚀 Ưu tiên</span>
+      )}
+    </div>
+  );
+}
 
 // Còn khách chờ chấm điểm thì tải lại nhanh, không thì thưa hơn
 const POLL_PENDING_MS = 5000;
@@ -41,7 +79,7 @@ const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "LOST", label: "Mất khách" },
 ];
 
-const LEVELS: Filter[] = ["ALL", "HOT", "WARM", "COLD"];
+const LEVELS: Filter[] = FILTERS.map((f) => f.value);
 const STATUSES = STATUS_OPTIONS.map((o) => o.value);
 
 // Ba cờ tự động hoá gọn trong một ô: email đã gửi, đã báo nhân viên
@@ -81,8 +119,8 @@ export default function LeadsPage() {
 
 function LeadsContent() {
   const searchParams = useSearchParams();
-  // Link từ trang Tổng quan: ?level=HOT hoặc ?status=NEW
-  const levelParam = searchParams.get("level") as Filter | null;
+  // Link từ trang Tổng quan: ?level=HOT, ?filter=VIP_HOT hoặc ?status=NEW
+  const levelParam = (searchParams.get("filter") ?? searchParams.get("level")) as Filter | null;
   const statusParam = searchParams.get("status") as "ALL" | LeadStatus | null;
 
   const [filter, setFilter] = useState<Filter>(levelParam && LEVELS.includes(levelParam) ? levelParam : "ALL");
@@ -131,15 +169,14 @@ function LeadsContent() {
   );
 
   const counts = useMemo(() => {
-    const result = { ALL: 0, HOT: 0, WARM: 0, COLD: 0 };
+    const result = Object.fromEntries(FILTERS.map((f) => [f.value, 0])) as Record<Filter, number>;
     for (const lead of base) {
-      result.ALL += 1;
-      if (lead.level) result[lead.level] += 1;
+      for (const f of FILTERS) if (matchesFilter(lead, f.value)) result[f.value] += 1;
     }
     return result;
   }, [base]);
 
-  const visible = useMemo(() => base.filter((l) => filter === "ALL" || l.level === filter), [base, filter]);
+  const visible = useMemo(() => base.filter((l) => matchesFilter(l, filter)), [base, filter]);
 
   return (
     <section>
@@ -232,7 +269,8 @@ function LeadsContent() {
                   <th className="px-4 py-3">Khách</th>
                   <th className="px-4 py-3">Ngân sách</th>
                   <th className="px-4 py-3">AI chấm</th>
-                  <th className="w-[32%] px-4 py-3">Lý do AI</th>
+                  <th className="px-4 py-3">Mautic</th>
+                  <th className="w-[28%] px-4 py-3">Lý do AI</th>
                   <th className="px-4 py-3">Tự động</th>
                   <th className="px-4 py-3">Trạng thái</th>
                 </tr>
@@ -256,6 +294,9 @@ function LeadsContent() {
                         <span className="w-7 text-right text-base font-bold text-slate-900">{lead.score ?? "–"}</span>
                         <LevelBadge level={lead.level} />
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <MauticPoints lead={lead} />
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       <p className="line-clamp-2" title={lead.reason ?? undefined}>
@@ -303,6 +344,7 @@ function LeadsContent() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <LeadStatusBadge status={lead.status} />
                     <StatusBadge status={lead.automationStatus} />
+                    <MauticPoints lead={lead} />
                     <span className="ml-auto text-xs text-slate-400">{formatDateTime(lead.createdAt)}</span>
                   </div>
                 </Link>

@@ -98,3 +98,37 @@ Server `realestate-vm` có 8 GB RAM:
   - `--innodb-buffer-pool-size=256M` (giới hạn cache RAM CSDL)
   - `--max-connections=50` (giới hạn kết nối đồng thời)
 - Tổng tài nguyên Mautic (web + worker + cron + db) được giữ ổn định trong khoảng **1 - 1.2 GB RAM**, không gây quá tải server.
+
+
+---
+
+## 7. Cấu hình Trường tuỳ biến, Segment và Webhook (Luồng 2, 7, 8)
+
+### 7.1. Tạo Custom Field `ai_nudge_text`
+Để cá nhân hoá nội dung email nuôi WARM bằng lời khuyên từ Gemini:
+1. Vào **Settings (Bánh răng)** > **Custom Fields** > Bấm **New**.
+2. **Label**: `AI Nudge Text`
+3. **Alias**: `ai_nudge_text` (phải trùng khớp với alias Luồng 2 n8n cập nhật qua API)
+4. **Data Type**: `Textarea`
+5. **Group**: `Core`
+6. Bấm **Save & Close**.
+7. Khi soạn Email Template trong Mautic, chèn mã token: `{contactfield=ai_nudge_text}` vào vị trí lời khuyên cá nhân hoá.
+
+### 7.2. Tạo Segment "Nuôi WARM (Lead Tiềm Năng)"
+1. Vào **Segments** > Bấm **New**.
+2. **Name**: `Nuôi WARM (Lead Tiềm Năng)`
+3. **Alias**: `nuoi-warm`
+4. Sang tab **Filters**:
+   - `Tags` **including**: `WARM` HOẶC `nuoi-warm`
+   - VÀ `Tags` **excluding**: `DEPOSIT`, `SIGNED`, `LOST`
+5. Bấm **Save & Close**.
+
+### 7.3. Tạo Webhook Báo động hành vi sang Luồng 8 n8n
+1. Vào **Settings** > **Webhooks** > Bấm **New**.
+2. **Name**: `Báo động hành vi Mautic sang n8n`
+3. **Webhook POST Url**: `http://n8n:5678/webhook/mautic-event` (local) hoặc `https://n8n.<domain>/webhook/mautic-event` (server).
+4. **Webhook Events**:
+   - `Contact Page Hit` (mautic.page_on_hit)
+   - `Contact Points Changed` (mautic.lead_points_change)
+   - `Contact Email Opened` (mautic.email_on_open)
+5. Bấm **Save & Close**.

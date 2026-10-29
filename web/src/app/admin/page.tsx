@@ -94,10 +94,73 @@ function TaskGroup({ title, count, href, empty, children }: {
   );
 }
 
+// Ma trận 2 trục (Hậu): mức AI chấm × điểm tương tác Mautic
+const ENGAGED_POINTS = 20;
+
+interface Matrix {
+  vipHot: number;
+  coolingHot: number;
+  breakthrough: number;
+  nurturing: number;
+}
+
+function buildMatrix(leads: Lead[]): Matrix {
+  const m: Matrix = { vipHot: 0, coolingHot: 0, breakthrough: 0, nurturing: 0 };
+  for (const l of leads) {
+    const isHot = l.level === "HOT";
+    const isHigh = (l.mauticPoints ?? 0) >= ENGAGED_POINTS;
+    if (isHot && isHigh) m.vipHot++;
+    else if (isHot) m.coolingHot++;
+    else if (isHigh) m.breakthrough++;
+    else m.nurturing++;
+  }
+  return m;
+}
+
+const MATRIX_CELLS: { key: keyof Matrix; title: string; rule: string; text: string; href: string; style: string; badge: string }[] = [
+  {
+    key: "vipHot",
+    title: "🚀 Ưu tiên số 1",
+    rule: `HOT + Mautic ≥ ${ENGAGED_POINTS} pts`,
+    text: "Ngân sách cao và tương tác sôi nổi. Nên gọi chốt cọc ngay!",
+    href: "/admin/leads?filter=VIP_HOT",
+    style: "border-rose-200 bg-rose-50/60 hover:bg-rose-50 text-rose-700",
+    badge: "bg-rose-200 text-rose-800",
+  },
+  {
+    key: "coolingHot",
+    title: "⏳ Tiềm năng đang nguội",
+    rule: `HOT + Mautic < ${ENGAGED_POINTS} pts`,
+    text: "Hồ sơ tốt nhưng ít mở mail. Đề xuất sale gọi thăm dò lại.",
+    href: "/admin/leads?level=HOT",
+    style: "border-amber-200 bg-amber-50/60 hover:bg-amber-50 text-amber-700",
+    badge: "bg-amber-200 text-amber-800",
+  },
+  {
+    key: "breakthrough",
+    title: "🔥 Tương tác bứt phá",
+    rule: `WARM/COLD + Mautic ≥ ${ENGAGED_POINTS} pts`,
+    text: "Xem lại nhà nhiều lần. Cơ hội nâng cấp lead lên HOT!",
+    href: "/admin/leads?filter=HIGH_ENGAGEMENT",
+    style: "border-purple-200 bg-purple-50/60 hover:bg-purple-50 text-purple-700",
+    badge: "bg-purple-200 text-purple-800",
+  },
+  {
+    key: "nurturing",
+    title: "📨 Nuôi dưỡng tự động",
+    rule: `WARM/COLD + Mautic < ${ENGAGED_POINTS} pts`,
+    text: "Đang trong chuỗi email Mautic. Tiếp tục theo dõi tự động.",
+    href: "/admin/leads",
+    style: "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700",
+    badge: "bg-slate-200 text-slate-800",
+  },
+];
+
 interface Tasks {
   pendingLeads: Lead[];
   todayViewings: ScheduleRow[];
   pendingContracts: ContractRow[];
+  matrix: Matrix;
 }
 
 export default function OverviewPage() {
@@ -123,6 +186,7 @@ export default function OverviewPage() {
               .filter((v) => vnDayKey(v.viewingTime) === today && v.leadStatus !== "LOST")
               .sort((a, b) => a.viewingTime.localeCompare(b.viewingTime)),
             pendingContracts: contracts.filter((c) => c.status === "PENDING_APPROVAL"),
+            matrix: buildMatrix(leads),
           });
           setError(null);
         })
@@ -301,6 +365,34 @@ export default function OverviewPage() {
               </div>
             </div>
           </div>
+
+          {tasks && (
+            <div className={`mt-6 p-5 ${CARD}`}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold text-slate-900">Ma trận 2 trục (AI Score × Mautic Points)</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Đối chiếu độ tiềm năng AI chấm ban đầu với mức tương tác thực tế từ Mautic Marketing Automation.
+                  </p>
+                </div>
+                <Link href="/admin/leads?filter=VIP_HOT" className="text-sm font-medium text-brand-600 hover:underline">
+                  Xem khách ưu tiên chốt cọc →
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {MATRIX_CELLS.map((c) => (
+                  <Link key={c.key} href={c.href} className={`rounded-lg border p-4 transition hover:shadow-card ${c.style}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold">{c.title}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.badge}`}>{tasks.matrix[c.key]}</span>
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-slate-800">{c.rule}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{c.text}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </section>

@@ -36,7 +36,17 @@ export class ViewingsService {
   ) {}
 
   async create(createViewingDto: CreateViewingDto): Promise<{ viewing: Viewing; lead: Lead }> {
-    const { name, email, phone, budget, needs, propertyId, viewingTime, source } = createViewingDto;
+    const {
+      name,
+      email,
+      phone,
+      budget,
+      needs,
+      propertyId,
+      viewingTime,
+      source,
+      consentMarketing,
+    } = createViewingDto;
 
     const property = await this.propertyRepository.findOne({
       where: { id: propertyId },
@@ -60,6 +70,7 @@ export class ViewingsService {
       budget,
       needs: needs || null,
       source: source || null,
+      consentMarketing: Boolean(consentMarketing),
       eventId,
       status: 'NEW',
       automationStatus: 'PENDING',

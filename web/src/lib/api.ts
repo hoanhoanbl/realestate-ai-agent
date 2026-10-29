@@ -47,6 +47,7 @@ export interface Lead {
   source: string | null;
   mauticContactId?: number | null;
   mauticPoints?: number;
+  consentMarketing?: boolean;
   createdAt: string;
 }
 
@@ -111,6 +112,7 @@ export interface CreateViewingInput {
   propertyId: number;
   viewingTime: string;
   source?: string;
+  consentMarketing?: boolean;
 }
 
 export interface CreateViewingResult {

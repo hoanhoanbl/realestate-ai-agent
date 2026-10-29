@@ -6,7 +6,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/ci-cd-deploy] # TAM THOI de chay thu, se go truoc khi merge
   workflow_dispatch:
 
 concurrency:

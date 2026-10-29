@@ -4,13 +4,15 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import BookingForm from "@/components/BookingForm";
+import PropertyImage from "@/components/PropertyImage";
+import { Alert, CARD, Skeleton } from "@/components/ui";
 import { ApiError, formatVnd, getProperty, type Property } from "@/lib/api";
-import { cityOf, typeLabel } from "@/lib/property";
+import { cityOf, formatBillion } from "@/lib/property";
 
 // useParams() cần nằm trong Suspense vì `id` chỉ biết lúc người dùng mở trang
 export default function PropertyDetailPage() {
   return (
-    <Suspense fallback={<p className="text-slate-500">Đang tải...</p>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <PropertyDetail />
     </Suspense>
   );
@@ -43,7 +45,7 @@ function PropertyDetail() {
   }, [id, invalidId]);
 
   const back = (
-    <Link href="/" className="text-sm text-blue-600 hover:underline">
+    <Link href="/" className="text-sm text-brand-600 hover:underline">
       ← Danh sách nhà
     </Link>
   );
@@ -52,9 +54,9 @@ function PropertyDetail() {
     return (
       <section>
         {back}
-        <p className="mt-6 rounded-lg bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200">
+        <Alert tone="info" className="mt-6">
           Không tìm thấy căn nhà này.
-        </p>
+        </Alert>
       </section>
     );
   }
@@ -62,13 +64,11 @@ function PropertyDetail() {
     return (
       <section>
         {back}
-        <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-          {error}
-        </p>
+        <Alert className="mt-6">{error}</Alert>
       </section>
     );
   }
-  if (!property) return <p className="text-slate-500">Đang tải...</p>;
+  if (!property) return <DetailSkeleton />;
 
   const pricePerM2 = Number(property.area) > 0 ? Number(property.price) / Number(property.area) : 0;
 
@@ -77,18 +77,16 @@ function PropertyDetail() {
       {back}
       <div className="mt-4 grid gap-8 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <div className="flex h-64 items-end rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 p-4">
-            <span className="rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700">
-              {typeLabel(property.type)}
-            </span>
-          </div>
+          <PropertyImage property={property} priority className="aspect-[16/10] rounded-2xl" />
           <h1 className="mt-5 text-2xl font-bold text-slate-900">{property.name}</h1>
           <p className="mt-1 text-slate-600">{property.address}</p>
 
-          <dl className="mt-5 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 text-sm sm:grid-cols-4">
+          <dl className={`mt-5 grid grid-cols-2 gap-4 p-5 text-sm sm:grid-cols-4 ${CARD}`}>
             <div>
               <dt className="text-slate-500">Giá</dt>
-              <dd className="mt-1 text-lg font-bold text-blue-700">{formatVnd(property.price)}</dd>
+              <dd className="mt-1 text-lg font-bold text-brand-700" title={formatVnd(property.price)}>
+                {formatBillion(property.price)}
+              </dd>
             </div>
             <div>
               <dt className="text-slate-500">Diện tích</dt>
@@ -105,17 +103,40 @@ function PropertyDetail() {
               </dd>
             </div>
           </dl>
+
+          {property.description && (
+            <div className="mt-6">
+              <h2 className="text-lg font-semibold text-slate-900">Mô tả</h2>
+              <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-700">{property.description}</p>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-2">
           {property.status === "AVAILABLE" ? (
             <BookingForm property={property} />
           ) : (
-            <p className="rounded-xl bg-amber-50 p-4 text-amber-800 ring-1 ring-amber-200">
-              Căn này hiện không nhận đặt lịch xem.
-            </p>
+            <Alert tone="warning">Căn này hiện không nhận đặt lịch xem.</Alert>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// Khung giữ chỗ cùng bố cục trang chi tiết
+function DetailSkeleton() {
+  return (
+    <section aria-busy="true" aria-label="Đang tải căn nhà">
+      <Skeleton className="h-4 w-28" />
+      <div className="mt-4 grid gap-8 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Skeleton className="aspect-[16/10] rounded-2xl" />
+          <Skeleton className="mt-5 h-7 w-2/3" />
+          <Skeleton className="mt-2 h-4 w-1/2" />
+          <Skeleton className="mt-5 h-20 w-full rounded-xl" />
+        </div>
+        <Skeleton className="h-96 rounded-xl lg:col-span-2" />
       </div>
     </section>
   );

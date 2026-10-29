@@ -23,6 +23,8 @@ export interface Property {
   area: string | number;
   type: string;
   status: string;
+  imageUrl: string | null;
+  description: string | null;
 }
 
 export interface Lead {
@@ -186,6 +188,9 @@ export interface PropertyInput {
   area: number;
   type: string;
   status?: string;
+  // Chuỗi rỗng = xoá
+  imageUrl?: string;
+  description?: string;
 }
 
 // Gồm cả căn đã ẩn (chỉ admin)

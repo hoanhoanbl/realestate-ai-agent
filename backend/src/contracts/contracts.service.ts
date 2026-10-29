@@ -243,15 +243,22 @@ export class ContractsService {
     const property = await this.propertyRepository.findOne({ where: { id: contract.propertyId } });
     const expired = contract.status === 'SENT' && contract.expiresAt !== null && contract.expiresAt.getTime() < Date.now();
     return {
+      id: contract.id,
       title: contract.title,
       content: contract.content,
       customerName: lead.name,
       propertyName: property?.name ?? null,
+      propertyAddress: property?.address ?? null,
+      propertyPrice: contract.propertyPrice,
       depositAmount: contract.depositAmount,
       status: expired ? 'EXPIRED' : contract.status,
       expiresAt: contract.expiresAt,
+      createdAt: contract.createdAt,
+      approvedBy: contract.approvedBy,
       signedAt: contract.signedAt,
       signerName: contract.signerName,
+      // Ảnh chữ ký chỉ trả khi đã ký, để khách in lại bản của mình
+      signature: contract.status === 'SIGNED' ? contract.signature : null,
     };
   }
 

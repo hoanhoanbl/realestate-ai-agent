@@ -64,6 +64,9 @@ export class Lead {
   @Column({ name: 'mautic_points', type: 'integer', default: 0 })
   mauticPoints: number;
 
+  @Column({ name: 'consent_marketing', type: 'boolean', default: false })
+  consentMarketing: boolean;
+
   @Column({ name: 'approval_url', type: 'text', nullable: true, select: false })
   approvalUrl: string | null;
 

@@ -79,6 +79,7 @@ services:
       context: ./web
       args:
         NEXT_PUBLIC_API_URL: https://${PUBLIC_HOST}/api
+        NEXT_PUBLIC_MAUTIC_URL: https://mautic.${PUBLIC_HOST}
     container_name: realestate-web
     restart: unless-stopped
     depends_on:

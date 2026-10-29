@@ -60,14 +60,20 @@ export default function MauticScoreCard({ lead }: MauticScoreCardProps) {
           </h2>
         </div>
         {lead.mauticContactId ? (
-          <a
-            href={`${mauticUrl}/s/contacts/view/${lead.mauticContactId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
-          >
-            Mautic Contact #{lead.mauticContactId} ↗
-          </a>
+          mauticUrl ? (
+            <a
+              href={`${mauticUrl}/s/contacts/view/${lead.mauticContactId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+            >
+              Mautic Contact #{lead.mauticContactId} ↗
+            </a>
+          ) : (
+            <span className="text-xs text-indigo-700 font-medium">
+              Mautic Contact #{lead.mauticContactId}
+            </span>
+          )
         ) : (
           <span className="text-xs text-slate-400">Chưa liên kết Mautic</span>
         )}

@@ -91,6 +91,7 @@ export default function BookingForm({ property }: { property: Property }) {
         propertyId: property.id,
         viewingTime,
         source: utmSource,
+        consentMarketing: form.consentMarketing,
       });
       setCreated(result.lead);
     } catch (e: unknown) {

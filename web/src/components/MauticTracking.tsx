@@ -19,6 +19,7 @@ function MauticTrackingInner() {
   // Không theo dõi các đường dẫn chứa token nhạy cảm (ký HĐ, cảm nhận) hoặc trang admin
   useEffect(() => {
     if (
+      !MAUTIC_PUBLIC_URL ||
       !pathname ||
       pathname.startsWith("/ky") ||
       pathname.startsWith("/cam-nhan") ||
@@ -27,7 +28,15 @@ function MauticTrackingInner() {
       return;
     }
 
-    if (typeof window !== "undefined" && typeof window.mt === "function") {
+    if (typeof window !== "undefined") {
+      // Đảm bảo hàng đợi mt luôn khả dụng kể cả khi useEffect chạy trước khi mtc.js tải xong
+      window.MauticTrackingObject = "mt";
+      window.mt =
+        window.mt ||
+        function (...args: unknown[]) {
+          ((window.mt as unknown as { q: unknown[] }).q =
+            (window.mt as unknown as { q: unknown[] }).q || []).push(args);
+        };
       window.mt("send", "pageview");
     }
   }, [pathname]);
@@ -36,6 +45,11 @@ function MauticTrackingInner() {
 }
 
 export default function MauticTracking() {
+  // Biến trống (chưa cấu hình NEXT_PUBLIC_MAUTIC_URL) thì không tải script
+  if (!MAUTIC_PUBLIC_URL) {
+    return null;
+  }
+
   return (
     <>
       <Script

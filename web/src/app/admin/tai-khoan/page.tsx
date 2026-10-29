@@ -161,7 +161,7 @@ export default function PermissionsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Quản trị Tài khoản & Phân quyền (RBAC)</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản trị Tài khoản & Phân quyền (RBAC)</h1>
           <p className="mt-1 text-sm text-slate-500">
             Quản lý nhân sự, phân quyền vai trò và đối soát ma trận quyền hạn hệ thống.
           </p>
@@ -172,7 +172,7 @@ export default function PermissionsPage() {
             setShowModal(true);
             setFormError(null);
           }}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
         >
           + Thêm nhân sự mới
         </button>
@@ -189,7 +189,7 @@ export default function PermissionsPage() {
       )}
 
       {/* Danh sách tài khoản người dùng */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-card">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Danh sách Tài khoản Hệ thống</h2>
@@ -254,7 +254,7 @@ export default function PermissionsPage() {
       </section>
 
       {/* Ma trận Phân quyền RBAC Matrix */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-card">
         <div className="mb-4">
           <h2 className="text-lg font-bold text-slate-900">Ma trận Phân quyền (Role-Based Access Control)</h2>
           <p className="text-sm text-slate-500">
@@ -395,7 +395,7 @@ export default function PermissionsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                  className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
                 >
                   {saving ? "Đang lưu..." : "Tạo tài khoản"}
                 </button>

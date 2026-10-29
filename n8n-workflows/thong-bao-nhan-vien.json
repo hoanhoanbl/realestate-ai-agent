@@ -51,7 +51,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Đầu vào (1 item):\n// { leadId?, level?, title, message, actions?: [{label, url}], emailTo?, emailHtml? }\nconst cfg = $('Cấu hình').first().json;\nconst input = $('Khi được gọi').first().json;\n\nconst title = String(input.title ?? '').trim();\nconst message = String(input.message ?? '').trim();\nif (!title || !message) {\n  throw new Error('Thông báo nhân viên: thiếu title hoặc message');\n}\n\nconst level = ['HOT', 'WARM', 'COLD'].includes(input.level) ? input.level : null;\nconst actions = (Array.isArray(input.actions) ? input.actions : [])\n  .filter((a) => a && a.label && /^https?:\\/\\//.test(String(a.url ?? '')))\n  .map((a) => ({ label: String(a.label).slice(0, 40), url: String(a.url) }));\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst prefix = level === 'HOT' ? '[ƯU TIÊN] ' : '';\nconst subject = title.startsWith(prefix) ? title : prefix + title;\n\n// Email: dùng HTML của luồng gọi nếu có, không thì dựng từ message + nút\nconst emailHtml = input.emailHtml\n  ? String(input.emailHtml)\n  : '<div style=\"font-family:Arial,sans-serif;max-width:600px;line-height:1.6\">'\n    + '<p><b>' + esc(subject) + '</b></p>'\n    + '<p>' + esc(message).replace(/\\n/g, '<br>') + '</p>'\n    + actions.map((a) => '<a href=\"' + esc(a.url) + '\" style=\"display:inline-block;margin-right:8px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">' + esc(a.label) + '</a>').join('')\n    + '</div>';\n\n// Telegram chỉ nhận nút bấm với link https. Link khác (vd. localhost khi chạy local) ghi thành dòng chữ.\nconst buttons = actions.filter((a) => a.url.startsWith('https://'));\nconst textLinks = actions.filter((a) => !a.url.startsWith('https://'));\nconst icon = { HOT: '🔴', WARM: '🟠', COLD: '⚪' }[level] ?? '🔔';\nlet text = icon + ' <b>' + esc(subject) + '</b>\\n\\n' + esc(message);\nif (textLinks.length) text += '\\n\\n' + textLinks.map((a) => esc(a.label) + ': ' + esc(a.url)).join('\\n');\nif (text.length > 4000) text = text.slice(0, 3990) + '…';\n\nconst telegram = {\n  chat_id: cfg.telegramChatId,\n  text,\n  parse_mode: 'HTML',\n  disable_web_page_preview: true,\n};\nif (buttons.length) {\n  telegram.reply_markup = { inline_keyboard: [buttons.map((b) => ({ text: b.label, url: b.url }))] };\n}\n\nreturn [{\n  json: {\n    leadId: input.leadId ?? null,\n    level,\n    emailTo: input.emailTo || cfg.staffEmail,\n    subject,\n    emailHtml,\n    telegram,\n  },\n}];"
+        "jsCode": "// Đầu vào (1 item):\n// {\n//   mode?: 'send' | 'update',          // mặc định 'send'\n//   leadId?, level?, title,\n//   fields?: [{ icon, label, value } | { sep: true }],   // các dòng thông tin\n//   message?, note?,                    // đoạn chữ thêm; note hiện trong khung trích dẫn\n//   actions?: [{ label, url }],         // nút bấm (Telegram chỉ nhận link https)\n//   emailTo?, emailHtml?,               // chỉ dùng khi mode = 'send'\n//   statusLine?, telegramMessageId?, telegramChatId?   // chỉ dùng khi mode = 'update'\n// }\nconst cfg = $('Cấu hình').first().json;\nconst input = $('Khi được gọi').first().json;\n\nconst mode = input.mode === 'update' ? 'update' : 'send';\nconst title = String(input.title ?? '').trim();\nconst message = String(input.message ?? '').trim();\nconst fields = Array.isArray(input.fields) ? input.fields : [];\nconst note = String(input.note ?? '').trim();\nif (!title || (!message && !fields.length)) {\n  throw new Error('Thông báo nhân viên: thiếu title, hoặc thiếu cả message lẫn fields');\n}\n\nconst level = ['HOT', 'WARM', 'COLD'].includes(input.level) ? input.level : null;\nconst actions = (Array.isArray(input.actions) ? input.actions : [])\n  .filter((a) => a && a.label && /^https?:\\/\\//.test(String(a.url ?? '')))\n  .map((a) => ({ label: String(a.label).slice(0, 40), url: String(a.url) }));\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst prefix = level === 'HOT' ? '[ƯU TIÊN] ' : '';\nconst subject = title.startsWith(prefix) ? title : prefix + title;\nconst rows = fields.filter((f) => f && (f.sep || String(f.value ?? '').trim() !== ''));\n\n// ---------- Telegram (HTML) ----------\nconst icon = { HOT: '🔴', WARM: '🟠', COLD: '⚪' }[level] ?? '🔔';\nconst lines = [];\nif (mode === 'update' && input.statusLine) lines.push('<b>' + esc(input.statusLine) + '</b>', '');\nlines.push(icon + ' <b>' + esc(subject) + '</b>', '━━━━━━━━━━━━━━━━');\nfor (const f of rows) {\n  if (f.sep) { if (lines[lines.length - 1] !== '') lines.push(''); continue; }\n  lines.push((f.icon ? f.icon + ' ' : '') + '<b>' + esc(f.label) + ':</b> ' + esc(f.value));\n}\nif (message) lines.push('', esc(message));\nif (note) lines.push('', '<blockquote>💡 ' + esc(note) + '</blockquote>');\nconst buttons = actions.filter((a) => a.url.startsWith('https://'));\nconst textLinks = actions.filter((a) => !a.url.startsWith('https://'));\nif (textLinks.length) lines.push('', ...textLinks.map((a) => '🔗 ' + esc(a.label) + ': ' + esc(a.url)));\nlet text = lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n');\nif (text.length > 4000) text = text.slice(0, 3990) + '…';\n\nconst chatId = String(input.telegramChatId || cfg.telegramChatId || '');\nconst telegram = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };\nif (mode === 'update') telegram.message_id = Number(input.telegramMessageId) || 0;\n// 2 nút mỗi hàng\nif (buttons.length) {\n  const kb = [];\n  for (let i = 0; i < buttons.length; i += 2) kb.push(buttons.slice(i, i + 2).map((b) => ({ text: b.label, url: b.url })));\n  telegram.reply_markup = { inline_keyboard: kb };\n}\nconst telegramMethod = mode === 'update' ? 'editMessageText' : 'sendMessage';\nconst telegramReady = !!chatId && (mode === 'send' || telegram.message_id > 0);\n\n// ---------- Email ----------\nconst emailHtml = input.emailHtml\n  ? String(input.emailHtml)\n  : '<div style=\"font-family:Arial,sans-serif;max-width:600px;line-height:1.6;color:#111827\">'\n    + '<p style=\"font-size:17px\"><b>' + esc(subject) + '</b></p>'\n    + (rows.length ? '<table style=\"border-collapse:collapse;width:100%;background:#f3f4f6\">'\n      + rows.filter((f) => !f.sep).map((f) => '<tr><td style=\"padding:8px;color:#6b7280;width:35%\">' + esc(f.label) + '</td><td style=\"padding:8px\">' + esc(f.value) + '</td></tr>').join('')\n      + '</table>' : '')\n    + (message ? '<p>' + esc(message).replace(/\\n/g, '<br>') + '</p>' : '')\n    + (note ? '<p style=\"padding:10px;background:#fffbeb;border-left:4px solid #f59e0b\">' + esc(note) + '</p>' : '')\n    + '<p>' + actions.map((a) => '<a href=\"' + esc(a.url) + '\" style=\"display:inline-block;margin-right:8px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">' + esc(a.label) + '</a>').join('') + '</p>'\n    + '</div>';\n\nreturn [{\n  json: {\n    mode,\n    leadId: input.leadId ?? null,\n    level,\n    emailTo: input.emailTo || cfg.staffEmail,\n    subject,\n    emailHtml,\n    telegramMethod,\n    telegramReady,\n    telegram,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -61,6 +61,40 @@
       ],
       "id": "b1f0a003-0000-4000-8000-000000000000",
       "name": "Chuẩn hoá"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b1f0a009-0000-4000-8000-000000000000-1",
+              "leftValue": "={{ $json.mode === 'send' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ],
+      "id": "b1f0a009-0000-4000-8000-000000000000",
+      "name": "Gửi email?"
     },
     {
       "parameters": {
@@ -75,8 +109,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        660,
-        300
+        880,
+        200
       ],
       "id": "b1f0a004-0000-4000-8000-000000000000",
       "name": "Email nhân viên",
@@ -101,8 +135,8 @@
           },
           "conditions": [
             {
-              "id": "b1f0a005-0000-4000-8000-000000000001",
-              "leftValue": "={{ $('Cấu hình').first().json.telegramEnabled }}",
+              "id": "b1f0a005-0000-4000-8000-000000000000-1",
+              "leftValue": "={{ $('Cấu hình').first().json.telegramEnabled && $('Chuẩn hoá').first().json.telegramReady }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -118,7 +152,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        880,
+        1100,
         300
       ],
       "id": "b1f0a005-0000-4000-8000-000000000000",
@@ -127,7 +161,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/{{ $('Chuẩn hoá').first().json.telegramMethod }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($('Chuẩn hoá').first().json.telegram) }}",
@@ -138,7 +172,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1100,
+        1320,
         200
       ],
       "id": "b1f0a006-0000-4000-8000-000000000000",
@@ -150,12 +184,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const ran = $('Gửi Telegram').isExecuted;\nconst tg = ran ? $('Gửi Telegram').first().json : null;\nreturn [{\n  json: {\n    emailSent: true,\n    telegramSent: !!tg && tg.ok === true,\n    telegramSkipped: !ran,\n    telegramError: tg && tg.ok !== true ? (tg.error?.message ?? tg.description ?? 'Lỗi Telegram') : null,\n  },\n}];"
+        "jsCode": "const n = $('Chuẩn hoá').first().json;\nconst ran = $('Gửi Telegram').isExecuted;\nconst tg = ran ? $('Gửi Telegram').first().json : null;\nreturn [{\n  json: {\n    mode: n.mode,\n    emailSent: $('Email nhân viên').isExecuted,\n    telegramSent: !!tg && tg.ok === true,\n    telegramSkipped: !ran,\n    telegramError: tg && tg.ok !== true ? (tg.error?.message ?? tg.description ?? 'Lỗi Telegram') : null,\n    telegramMessageId: tg?.result?.message_id ?? null,\n    telegramChatId: tg?.result?.chat?.id ?? null,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
+        1540,
         300
       ],
       "id": "b1f0a007-0000-4000-8000-000000000000",
@@ -163,15 +197,15 @@
     },
     {
       "parameters": {
-        "content": "## Thông báo nhân viên (dùng chung)\nGọi bằng node **Execute Workflow** (Run once with all items, 1 item).\n\nĐầu vào:\n`{ leadId?, level?, title, message, actions?: [{label, url}], emailTo?, emailHtml? }`\n\n- Email luôn gửi (lỗi thì sub-workflow báo lỗi cho luồng gọi).\n- Telegram chỉ gửi khi có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID`; lỗi Telegram KHÔNG làm hỏng luồng gọi.\n- Nút Telegram chỉ nhận link https; link khác ghi thành chữ.\n\nKết quả: `{ emailSent, telegramSent, telegramSkipped, telegramError }`",
-        "height": 320,
-        "width": 560
+        "content": "## Thông báo nhân viên (dùng chung)\nGọi bằng node **Execute Workflow** (1 item).\n\n**mode = 'send'** (mặc định): gửi email + tin Telegram, trả về `telegramMessageId`.\n**mode = 'update'**: sửa lại tin Telegram cũ (`telegramMessageId`), thêm `statusLine`, bỏ các nút không còn dùng. Không gửi email.\n\nĐầu vào: `{ mode?, leadId?, level?, title, fields?: [{icon,label,value}|{sep:true}], message?, note?, actions?: [{label,url}], emailTo?, emailHtml?, statusLine?, telegramMessageId?, telegramChatId? }`\n\n- Email lỗi thì sub-workflow báo lỗi cho luồng gọi; Telegram lỗi thì KHÔNG.\n- Telegram chỉ chạy khi có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID`. Nút chỉ nhận link https; link khác ghi thành chữ.",
+        "height": 360,
+        "width": 600
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         0,
-        -60
+        -100
       ],
       "id": "b1f0a008-0000-4000-8000-000000000000",
       "name": "Ghi chú"
@@ -204,7 +238,25 @@
       "main": [
         [
           {
+            "node": "Gửi email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi email?": {
+      "main": [
+        [
+          {
             "node": "Email nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có Telegram?",
             "type": "main",
             "index": 0
           }
@@ -258,7 +310,7 @@
     "executionOrder": "v1",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "b1f0a000-0000-4000-8000-000000000001",
+  "versionId": "b1f0a000-0000-4000-8000-000000000002",
   "meta": {
     "templateCredsSetupCompleted": true
   },

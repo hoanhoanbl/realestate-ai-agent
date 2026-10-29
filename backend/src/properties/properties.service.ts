@@ -1,8 +1,9 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Property } from './entities/property.entity';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/create-property.dto';
+import { SearchPropertyDto } from './dto/search-property.dto';
 
 @Injectable()
 export class PropertiesService implements OnModuleInit {
@@ -115,9 +116,25 @@ export class PropertiesService implements OnModuleInit {
     }
   }
 
-  // Công khai: không trả các căn đã ẩn
-  findAll(): Promise<Property[]> {
-    return this.propertyRepository.find({ where: { status: Not('HIDDEN') }, order: { id: 'ASC' } });
+  // Công khai: không trả các căn đã ẩn. Bộ lọc để trống thì trả hết như trước
+  findAll(filter: SearchPropertyDto = {}): Promise<Property[]> {
+    const qb = this.propertyRepository
+      .createQueryBuilder('p')
+      .where('p.status <> :hidden', { hidden: 'HIDDEN' });
+
+    if (filter.q) {
+      // thoát ký tự đặc biệt của LIKE để "50%" không khớp mọi thứ
+      const like = `%${filter.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      qb.andWhere('(p.name ILIKE :like OR p.address ILIKE :like)', { like });
+    }
+    if (filter.minPrice !== undefined) qb.andWhere('p.price >= :minPrice', { minPrice: filter.minPrice });
+    if (filter.maxPrice !== undefined) qb.andWhere('p.price <= :maxPrice', { maxPrice: filter.maxPrice });
+    if (filter.minArea !== undefined) qb.andWhere('p.area >= :minArea', { minArea: filter.minArea });
+    if (filter.type) qb.andWhere('p.type = :type', { type: filter.type });
+
+    qb.orderBy('p.id', 'ASC');
+    if (filter.limit) qb.take(filter.limit);
+    return qb.getMany();
   }
 
   findAllAdmin(): Promise<Property[]> {

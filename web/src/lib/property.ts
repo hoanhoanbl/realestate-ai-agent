@@ -50,3 +50,38 @@ export function formatBillion(value: string | number): string {
   const n = Number(value) / BILLION;
   return `${n.toLocaleString("vi-VN", { maximumFractionDigits: 2 })} tỷ`;
 }
+
+// Bỏ dấu tiếng Việt để tìm "thao dien" vẫn ra "Thảo Điền"
+export function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
+}
+
+export function matchesQuery(p: Property, query: string): boolean {
+  const q = normalizeText(query);
+  if (!q) return true;
+  return normalizeText(`${p.name} ${p.address}`).includes(q);
+}
+
+export const SORT_OPTIONS = [
+  { value: "DEFAULT", label: "Mới đăng" },
+  { value: "PRICE_ASC", label: "Giá thấp đến cao" },
+  { value: "PRICE_DESC", label: "Giá cao đến thấp" },
+  { value: "AREA_DESC", label: "Diện tích lớn nhất" },
+] as const;
+
+export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
+
+export function sortProperties(list: Property[], sort: SortValue): Property[] {
+  const copy = [...list];
+  if (sort === "PRICE_ASC") copy.sort((a, b) => Number(a.price) - Number(b.price));
+  else if (sort === "PRICE_DESC") copy.sort((a, b) => Number(b.price) - Number(a.price));
+  else if (sort === "AREA_DESC") copy.sort((a, b) => Number(b.area) - Number(a.area));
+  else copy.sort((a, b) => b.id - a.id);
+  return copy;
+}

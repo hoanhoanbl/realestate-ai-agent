@@ -333,15 +333,22 @@ export function rejectContract(id: number, reason: string): Promise<{ ok: true }
 
 // Trang ký công khai của khách
 export interface SignInfo {
+  id: number;
   title: string | null;
   content: string | null;
   customerName: string;
   propertyName: string | null;
+  propertyAddress: string | null;
+  propertyPrice: string | number;
   depositAmount: string | number;
   status: ContractStatus;
   expiresAt: string | null;
+  createdAt: string;
+  approvedBy: string | null;
   signedAt: string | null;
   signerName: string | null;
+  // Chỉ có khi hợp đồng đã ký
+  signature: string | null;
 }
 
 export function getSignInfo(token: string): Promise<SignInfo> {

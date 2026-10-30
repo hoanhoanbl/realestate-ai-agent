@@ -10,7 +10,7 @@ import {
   type PropertyInput,
 } from "@/lib/api";
 import PropertyImage from "@/components/PropertyImage";
-import { Alert, Button, Field, INPUT } from "@/components/ui";
+import { Alert, Button, Field, INPUT, PageHeader } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { TYPE_LABELS, typeLabel } from "@/lib/property";
 
@@ -95,9 +95,7 @@ export default function PropertiesAdminPage() {
 
   if (session && session.user.role !== "MANAGER") {
     return (
-      <p className="rounded-lg bg-amber-50 p-4 text-amber-800 ring-1 ring-amber-200">
-        Chỉ quản lý được thêm, sửa hoặc ẩn căn nhà.
-      </p>
+      <Alert tone="warning">Chỉ quản lý được thêm, sửa hoặc ẩn căn nhà.</Alert>
     );
   }
 
@@ -150,13 +148,11 @@ export default function PropertiesAdminPage() {
 
   return (
     <section>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Quản lý nhà</h1>
-          <p className="mt-1 text-sm text-slate-600">Căn bị ẩn không hiện ở trang khách và không nhận đặt lịch.</p>
-        </div>
-        <Button onClick={() => open("new")}>+ Thêm căn nhà</Button>
-      </div>
+      <PageHeader
+        title="Quản lý nhà"
+        description="Căn bị ẩn không hiện ở trang khách và không nhận đặt lịch."
+        actions={<Button onClick={() => open("new")}>+ Thêm căn nhà</Button>}
+      />
 
       {error && <Alert className="mt-4">{error}</Alert>}
 
@@ -227,7 +223,7 @@ export default function PropertiesAdminPage() {
       {items === null && !error && <p className="mt-6 text-slate-500">Đang tải...</p>}
 
       {items !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-card">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>

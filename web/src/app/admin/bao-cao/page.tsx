@@ -11,12 +11,14 @@ import {
   type ReportDetail,
   type ReportRow,
 } from "@/lib/api";
+import CompareBars from "@/components/CompareBars";
+import { Alert, Button, CARD, EmptyState, Icon, PageHeader, Skeleton } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 
 // useSearchParams cần nằm trong Suspense
 export default function ReportsPage() {
   return (
-    <Suspense fallback={<p className="text-slate-500">Đang tải...</p>}>
+    <Suspense fallback={<Skeleton className="h-64 rounded-xl" />}>
       <ReportsContent />
     </Suspense>
   );
@@ -92,7 +94,7 @@ function ReportsContent() {
 
   if (session && session.user.role !== "MANAGER") {
     return (
-      <p className="rounded-lg bg-amber-50 p-4 text-amber-800 ring-1 ring-amber-200">Chỉ quản lý được xem báo cáo kinh doanh.</p>
+      <Alert tone="warning">Chỉ quản lý được xem báo cáo kinh doanh.</Alert>
     );
   }
 
@@ -129,32 +131,31 @@ function ReportsContent() {
 
   return (
     <section>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Báo cáo kinh doanh</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Tự động tạo 8 giờ sáng thứ Hai. AI Agent tra cứu cơ sở dữ liệu (chỉ đọc) để viết nhận định.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={runNow}
-          disabled={running}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {running ? "Đang tạo..." : "Tạo báo cáo ngay"}
-        </button>
-      </div>
+      <PageHeader
+        title="Báo cáo kinh doanh"
+        description="Tự động tạo 8 giờ sáng thứ Hai. AI Agent tra cứu cơ sở dữ liệu (chỉ đọc) để viết nhận định."
+        actions={
+          <Button onClick={runNow} disabled={running}>
+            <Icon name="sparkles" className="h-4 w-4" />
+            {running ? "Đang tạo..." : "Tạo báo cáo ngay"}
+          </Button>
+        }
+      />
 
-      {notice && <p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 ring-1 ring-blue-200">{notice}</p>}
-      {error && (
-        <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-          {error}
-        </p>
+      {notice && (
+        <Alert tone="info" className="mt-3">
+          {notice}
+        </Alert>
       )}
-      {list === null && !error && <p className="mt-6 text-slate-500">Đang tải...</p>}
+      {error && <Alert className="mt-3">{error}</Alert>}
+      {list === null && !error && <Skeleton className="mt-6 h-64 rounded-xl" />}
       {list !== null && list.length === 0 && (
-        <p className="mt-6 rounded-lg bg-slate-50 p-4 text-slate-600 ring-1 ring-slate-200">Chưa có báo cáo nào. Bấm &quot;Tạo báo cáo ngay&quot;.</p>
+        <EmptyState
+          className="mt-6"
+          icon={<Icon name="chart" className="h-10 w-10" />}
+          title="Chưa có báo cáo nào"
+          description="Bấm Tạo báo cáo ngay để AI Agent tổng hợp số liệu tuần này."
+        />
       )}
 
       {list !== null && list.length > 0 && (
@@ -166,8 +167,9 @@ function ReportsContent() {
                   <button
                     type="button"
                     onClick={() => setSelectedId(r.id)}
-                    className={`w-full rounded-lg border p-3 text-left text-sm ${
-                      selectedId === r.id ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                    aria-current={selectedId === r.id ? "true" : undefined}
+                    className={`w-full rounded-lg border p-3 text-left text-sm transition ${
+                      selectedId === r.id ? "border-brand-200 bg-brand-50 ring-1 ring-brand-200" : "border-slate-200 bg-white hover:bg-slate-50"
                     }`}
                   >
                     <div className="font-medium text-slate-900">
@@ -184,14 +186,20 @@ function ReportsContent() {
           <div className="space-y-4 lg:col-span-3">
             {detail && metrics && analysis && (
               <>
-                <div className="rounded-xl border border-slate-200 bg-white p-5">
-                  <h2 className="text-lg font-bold text-slate-900">{analysis.headline}</h2>
-                  {!analysis.aiUsed && <p className="mt-1 text-xs text-amber-700">AI không khả dụng, nội dung dựng từ số liệu.</p>}
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-indigo-600 p-6 text-white">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-100">
+                    <Icon name="sparkles" className="h-4 w-4" />
+                    {analysis.aiUsed ? "AI tóm tắt" : "Tóm tắt từ số liệu (AI không khả dụng)"} · {detail.periodStart} → {detail.periodEnd}
+                  </p>
+                  <h2 className="mt-2 text-lg font-bold leading-snug sm:text-xl">{analysis.headline}</h2>
                 </div>
 
                 {detail.alerts.length > 0 && (
                   <div className="rounded-xl bg-rose-50 p-5 ring-1 ring-rose-200">
-                    <h3 className="text-sm font-semibold uppercase text-rose-700">Điểm bất thường ({detail.alerts.length})</h3>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-700">
+                      <Icon name="alert" className="h-4 w-4" />
+                      Điểm bất thường ({detail.alerts.length})
+                    </h3>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-900">
                       {detail.alerts.map((a, i) => (
                         <li key={i}>{a}</li>
@@ -200,7 +208,14 @@ function ReportsContent() {
                   </div>
                 )}
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <div className="grid gap-4 xl:grid-cols-2">
+                <div className={`p-5 ${CARD}`}>
+                  <h3 className="font-semibold text-slate-900">So sánh với tuần trước</h3>
+                  <div className="mt-3">
+                    <CompareBars rows={ROWS.map((r) => ({ label: r.label, current: num(metrics.cur[r.key]), previous: num(metrics.prev[r.key]) }))} />
+                  </div>
+                </div>
+                <div className={`overflow-x-auto ${CARD}`}>
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                       <tr>
@@ -233,9 +248,10 @@ function ReportsContent() {
                     </tbody>
                   </table>
                 </div>
+                </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-5">
-                  <h3 className="text-sm font-semibold uppercase text-slate-500">Tỉ lệ chuyển đổi</h3>
+                <div className={`p-5 ${CARD}`}>
+                  <h3 className="font-semibold text-slate-900">Tỉ lệ chuyển đổi</h3>
                   <ul className="mt-3 space-y-3">
                     {FUNNEL.map((f) => {
                       const v = metrics.funnel[f.key];
@@ -246,7 +262,7 @@ function ReportsContent() {
                             <span className="font-semibold">{v === null || v === undefined ? "-" : `${v}%`}</span>
                           </div>
                           <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, v ?? 0)}%` }} />
+                            <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, v ?? 0)}%` }} />
                           </div>
                         </li>
                       );
@@ -255,16 +271,16 @@ function ReportsContent() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-white p-5">
-                    <h3 className="text-sm font-semibold uppercase text-slate-500">Nhận định</h3>
+                  <div className={`p-5 ${CARD}`}>
+                    <h3 className="font-semibold text-slate-900">Nhận định</h3>
                     <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-slate-800">
                       {analysis.insights.map((t, i) => (
                         <li key={i}>{t}</li>
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-5">
-                    <h3 className="text-sm font-semibold uppercase text-slate-500">Đề xuất cho tuần tới</h3>
+                  <div className={`p-5 ${CARD}`}>
+                    <h3 className="font-semibold text-slate-900">Đề xuất cho tuần tới</h3>
                     <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-slate-800">
                       {analysis.recommendations.map((t, i) => (
                         <li key={i}>{t}</li>

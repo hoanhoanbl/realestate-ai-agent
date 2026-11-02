@@ -1,0 +1,111 @@
+# Kiem tra moi PR vao dev hoac main truoc khi merge (khong deploy gi).
+# - Nhanh: PR vao main chi duoc tu dev (release) hoac hotfix/* (sua loi gap tren production).
+# - Backend, web: npm ci + lint + build, giong buoc build trong Dockerfile.
+# - n8n: moi file JSON trong n8n-workflows/ phai doc duoc, co id + name, id khong trung nhau.
+# Quy trinh day du: docs/quy-trinh-git.md
+name: Kiem tra PR
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  nhanh:
+    name: Dung nhanh
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Kiem tra nhanh nguon va dich
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          echo "PR: $HEAD -> $BASE"
+          if [ "$BASE" = "main" ]; then
+            case "$HEAD" in
+              dev|hotfix/*) echo "OK" ;;
+              *) echo "::error::PR vao main chi duoc tu dev (release) hoac hotfix/*. Hay doi base cua PR sang dev."; exit 1 ;;
+            esac
+          fi
+
+  backend:
+    name: Backend lint + build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  web:
+    name: Web lint + build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  n8n:
+    name: n8n workflow JSON
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Doc tung file workflow
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          const dir = 'n8n-workflows';
+          const seen = new Map();
+          let bad = 0;
+          for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+            let wf;
+            try {
+              wf = JSON.parse(fs.readFileSync(`${dir}/${f}`, 'utf8'));
+            } catch (e) {
+              console.log(`::error file=${dir}/${f}::JSON hong: ${e.message}`);
+              bad++;
+              continue;
+            }
+            if (Array.isArray(wf)) wf = wf[0];
+            if (!wf?.id || !wf?.name || !Array.isArray(wf?.nodes)) {
+              console.log(`::error file=${dir}/${f}::Thieu id, name hoac nodes`);
+              bad++;
+              continue;
+            }
+            if (seen.has(wf.id)) {
+              console.log(`::error file=${dir}/${f}::id ${wf.id} trung voi ${seen.get(wf.id)}`);
+              bad++;
+            }
+            seen.set(wf.id, f);
+            console.log(`${f}: ${wf.id} (${wf.nodes.length} node)`);
+          }
+          process.exit(bad ? 1 : 0);
+          EOF

@@ -1,0 +1,368 @@
+{
+  "name": "Luồng 6b: Nạp tri thức RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Luồng 6b: Nạp tri thức RAG\n\nĐọc các căn chưa bán (bảng `properties`) và tài liệu quy trình / FAQ (bảng `kb_documents`), cắt đoạn, tạo embedding bằng Gemini rồi lưu vào pgvector (bảng `rag_chunks`).\n\nTool \"Hỏi đáp tri thức\" của Luồng 6 đọc lại bảng này.\n\nMỗi lần nạp gắn `batch` = mã execution. Nạp xong mới xoá các đoạn của lần trước, nên nếu lỗi giữa chừng thì bản cũ vẫn còn.\n\nChạy tay sau khi sửa `kb_documents` hoặc thêm nhà; tự chạy lúc 2h sáng.",
+        "height": 340,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -64
+      ],
+      "name": "Ghi chú",
+      "id": "af8486f8-59c8-4a42-ac55-29929e4a6e9e"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        528,
+        64
+      ],
+      "name": "Chạy tay",
+      "id": "5be17f3a-a5dc-4f4a-9150-0f50e97449b2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        256
+      ],
+      "name": "Mỗi đêm 2h",
+      "id": "e19c9536-2951-4577-9a31-3e00ee656d3e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, address, price, area, type, status, description\nFROM properties\nWHERE status <> 'SOLD'\nORDER BY id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        752,
+        160
+      ],
+      "name": "Đọc căn nhà",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "id": "691330dc-5e13-4e2c-9cd9-94a956f4f433",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT slug, title, category, content\nFROM kb_documents\nORDER BY slug",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        976,
+        160
+      ],
+      "name": "Đọc tài liệu",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "id": "3beed529-8ff6-46ea-a124-5601165b181f",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gom nhà và tài liệu thành từng item { text, source, ref, title, category } để nạp vào pgvector.\nconst TYPE_VI = { APARTMENT: 'Căn hộ', TOWNHOUSE: 'Nhà phố', VILLA: 'Biệt thự', SHOPHOUSE: 'Shophouse', LAND: 'Đất nền' };\nconst ty = (v) => (Number(v) / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' tỷ';\n\nconst out = [];\nfor (const { json: p } of $('Đọc căn nhà').all()) {\n  if (!p.id) continue;\n  out.push({ json: {\n    text: [\n      `Căn nhà #${p.id}: ${p.name}`,\n      `Loại: ${TYPE_VI[p.type] || p.type}`,\n      `Địa chỉ: ${p.address}`,\n      `Giá: ${ty(p.price)}`,\n      `Diện tích: ${p.area} m2`,\n      `Trạng thái: ${p.status === 'RESERVED' ? 'đã có người đặt cọc, không nhận lịch xem' : 'đang bán'}`,\n      `Mô tả: ${p.description || '(chưa có mô tả)'}`,\n    ].join('\\n'),\n    source: 'property',\n    ref: String(p.id),\n    title: p.name,\n    category: 'nha',\n  } });\n}\nfor (const { json: d } of $('Đọc tài liệu').all()) {\n  if (!d.slug) continue;\n  out.push({ json: { text: `${d.title}\\n${d.content}`, source: 'kb', ref: d.slug, title: d.title, category: d.category } });\n}\nif (out.length === 0) throw new Error('Không có nhà hay tài liệu nào để nạp');\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        160
+      ],
+      "name": "Gom tài liệu",
+      "id": "659776c3-cbf4-42f7-bda5-2aedc6d51c3f"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "rag_chunks",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        160
+      ],
+      "name": "Lưu vào pgvector",
+      "id": "4e09b72c-6831-4157-a9e2-9aaeb379ecca",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        384
+      ],
+      "name": "Gemini Embedding",
+      "id": "f7df9c3d-51a4-4e58-8659-d4451a7d6d81",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wU5LeG7gXaoUdMXQ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "source",
+                "value": "={{ $json.source }}"
+              },
+              {
+                "name": "ref",
+                "value": "={{ $json.ref }}"
+              },
+              {
+                "name": "title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "category",
+                "value": "={{ $json.category }}"
+              },
+              {
+                "name": "batch",
+                "value": "={{ $execution.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1536,
+        384
+      ],
+      "name": "Nạp tài liệu",
+      "id": "40fc7c20-6ba2-42ec-a68f-90914329e083"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 150,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        560
+      ],
+      "name": "Cắt đoạn",
+      "id": "dd79d795-4d0c-4a7e-bfcf-9aa9cc73e5c1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM rag_chunks WHERE metadata->>'batch' IS DISTINCT FROM $1",
+        "options": {
+          "queryReplacement": "={{ $execution.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1776,
+        160
+      ],
+      "name": "Xoá bản cũ",
+      "executeOnce": true,
+      "id": "cebed41f-043b-4fc0-897e-4f262a3dd3bb",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT metadata->>'source' AS nguon, count(*)::int AS so_doan, count(DISTINCT metadata->>'ref')::int AS so_tai_lieu\nFROM rag_chunks\nGROUP BY 1\nORDER BY 1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1984,
+        160
+      ],
+      "name": "Thống kê",
+      "executeOnce": true,
+      "id": "d502c223-e917-4ad5-b4b5-a422e1e3cd34",
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chạy tay": {
+      "main": [
+        [
+          {
+            "node": "Đọc căn nhà",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mỗi đêm 2h": {
+      "main": [
+        [
+          {
+            "node": "Đọc căn nhà",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đọc căn nhà": {
+      "main": [
+        [
+          {
+            "node": "Đọc tài liệu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đọc tài liệu": {
+      "main": [
+        [
+          {
+            "node": "Gom tài liệu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gom tài liệu": {
+      "main": [
+        [
+          {
+            "node": "Lưu vào pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu vào pgvector": {
+      "main": [
+        [
+          {
+            "node": "Xoá bản cũ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xoá bản cũ": {
+      "main": [
+        [
+          {
+            "node": "Thống kê",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Embedding": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Lưu vào pgvector",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nạp tài liệu": {
+      "ai_document": [
+        [
+          {
+            "node": "Lưu vào pgvector",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cắt đoạn": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Nạp tài liệu",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "errorWfRealestat"
+  },
+  "id": "luong6bRagNap001",
+  "tags": []
+}

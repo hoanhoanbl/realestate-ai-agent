@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,8 @@ import type { AuthUser } from '../auth/auth.types';
 
 @Injectable()
 export class LeadsService {
+  private readonly logger = new Logger(LeadsService.name);
+
   constructor(
     @InjectRepository(Lead)
     private readonly leadRepository: Repository<Lead>,
@@ -92,7 +95,9 @@ export class LeadsService {
     if (data.approvalUrl !== undefined) lead.approvalUrl = data.approvalUrl;
     lead.automationStatus = 'COMPLETED';
 
-    return this.leadRepository.save(lead);
+    const saved = await this.leadRepository.save(lead);
+    this.fireLeadChanged(saved, 'ai_result');
+    return saved;
   }
 
   async updateAutomationStatus(
@@ -125,7 +130,38 @@ export class LeadsService {
       type: 'STATUS_CHANGED',
       note: `${oldStatus} -> ${data.status}${data.note ? `: ${data.note}` : ''}`,
     });
+    this.fireLeadChanged(saved, 'status_changed');
     return saved;
+  }
+
+  async findByMauticId(contactId: number, email?: string): Promise<Lead | null> {
+    let lead = await this.leadRepository.findOne({
+      where: { mauticContactId: contactId },
+    });
+    if (!lead && email) {
+      lead = await this.leadRepository.findOne({
+        where: { email: email.trim().toLowerCase() },
+      });
+      if (lead && !lead.mauticContactId) {
+        lead.mauticContactId = contactId;
+        await this.leadRepository.save(lead);
+      }
+    }
+    return lead;
+  }
+
+  async updateMautic(
+    id: number,
+    data: { mauticContactId?: number; mauticPoints?: number },
+  ): Promise<Lead> {
+    const lead = await this.findOne(id);
+    if (data.mauticContactId !== undefined) {
+      lead.mauticContactId = data.mauticContactId;
+    }
+    if (data.mauticPoints !== undefined) {
+      lead.mauticPoints = data.mauticPoints;
+    }
+    return this.leadRepository.save(lead);
   }
 
   async addEvent(
@@ -199,6 +235,29 @@ export class LeadsService {
     return this.updateStatus(id, {
       status: data.status,
       note: `${data.note ? data.note + ' ' : ''}(bởi ${user.name})`,
+    });
+  }
+
+  // Gọi webhook lead-changed cho n8n (L7 đồng bộ sang Mautic). Không có URL thì bỏ qua.
+  private fireLeadChanged(lead: Lead, trigger: string): void {
+    const url = process.env.N8N_LEAD_CHANGED_URL;
+    if (!url) return;
+
+    const payload = {
+      event: 'lead_changed',
+      trigger,
+      leadId: lead.id,
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      level: lead.level,
+      status: lead.status,
+      source: lead.source,
+      score: lead.score,
+    };
+
+    this.n8nService.callWebhook(url.replace(/.*\/webhook\//, ''), payload).catch((err) => {
+      this.logger.warn(`Webhook lead-changed cho lead ${lead.id} thất bại: ${err.message}`);
     });
   }
 }

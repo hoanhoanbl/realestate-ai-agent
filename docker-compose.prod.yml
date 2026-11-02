@@ -1,0 +1,110 @@
+# Production (VM tren GCP): chay bang
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# Kem Mautic (docker-compose.mautic.yml cua Hau):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.mautic.yml --env-file .env up -d --build
+# Khac voi docker-compose.yml (local): khong mo cong DB/backend/web/n8n ra ngoai,
+# chi Caddy nhan cong 80/443 va tu cap HTTPS.
+services:
+  db:
+    image: pgvector/pgvector:pg16 # postgres 16 kem san extension vector (RAG)
+    container_name: realestate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: realestate-n8n
+    restart: unless-stopped
+    environment:
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+      TZ: Asia/Ho_Chi_Minh
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_HOST: n8n.${PUBLIC_HOST}
+      N8N_PROTOCOL: https
+      N8N_PROXY_HOPS: "1"
+      WEBHOOK_URL: https://n8n.${PUBLIC_HOST}/
+      # Trong container, backend duoc goi bang ten service
+      BACKEND_URL: http://backend:8081
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PUBLIC_WEB_URL: https://${PUBLIC_HOST}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SALE_CHAT_ID: ${TELEGRAM_SALE_CHAT_ID:-}
+      # Bot Telegram cho khach (luong 6), tach rieng bot sale. Secret de Telegram ky webhook
+      TELEGRAM_KHACH_BOT_TOKEN: ${TELEGRAM_KHACH_BOT_TOKEN:-}
+      TELEGRAM_KHACH_WEBHOOK_SECRET: ${TELEGRAM_KHACH_WEBHOOK_SECRET:-}
+      # Tai khoan API Mautic cho luong 7 (Basic auth)
+      MAUTIC_API_USER: ${MAUTIC_API_USER:-}
+      MAUTIC_API_PASSWORD: ${MAUTIC_API_PASSWORD:-}
+      # Tren server Mautic ep https nen goi qua URL public; de trong thi dung http://mautic_web:80/api
+      MAUTIC_URL: ${MAUTIC_URL:-}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  backend:
+    build: ./backend
+    container_name: realestate-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
+      PUBLIC_WEB_URL: https://${PUBLIC_HOST}
+      N8N_LEAD_CHANGED_URL: ${N8N_LEAD_CHANGED_URL:-}
+      PORT: 8081
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: https://${PUBLIC_HOST}/api
+        NEXT_PUBLIC_MAUTIC_URL: https://mautic.${PUBLIC_HOST}
+    container_name: realestate-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    container_name: realestate-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - backend
+      - n8n
+
+volumes:
+  db_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:

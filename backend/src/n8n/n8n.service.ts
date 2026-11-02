@@ -25,11 +25,24 @@ export class N8nService {
   }
 
   // Bấm "link duyệt" của một lần chạy n8n đang chờ (Wait). Ném lỗi nếu link đã hết hạn / đã dùng.
+  // Luồng lưu link duyệt rồi mới gửi email và vào bước Wait, nên có vài giây lần chạy chưa ở trạng thái chờ:
+  // n8n trả 409 "is running already" / "is about to resume". Khi đó đợi rồi thử lại, không coi là hết hạn.
   async resume(approvalUrl: string, action: string, extra: Record<string, string> = {}): Promise<void> {
     const u = this.toInternalUrl(approvalUrl);
     u.searchParams.set('action', action);
     for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, v);
-    await firstValueFrom(this.httpService.get(u.toString(), { timeout: 60000 }));
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await firstValueFrom(this.httpService.get(u.toString(), { timeout: 60000 }));
+        return;
+      } catch (err: any) {
+        const message = String(err?.response?.data?.message ?? '');
+        const notWaitingYet = err?.response?.status === 409 && /running already|about to resume/.test(message);
+        if (!notWaitingYet || attempt >= 5) throw err;
+        this.logger.warn(`Lần chạy n8n chưa tới bước chờ, thử lại lần ${attempt + 1}: ${message}`);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
   }
 
   // Gọi webhook của một luồng n8n đã Publish, có header bí mật.

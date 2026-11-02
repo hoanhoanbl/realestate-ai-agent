@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
+import ContactButtons from "@/components/ContactButtons";
 import LeadActions from "@/components/LeadActions";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
+import MauticScoreCard from "@/components/MauticScoreCard";
 import StatusBadge from "@/components/StatusBadge";
 import {
   ApiError,
@@ -15,6 +17,7 @@ import {
   getLead,
   getLeadEvents,
   getLeadFeedback,
+  sourceLabel,
   type Feedback,
   type LeadDetail,
   type LeadEvent,
@@ -154,10 +157,16 @@ function LeadDetailContent() {
 
           <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
 
+          <div className="mt-5">
+            <MauticScoreCard lead={lead} />
+          </div>
+
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <Card title="Thông tin khách">
+              <ContactButtons phone={lead.phone} email={lead.email} />
               <Field label="Số điện thoại">{lead.phone}</Field>
               <Field label="Email">{lead.email}</Field>
+              <Field label="Nguồn khách">{sourceLabel(lead.source)}</Field>
               <Field label="Ngân sách">{formatVnd(lead.budget)}</Field>
               <Field label="Nhu cầu">{lead.needs ?? "-"}</Field>
               <Field label="Tạo lúc">{formatDateTime(lead.createdAt)}</Field>

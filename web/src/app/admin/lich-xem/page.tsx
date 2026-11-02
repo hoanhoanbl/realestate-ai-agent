@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import RescheduleControl from "@/components/RescheduleControl";
-import { formatDateTime, getSchedule, type ScheduleRow } from "@/lib/api";
+import { Alert, CARD, EmptyState, Icon, PageHeader, Skeleton } from "@/components/ui";
+import { getSchedule, type ScheduleRow } from "@/lib/api";
+import { dayLabel, formatDate, formatTime, vnDayKey } from "@/lib/time";
 
 type Tab = "UPCOMING" | "PAST";
 
@@ -46,93 +48,101 @@ export default function SchedulePage() {
 
   const visible = tab === "UPCOMING" ? upcoming : past;
 
+  // Nhóm theo ngày (giờ Việt Nam), giữ thứ tự đã sắp
+  const groups = useMemo(() => {
+    const map = new Map<string, ScheduleRow[]>();
+    for (const r of visible) {
+      const key = vnDayKey(r.viewingTime);
+      map.set(key, [...(map.get(key) ?? []), r]);
+    }
+    return [...map.entries()];
+  }, [visible]);
+
+  const tabs: [Tab, string, number][] = [
+    ["UPCOMING", "Sắp tới", upcoming.length],
+    ["PAST", "Đã qua", past.length],
+  ];
+
   return (
     <section>
-      <h1 className="text-2xl font-bold text-slate-900">Lịch xem nhà</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Đổi giờ ở đây: khách đã chốt lịch sẽ nhận email báo giờ mới, khách chưa duyệt thì chỉ đổi giờ rồi bạn bấm Duyệt.
-      </p>
+      <PageHeader
+        title="Lịch xem nhà"
+        description="Đổi giờ ở đây: khách đã chốt lịch sẽ nhận email báo giờ mới, khách chưa duyệt thì đổi giờ rồi bấm Duyệt ở trang khách."
+      />
 
-      <div className="mt-5 flex gap-2">
-        {([["UPCOMING", `Sắp tới (${upcoming.length})`], ["PAST", `Đã qua (${past.length})`]] as [Tab, string][]).map(([value, label]) => (
+      <div className="mt-5 inline-flex rounded-lg bg-slate-100 p-1">
+        {tabs.map(([value, label, count]) => (
           <button
             key={value}
             type="button"
+            aria-pressed={tab === value}
             onClick={() => setTab(value)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ring-1 ${
-              tab === value ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+              tab === value ? "bg-white text-slate-900 shadow-card" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {label}
+            {label} <span className="text-slate-400">{count}</span>
           </button>
         ))}
       </div>
 
-      {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-          {error}
-        </p>
-      )}
-      {rows === null && !error && <p className="mt-6 text-slate-500">Đang tải...</p>}
+      {error && <Alert className="mt-4">{error}</Alert>}
+      {rows === null && !error && <Skeleton className="mt-5 h-64 rounded-xl" />}
 
-      {rows !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-3">Giờ xem</th>
-                <th className="px-3 py-3">Khách</th>
-                <th className="px-3 py-3">Căn nhà</th>
-                <th className="px-3 py-3">Mức</th>
-                <th className="px-3 py-3">Trạng thái</th>
-                <th className="px-3 py-3">Đổi giờ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visible.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
-                    Không có lịch nào.
-                  </td>
-                </tr>
-              )}
-              {visible.map((r) => (
-                <tr key={r.id} className="align-top hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-3 py-3 font-medium">{formatDateTime(r.viewingTime)}</td>
-                  <td className="px-3 py-3">
-                    <Link href={`/admin/leads/${r.leadId}`} className="font-medium text-blue-700 hover:underline">
+      {rows !== null && visible.length === 0 && (
+        <EmptyState
+          className="mt-5"
+          icon={<Icon name="calendar" className="h-10 w-10" />}
+          title={tab === "UPCOMING" ? "Chưa có lịch xem sắp tới" : "Chưa có lịch nào đã qua"}
+          description="Khách đặt lịch trên trang web sẽ hiện ở đây."
+        />
+      )}
+
+      <div className="mt-5 space-y-6">
+        {groups.map(([day, items]) => (
+          <div key={day}>
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+              {dayLabel(items[0].viewingTime)}
+              <span className="text-xs font-normal text-slate-400">
+                {formatDate(items[0].viewingTime)} · {items.length} lịch
+              </span>
+            </h2>
+            <ul className={`divide-y divide-slate-100 ${CARD}`}>
+              {items.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+                  <div className="w-16 shrink-0">
+                    <p className="text-lg font-bold text-brand-700">{formatTime(r.viewingTime)}</p>
+                  </div>
+                  <div className="min-w-[160px] flex-1">
+                    <Link href={`/admin/leads/${r.leadId}`} className="font-semibold text-slate-900 hover:text-brand-700">
                       {r.leadName}
                     </Link>
-                    <div className="text-xs text-slate-500">{r.leadPhone}</div>
-                  </td>
-                  <td className="max-w-[260px] px-3 py-3 text-slate-600">
-                    {r.propertyName}
-                    <div className="text-xs text-slate-400">{r.propertyAddress}</div>
-                  </td>
-                  <td className="px-3 py-3">
+                    <p className="text-xs text-slate-500">{r.leadPhone}</p>
+                  </div>
+                  <div className="min-w-[200px] flex-[2]">
+                    <p className="text-sm font-medium text-slate-700">{r.propertyName}</p>
+                    <p className="text-xs text-slate-400">{r.propertyAddress}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <LevelBadge level={r.leadLevel} />
-                  </td>
-                  <td className="px-3 py-3">
                     <LeadStatusBadge status={r.leadStatus} />
-                  </td>
-                  <td className="px-3 py-3">
-                    {(r.leadStatus === "NEW" || r.leadStatus === "CONFIRMED") && tab === "UPCOMING" ? (
+                  </div>
+                  <div className="ml-auto">
+                    {(r.leadStatus === "NEW" || r.leadStatus === "CONFIRMED") && tab === "UPCOMING" && (
                       <RescheduleControl
                         viewingId={r.id}
                         currentTime={r.viewingTime}
                         confirmed={r.leadStatus === "CONFIRMED"}
                         onDone={reload}
                       />
-                    ) : (
-                      <span className="text-slate-300">-</span>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </ul>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

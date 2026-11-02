@@ -26,4 +26,12 @@ export class Property {
 
   @Column()
   status: string;
+
+  // Link ảnh đại diện (http/https). Trống thì web hiện nền theo loại nhà
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  imageUrl: string | null;
+
+  // Mô tả cho khách đọc, sau này dùng làm nguồn cho RAG
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 }

@@ -1,4 +1,14 @@
-import { IsEmail, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateViewingDto {
@@ -28,4 +38,13 @@ export class CreateViewingDto {
 
   @IsISO8601()
   viewingTime: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  source?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  consentMarketing?: boolean;
 }

@@ -5,6 +5,11 @@ COPY package*.json ./
 RUN npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* duoc nhung vao bundle luc build, nen phai truyen luc build
+ARG NEXT_PUBLIC_API_URL=http://localhost:8081/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_MAUTIC_URL=http://localhost:8082
+ENV NEXT_PUBLIC_MAUTIC_URL=$NEXT_PUBLIC_MAUTIC_URL
 RUN npm run build
 
 # Stage 2: Runner

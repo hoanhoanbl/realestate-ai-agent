@@ -1,0 +1,97 @@
+# File compose rieng cho Mautic 5 (Hau so huu - Quyet dinh D-04)
+# Deploy kem file goc: docker compose -f docker-compose.yml -f docker-compose.mautic.yml up -d
+# Khong mo cong MySQL ra ngoai; chi mo port 8082 cho web Mautic
+
+services:
+  mautic_db:
+    image: mysql:8.0
+    container_name: realestate-mautic-db
+    restart: unless-stopped
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=256M
+      --max-connections=50
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MAUTIC_MYSQL_ROOT_PASSWORD:-mautic_root_123456}
+      MYSQL_DATABASE: ${MAUTIC_DB_NAME:-mautic}
+      MYSQL_USER: ${MAUTIC_DB_USER:-mautic}
+      MYSQL_PASSWORD: ${MAUTIC_DB_PASSWORD:-mautic_123456}
+    volumes:
+      - mautic_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MAUTIC_DB_USER:-mautic}", "-p${MAUTIC_DB_PASSWORD:-mautic_123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mautic_web:
+    image: mautic/mautic:5-apache
+    container_name: realestate-mautic-web
+    restart: unless-stopped
+    depends_on:
+      mautic_db:
+        condition: service_healthy
+    ports:
+      - "${MAUTIC_PORT:-8082}:80"
+    environment:
+      MAUTIC_DB_HOST: mautic_db
+      MAUTIC_DB_PORT: 3306
+      MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}
+      MAUTIC_DB_USER: ${MAUTIC_DB_USER:-mautic}
+      MAUTIC_DB_PASSWORD: ${MAUTIC_DB_PASSWORD:-mautic_123456}
+      MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
+      MAUTIC_MESSENGER_DSN_HIT: doctrine://default
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_media:/var/www/html/docroot/media
+
+  mautic_worker:
+    image: mautic/mautic:5-apache
+    container_name: realestate-mautic-worker
+    restart: unless-stopped
+    command: mautic_worker
+    depends_on:
+      - mautic_db
+      - mautic_web
+    environment:
+      MAUTIC_DB_HOST: mautic_db
+      MAUTIC_DB_PORT: 3306
+      MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}
+      MAUTIC_DB_USER: ${MAUTIC_DB_USER:-mautic}
+      MAUTIC_DB_PASSWORD: ${MAUTIC_DB_PASSWORD:-mautic_123456}
+      MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
+      MAUTIC_MESSENGER_DSN_HIT: doctrine://default
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_media:/var/www/html/docroot/media
+
+  mautic_cron:
+    image: mautic/mautic:5-apache
+    container_name: realestate-mautic-cron
+    restart: unless-stopped
+    command: mautic_cron
+    depends_on:
+      - mautic_db
+      - mautic_web
+    environment:
+      MAUTIC_DB_HOST: mautic_db
+      MAUTIC_DB_PORT: 3306
+      MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}
+      MAUTIC_DB_USER: ${MAUTIC_DB_USER:-mautic}
+      MAUTIC_DB_PASSWORD: ${MAUTIC_DB_PASSWORD:-mautic_123456}
+      MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
+      MAUTIC_MESSENGER_DSN_HIT: doctrine://default
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_media:/var/www/html/docroot/media
+
+volumes:
+  mautic_db_data:
+  mautic_config:
+  mautic_logs:
+  mautic_media:

@@ -13,8 +13,57 @@
     "Helvetica Neue", Arial, sans-serif;
 }
 
+/* Màu thương hiệu: đổi ở đây là cả web đổi theo (dùng bg-brand-600, text-brand-700...) */
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 10px 24px -6px rgb(15 23 42 / 0.12);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Bản hợp đồng khổ A4: trên màn hình là tờ giấy có bóng, khi in thì bỏ khung để máy in dùng lề của @page */
+.contract-paper {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 20mm;
+  /* Font có đủ dấu tiếng Việt trên Windows, macOS và điện thoại */
+  font-family: "Times New Roman", Times, "Noto Serif", "Liberation Serif", serif;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.1), 0 8px 24px rgb(15 23 42 / 0.08);
+}
+
+@page {
+  size: A4;
+  margin: 15mm 18mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .contract-paper {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .contract-paper {
+    min-height: 0;
+    padding: 8mm 6mm;
+  }
 }

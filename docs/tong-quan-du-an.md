@@ -2,30 +2,29 @@
 
 Môn: Chuyên đề 2, No-code / Low-code Automation (n8n). Nhóm: **Hoàng**, **Hậu**.
 
-File này là **tờ tóm tắt** để trả lời "dự án giải bài toán gì, đáp ứng yêu cầu của thầy ở đâu, đã đo được gì". Chi tiết nằm ở các file khác, file này chỉ trỏ tới:
+Các tài liệu khác:
 
-| Muốn biết | Đọc |
-|---|---|
-| Cách chạy, tài khoản đăng nhập, các trang web | [../README-dev.md](../README-dev.md) |
-| Từng luồng n8n làm gì ngoài thực tế (sơ đồ swimlane) | [luong/](luong/) |
-| API, dữ liệu, webhook | [api-contract-dev.md](api-contract-dev.md) |
-| 3 actor làm được gì | [use-cases.md](use-cases.md) |
-| Hai người chia việc | [phoi-hop.md](phoi-hop.md) |
+- [api-contract.md](api-contract.md): luật chung về dữ liệu và API. Mâu thuẫn thì file đó thắng.
+- [ke-hoach-tich-hop.md](ke-hoach-tich-hop.md): kế hoạch chi tiết tích hợp Mautic, Agentic AI và App (chốt 20/10/2026).
+- [mautic-setup.md](mautic-setup.md): hướng dẫn hạ tầng và cấu hình Mautic 5.
 
 ## 1. Yêu cầu của môn
 
 Theo tài liệu thầy giao:
 
-- **Mục tiêu:** kết hợp workflow automation (n8n) với API, webhook, database, AI/LLM, human-in-the-loop và monitoring để giải một **bài toán thực tế**.
+- **Mục tiêu môn:** kết hợp workflow automation (n8n) với API, webhook, database, AI/LLM, human-in-the-loop và monitoring để giải một **bài toán thực tế**.
 - **Kiến trúc gợi ý cho mỗi luồng:** `Trigger → Xử lý dữ liệu → API → AI → Quyết định → Hành động → Người duyệt → Log/Giám sát`.
 - **Tiêu chí luồng tốt:** không chỉ "A → B"; phải có dữ liệu thực tế, xử lý lỗi, retry, xác thực, log, bước duyệt và kết quả đo được.
-- **Yêu cầu thêm trên lớp:** mỗi thành viên làm **một luồng n8n riêng, tối thiểu 12 bước**. Sản phẩm có **web và app**.
+- **Yêu cầu thêm trên lớp:** mỗi thành viên làm **luồng n8n riêng, tối thiểu 12 bước**. n8n chạy trên host (máy chủ chung) hoặc Linux. Sản phẩm có **web và app**.
 
-## 2. Đề tài và bài toán
+## 2. Đề tài
 
-> **AI Real Estate Agent**: Visits, document signing, lead follow-up, and sales analytics. (Nhóm 9 "Industry-specific")
+> **AI Real Estate Agent**: Visits, document signing, lead follow-up, and sales analytics.
+> (Nhóm 9 "Industry-specific" trong danh sách đề tài)
 
-Một văn phòng môi giới bất động sản nhỏ nhận khách đăng ký xem nhà qua web. Hiện họ làm tay và gặp các vấn đề sau:
+## 3. Bài toán thực tế
+
+Một văn phòng môi giới bất động sản nhỏ (dữ liệu mẫu: 10 căn ở TP.HCM, Hà Nội, Đà Nẵng và Phú Quốc) nhận khách đăng ký xem nhà qua web. Hiện họ làm tay và gặp các vấn đề sau:
 
 | Vấn đề | Hậu quả |
 |---|---|
@@ -33,76 +32,105 @@ Một văn phòng môi giới bất động sản nhỏ nhận khách đăng ký
 | Xác nhận lịch, nhắc lịch bằng tay | Khách quên lịch, nhân viên quên gọi lại |
 | Không theo dõi khách sau buổi xem | Khách "nguội" và chuyển sang bên khác |
 | Giấy tờ đặt cọc soạn tay, gửi qua lại | Chậm, dễ sai thông tin |
-| Không có số liệu | Quản lý không biết tỉ lệ chốt, khâu nào đang rơi rụng |
+| Không có số liệu | Quản lý không biết tỉ lệ chốt, nguồn khách nào tốt |
 
-**Giải pháp:** tự động hoá **toàn bộ vòng đời của khách**, từ lúc đăng ký đến lúc ký cọc và báo cáo. AI làm phần lặp lại (chấm điểm, soạn email, nhắc việc, rà soát hợp đồng, tổng hợp số liệu); **con người duyệt** ở hai điểm quan trọng nhất: duyệt lịch xem (nhân viên) và duyệt hợp đồng (quản lý).
+**Giải pháp:** một AI Agent tự động hoá **toàn bộ vòng đời của khách**, từ lúc đăng ký đến lúc ký cọc và báo cáo. AI làm phần lặp lại (chấm điểm, soạn email, nhắc việc, tổng hợp số liệu), còn con người chỉ **duyệt** ở các bước quan trọng.
 
-Ba actor: **khách hàng**, **nhân viên sale**, **quản lý**. n8n, AI (Gemini) và email là hệ thống, không phải actor.
+## 4. Người dùng
 
-## 3. Vòng đời của khách
+| Vai | Làm gì trong hệ thống | Kênh |
+|---|---|---|
+| Khách mua nhà | Xem nhà, đăng ký xem, nhận email, ký hợp đồng cọc | Web (khu khách), email, Telegram bot |
+| Nhân viên sale | Nhận lead đã chấm điểm, duyệt lịch xem, cập nhật trạng thái khách | Email, Telegram, web admin, app Expo |
+| Quản lý | Duyệt hợp đồng, nhận báo cáo tuần, cảnh báo lỗi, quản lý nhân sự | Email, web admin |
 
-```
-NEW ──duyệt lịch──► CONFIRMED ──đã xem──► VIEWED ──tạo hợp đồng──► DEPOSIT ──khách ký──► SIGNED
-
-LOST (không mua): nhân viên đánh dấu được từ bất kỳ trạng thái nào trước khi ký.
-Hợp đồng bị từ chối hoặc hết hạn: khách DEPOSIT quay về VIEWED.
-```
-
-Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự động, backend ghi một dòng vào bảng `lead_events`: dòng thời gian của khách, và là chốt để các luồng định kỳ không gửi trùng.
-
-## 4. Các luồng n8n
-
-| Luồng | Vế đề tài | Trigger | Tóm tắt | Điểm nhấn kỹ thuật |
-|---|---|---|---|---|
-| [**1. Đặt lịch xem nhà**](luong/luong-1-dat-lich.md) | Visits | Webhook | Khách đăng ký → AI chấm HOT/WARM/COLD → email khách và nhân viên (kèm thông báo đẩy) → **chờ nhân viên duyệt** → chốt lịch | LLM, Switch, **human-in-the-loop (Wait)**, level tính lại từ điểm chứ không tin AI |
-| [**1b. Chốt lịch từ web admin**](luong/luong-1b-chot-lich-thu-cong.md) | Visits | Webhook | Nhân viên duyệt khi link email đã hết hạn, hoặc đổi giờ khách đã chốt → email báo khách | Phương án dự phòng khi link hết hạn, n8n đọc DB trực tiếp |
-| [**2. Follow-up tự động**](luong/luong-2-follow-up.md) | Lead follow-up | Schedule (mỗi giờ) | Nhắc lịch trước 24 giờ, xin cảm nhận sau buổi xem, nhắc khách WARM, nhắc nhân viên duyệt chậm | Vòng lặp, một khách lỗi không chặn cả lượt, kiểm tra nội dung AI trước khi gửi |
-| [**3. Hợp đồng đặt cọc**](luong/luong-3-hop-dong.md) | Document signing | Webhook | Soạn từ mẫu → AI rà soát → **quản lý duyệt** → khách **ký online** → xác nhận. Nhắc ký, hết hạn | **Hai lần Wait**, xử lý quá hạn; số liệu do code điền, AI chỉ rà soát |
-| [**4. Báo cáo kinh doanh**](luong/luong-4-bao-cao.md) | Sales analytics | Schedule (thứ Hai 8:00) hoặc webhook | Số liệu tuần, phễu, cảnh báo → **AI Agent tra cứu DB** → báo cáo cho quản lý | **AI Agent có công cụ**, tài khoản DB chỉ đọc, cảnh báo bằng quy tắc cố định |
-| [**5. Cảm nhận sau buổi xem**](luong/luong-5-cam-nhan.md) | Lead follow-up | Webhook | Khách gửi cảm nhận → AI phân tích và gợi ý việc → báo nhân viên; khách không hài lòng thì báo cả quản lý | Chống chèn lệnh trong ô góp ý, số sao và cảm xúc không được mâu thuẫn |
-| [**Error workflow**](luong/error-workflow.md) | Monitoring | Error Trigger | Luồng nào lỗi thì gửi email cho quản lý | Giám sát |
-
-Người duyệt nằm ở luồng 1 (nhân viên) và luồng 3 (quản lý, rồi khách ký). Các luồng 2, 4, 5 không cần duyệt vì chỉ gửi thông báo hoặc báo cáo, không thay đổi trạng thái khách.
-
-Đặc điểm chung: mọi node gọi dịch vụ ngoài (AI, email, HTTP) đều thử lại 3 lần cách 5 giây; luồng xử lý một khách mới có nhánh báo `FAILED` để khách không kẹt ở `PENDING`; lỗi ngoài dự kiến đi qua Error workflow; việc làm trên một khách đều ghi vào `lead_events`.
-
-## 5. Kiến trúc
+## 5. Vòng đời của khách (trạng thái lead)
 
 ```
- Web khách (Next.js) ─┐                              ┌─> Gemini (AI)
- Web admin (Next.js) ─┼─> Backend (NestJS) <──> n8n ─┼─> Email (SMTP Gmail)
- App nhân viên (Expo) ┘        │                     └─> Expo Push (thông báo đẩy)
-                               └──> PostgreSQL <──── n8n đọc trực tiếp (ghi qua API)
-Tất cả chạy bằng Docker Compose.
+NEW → CONFIRMED (đã chốt lịch) → VIEWED (đã xem) → DEPOSIT (muốn đặt cọc) → SIGNED (đã ký)
+                                                   ↘ LOST (không mua)
 ```
 
-- Backend và n8n nói chuyện bằng **webhook** (backend gọi n8n) và **callback** (n8n gọi ngược API backend), cùng header `X-Webhook-Secret`. Với các bước chờ người, backend bấm "link tiếp tục" của lần chạy n8n đang chờ.
-- n8n **đọc** PostgreSQL trực tiếp, nhưng mọi thao tác **ghi** đi qua API backend, để luật nghiệp vụ nằm ở một chỗ.
-- Nút **Duyệt** trên web admin và app đi qua backend, để n8n vẫn là nơi duy nhất xử lý duyệt.
-- Luồng 4 dùng tài khoản database **chỉ đọc**, vì AI tự viết câu SQL.
+Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự động, backend ghi một dòng vào bảng `lead_events`. Bảng này phục vụ chống gửi trùng, dòng thời gian của khách, báo cáo và log.
 
-## 6. Đối chiếu với "Technology Challenge Matrix" của thầy
+## 6. Các luồng n8n trong hệ thống
+
+| Luồng | Vế đề tài | Trigger | Tóm tắt | Điểm nhấn kỹ thuật | Chủ |
+|---|---|---|---|---|---|
+| **1. Tiếp nhận và chốt lịch xem nhà** | Visits | Webhook | Đăng ký → AI chấm điểm HOT/WARM/COLD → email khách → thông báo nhân viên kèm nút Duyệt | LLM, Switch, **Human-in-the-loop (Wait)** | **Hoàng** |
+| **1b. Xử lý duyệt/đổi giờ thủ công** | Visits | Webhook | Nhận hành động duyệt hoặc đổi giờ từ web admin / Telegram | HTTP callback, cập nhật status | **Hoàng** |
+| **2. Follow-up tự động** | Lead follow-up | Schedule | Nhắc lịch trước 24h, hỏi cảm nhận sau khi xem, nhắc khách WARM | Trigger định kỳ, Postgres, vòng lặp, guardrail AI | **Hậu** |
+| **3. Hợp đồng đặt cọc** | Document signing | Webhook | Khách muốn cọc → AI soạn hợp đồng → quản lý duyệt → khách ký online → xác nhận | 2 lần Wait (quản lý duyệt, khách ký qua `/ky/[token]`) | **Hoàng** |
+| **4. Báo cáo kinh doanh** | Sales analytics | Schedule (thứ Hai) | Gom số liệu tuần → tính phễu chuyển đổi → AI phân tích, đề xuất → email quản lý | **AI Agent có tool** (truy vấn DB), Merge, cảnh báo | **Hậu** |
+| **5. Phân tích cảm nhận** | Lead follow-up | Webhook | Nhận đánh giá của khách qua `/cam-nhan/[token]` → AI phân tích sentiment, tóm tắt và gợi ý | AI Chain, cập nhật feedback, ghi event | **Hậu** |
+| **6. Telegram Agent cho khách** | Visits & Q&A | Telegram Trigger | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch | AI Agent + Postgres Memory, Tool calling, RAG | **Hoàng** |
+| **7. Đồng bộ sang Mautic** | Marketing Auto | Webhook (`lead-changed`) | Nhận thay đổi từ lead → tạo/cập nhật Contact kèm Tag (thành phố, level, source, status) | Mautic REST API, data mapping | **Hậu** |
+| **8. Mautic báo về n8n** | Marketing Auto | Webhook (Mautic) | Khách mở email, bấm link, tăng điểm → n8n ghi nhận và báo sale khi vượt ngưỡng | Webhook receiver, scoring sync | **Hậu** |
+| **Error workflow (dùng chung)** | Monitoring | Error Trigger | Luồng nào lỗi thì gửi email cảnh báo quản lý | Giám sát | **Hoàng** |
+
+Mỗi luồng tối thiểu 12 bước và có:
+
+- Retry (3 lần, chờ 5 giây) ở mọi node có thể lỗi.
+- Xử lý lỗi: luồng nhận **một lead mới** (luồng 1) thì nhánh lỗi báo `FAILED` cho lead đó. Các luồng chạy theo lịch hoặc không gắn với một lead mới (luồng 2, 4) thì để Error workflow gửi email cho quản lý.
+- Ghi log: việc làm trên một lead thì ghi vào `lead_events`. Luồng 4 lưu kết quả vào bảng `reports`.
+
+## 7. Kiến trúc hệ thống
+
+```
+ KÊNH        Web khách · Web admin · Email · Telegram (sale, khách) · App Expo (giai đoạn 4)
+                                     │
+ n8n         Đã có: L1 L1b L2 L3 L4 L5 + Error
+             Mới:   Sub-workflow "Thông báo nhân viên"
+                    L6 Telegram Agent  (Hoàng)
+                    L7 Đồng bộ sang Mautic, L8 Mautic báo về  (Hậu)
+                                     │
+ DỊCH VỤ     Backend NestJS · Postgres · Gemini · Mautic + MySQL · Langfuse Cloud
+             Tất cả chạy trên realestate-vm (Langfuse là dịch vụ cloud)
+```
+
+- Backend ↔ n8n giao tiếp bằng webhook và callback có header `X-Webhook-Secret` (xem [api-contract.md](api-contract.md)).
+- n8n được **đọc** PostgreSQL trực tiếp (node Postgres) để lấy dữ liệu hàng loạt. Mọi thao tác **ghi** đều đi qua API backend.
+- Mautic chạy file compose riêng (`docker-compose.mautic.yml`) trên cùng network nội bộ.
+
+## 8. Đối chiếu với "Technology Challenge Matrix" của thầy
 
 | Công nghệ | Trạng thái | Ở đâu |
 |---|---|---|
-| Webhook | Có | Luồng 1, 1b, 3, 4, 5 |
-| REST API | Có | Backend NestJS; n8n gọi bằng HTTP Request |
-| Database | Có | PostgreSQL; n8n đọc bằng node Postgres (luồng 1, 1b, 2, 3, 4, 5) |
-| LLM | Có | Gemini: chấm điểm, soạn email, rà soát hợp đồng, phân tích cảm nhận, viết báo cáo |
-| Docker / Self-hosting | Có | Docker Compose, n8n tự host |
-| Human-in-the-loop | Có | Luồng 1 (duyệt lịch), luồng 3 (duyệt hợp đồng, khách ký) |
-| Queue / Event-driven | Một phần | Webhook bất đồng bộ, retry, Wait chờ sự kiện (chưa có hàng đợi riêng) |
-| AI Agent / Tool calling | Có | Luồng 4 |
-| Guardrail | Có | Luồng 1 (tính level), 2 (kiểm tra nội dung AI), 3 (quy tắc rủi ro), 5 (sao khớp cảm xúc) |
-| Logging / Monitoring | Có | `lead_events`, Error workflow, tab Executions của n8n |
-| Mobile app | Có, chưa thử trên máy thật | App Expo cho nhân viên |
-| RAG, STT/TTS, OCR, IoT | Không làm | Không thuộc yêu cầu của đề tài |
+| Webhook | ✅ Có | Luồng 1, 3, 5, 7, 8 |
+| REST API | ✅ Có | Backend NestJS (9 modules), n8n HTTP Request, Mautic API |
+| Database | ✅ Có | PostgreSQL (chính), MySQL (Mautic) |
+| LLM | ✅ Có | Gemini: chấm điểm, soạn email, phân tích cảm nhận, phân tích kinh doanh |
+| Docker / Self-hosting | ✅ Có | Docker Compose đa dịch vụ, n8n tự host, Mautic tự host |
+| Human-in-the-loop | ✅ Có | Luồng 1 (duyệt lịch), Luồng 3 (duyệt hợp đồng) |
+| Queue / Event-driven | ✅ Có | Webhook bất đồng bộ, retry, Wait chờ sự kiện, Mautic worker queue |
+| AI Agent / Tool calling | ✅ Có | Luồng 4 (Agent phân tích kèm tool DB), Luồng 6 (Telegram Agent) |
+| Marketing Automation | ✅ Có | Mautic 5 (chiến dịch nuôi khách, tính điểm hành vi) |
+| Logging / Monitoring | ✅ Có | `lead_events`, Error workflow, tab Executions, Langfuse |
 
-## 7. Đo lường kết quả
+## 9. Sản phẩm hoàn thiện
 
-| Chỉ số | Mục tiêu | Cách đo | Tình trạng |
-|---|---|---|---|
-| Độ chính xác phân loại HOT/WARM/COLD | ≥ 80% | Chạy 20 lead mẫu có nhãn mong đợi | **Chưa đo** |
-| Thời gian từ đăng ký đến khi khách nhận email | < 1 phút | Tab Executions của n8n | Khi chạy thử, xong trong khoảng 45 giây; chưa đo bài bản |
-| Khách bị kẹt `PENDING` | 0 | Mọi lỗi đều có nhánh báo `FAILED` | Đã có nhánh lỗi, kể cả khi AI trả mức lạ; chưa gây lỗi hàng loạt để thử |
-| Email follow-up gửi trùng | 0 | Kiểm tra `lead_events` | Đã thử: dữ liệu mẫu có 4 việc cần làm, sau một lượt chạy câu truy vấn trả 0 việc |
+Nguyên tắc: **web làm trước, app làm sau**.
+
+| Sản phẩm | Nội dung |
+|---|---|
+| 8 luồng n8n + Sub-workflow + Error | Như mục 6 |
+| Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
+| Web admin | Đăng nhập JWT, tổng quan (phễu theo trạng thái, tỉ lệ chốt, việc tồn), danh sách lead (hiện nguồn), chi tiết lead (dòng thời gian, duyệt, đổi giờ), lịch xem, quản lý nhà, hợp đồng, báo cáo AI hằng tuần, phân quyền tài khoản (RBAC) |
+| Mautic 5 | Quản lý contact, phân khúc khách hàng, chiến dịch nuôi WARM |
+| App nhân viên (Expo) | Đăng nhập, việc hôm nay, chi tiết lead (Duyệt, Đổi giờ, Gọi, Email), thông báo đẩy |
+| Báo cáo | Mô tả bài toán, kiến trúc, từng luồng, kết quả đo lường |
+
+## 10. Mốc thời gian chốt (theo `ke-hoach-tich-hop.md`)
+
+- **Demo tuần 1:** Thứ Bảy 24/10/2026
+- **Web hoàn thành:** 22/11/2026
+- **Khóa code toàn bộ:** 03/12/2026
+- **Nộp bài cuối kỳ:** Thứ Bảy 05/12/2026
+
+## 11. Thông tin chung của nhóm
+
+- **Gmail nhóm:** `nhadn2457@gmail.com`. Dùng làm tài khoản gửi (SMTP) và hộp thư nhận chung. Mật khẩu không ghi trong repo.
+- Các vai nhận email dùng bí danh dấu cộng:
+  - Quản lý: `nhadn2457+quanly@gmail.com`
+  - Nhân viên sale: `nhadn2457+nhanvien@gmail.com`
+  - Khách test: `nhadn2457+khach1@gmail.com`, `+khach2`, ...

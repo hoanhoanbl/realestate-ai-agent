@@ -64,7 +64,7 @@ function SignContent() {
   }
 
   const box = "mx-auto max-w-2xl";
-  const notice = (tone: "slate" | "emerald" | "amber", title: string, text?: string) => (
+  const notice = (tone: "slate" | "emerald" | "amber", title: string, text?: string, showCopy = false) => (
     <section className={box}>
       <div
         className={`rounded-xl border p-6 ${
@@ -73,9 +73,21 @@ function SignContent() {
       >
         <h1 className="text-xl font-bold text-slate-900">{title}</h1>
         {text && <p className="mt-2 text-slate-700">{text}</p>}
-        <Link href="/" className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">
-          Về trang chủ
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {showCopy && (
+            <Link href={`/hop-dong/${encodeURIComponent(token)}`} className="inline-block rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">
+              Xem và in bản hợp đồng
+            </Link>
+          )}
+          <Link
+            href="/"
+            className={`inline-block rounded-lg px-4 py-2 font-medium ${
+              showCopy ? "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50" : "bg-brand-600 text-white hover:bg-brand-700"
+            }`}
+          >
+            Về trang chủ
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -90,9 +102,9 @@ function SignContent() {
   }
   if (!info) return <p className="text-slate-500">Đang tải...</p>;
 
-  if (done) return notice("emerald", "Đã ký thành công", "Cảm ơn anh/chị. Chúng tôi đã gửi email xác nhận, nhân viên sẽ liên hệ hướng dẫn bước tiếp theo.");
+  if (done) return notice("emerald", "Đã ký thành công", "Cảm ơn anh/chị. Chúng tôi đã gửi email xác nhận, nhân viên sẽ liên hệ hướng dẫn bước tiếp theo.", true);
   if (info.status === "SIGNED") {
-    return notice("emerald", "Hợp đồng này đã được ký", info.signedAt ? `Ký bởi ${info.signerName} lúc ${formatDateTime(info.signedAt)}.` : undefined);
+    return notice("emerald", "Hợp đồng này đã được ký", info.signedAt ? `Ký bởi ${info.signerName} lúc ${formatDateTime(info.signedAt)}.` : undefined, true);
   }
   if (info.status === "EXPIRED") return notice("amber", "Liên kết đã hết hạn", "Vui lòng liên hệ nhân viên để được gửi hợp đồng mới.");
   if (info.status !== "SENT") return notice("slate", "Hợp đồng chưa sẵn sàng để ký", "Hợp đồng này không còn hiệu lực. Vui lòng liên hệ nhân viên.");

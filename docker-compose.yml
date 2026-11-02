@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16 # postgres 16 kem san extension vector (RAG)
     container_name: realestate-db
     restart: unless-stopped
     environment:
@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
@@ -32,6 +33,15 @@ services:
       BACKEND_URL: http://backend:8081
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
+      # Bot Telegram bao nhan vien (sub-workflow thong-bao-nhan-vien). De trong thi chi gui email
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SALE_CHAT_ID: ${TELEGRAM_SALE_CHAT_ID:-}
+      # Bot Telegram cho khach (luong 6), tach rieng bot sale. Secret de Telegram ky webhook
+      TELEGRAM_KHACH_BOT_TOKEN: ${TELEGRAM_KHACH_BOT_TOKEN:-}
+      TELEGRAM_KHACH_WEBHOOK_SECRET: ${TELEGRAM_KHACH_WEBHOOK_SECRET:-}
+      # Tai khoan API Mautic cho luong 7 (Basic auth)
+      MAUTIC_API_USER: ${MAUTIC_API_USER:-}
+      MAUTIC_API_PASSWORD: ${MAUTIC_API_PASSWORD:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
@@ -49,9 +59,9 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/viewing-requested
+      N8N_LEAD_CHANGED_URL: ${N8N_LEAD_CHANGED_URL:-http://n8n:5678/webhook/lead-changed}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       JWT_SECRET: ${JWT_SECRET}
-      # Địa chỉ web khách mở được từ email (link cảm nhận, link ký hợp đồng)
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
       SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
       PORT: 8081
@@ -61,17 +71,21 @@ services:
         condition: service_healthy
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081/api}
+        NEXT_PUBLIC_MAUTIC_URL: ${NEXT_PUBLIC_MAUTIC_URL:-http://localhost:8082}
     container_name: realestate-web
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8081/api
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081/api}
+      NEXT_PUBLIC_MAUTIC_URL: ${NEXT_PUBLIC_MAUTIC_URL:-http://localhost:8082}
     depends_on:
       - backend
 
 volumes:
   db_data:
   n8n_data:
-

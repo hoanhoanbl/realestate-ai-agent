@@ -1,15 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ContractStatusBadge from "@/components/ContractStatusBadge";
-import { formatDateTime, formatVnd, getContracts, type ContractRow } from "@/lib/api";
+import { Alert, CARD, EmptyState, Icon, PageHeader, Skeleton } from "@/components/ui";
+import { formatDateTime, formatVnd, getContracts, type ContractRow, type ContractStatus } from "@/lib/api";
+import { contractCode } from "@/lib/contract";
 
 const POLL_MS = 10000;
+
+type Filter = "ALL" | ContractStatus;
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "ALL", label: "Tất cả" },
+  { value: "PENDING_APPROVAL", label: "Chờ duyệt" },
+  { value: "SENT", label: "Chờ khách ký" },
+  { value: "SIGNED", label: "Đã ký" },
+  { value: "DRAFTING", label: "Đang soạn" },
+  { value: "REJECTED", label: "Từ chối" },
+  { value: "EXPIRED", label: "Hết hạn" },
+];
+
+function Summary({ label, value, hint, tone }: { label: string; value: string | number; hint?: string; tone: string }) {
+  return (
+    <div className={`p-4 ${CARD}`}>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p>
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
 
 export default function ContractsPage() {
   const [rows, setRows] = useState<ContractRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("ALL");
 
   useEffect(() => {
     let cancelled = false;
@@ -32,71 +57,103 @@ export default function ContractsPage() {
     };
   }, []);
 
-  const pending = (rows ?? []).filter((r) => r.status === "PENDING_APPROVAL").length;
+  const counts = useMemo(() => {
+    const result: Record<string, number> = { ALL: rows?.length ?? 0 };
+    for (const r of rows ?? []) result[r.status] = (result[r.status] ?? 0) + 1;
+    return result;
+  }, [rows]);
+
+  const signedTotal = useMemo(
+    () => (rows ?? []).filter((r) => r.status === "SIGNED").reduce((sum, r) => sum + Number(r.depositAmount), 0),
+    [rows],
+  );
+
+  const visible = (rows ?? []).filter((r) => filter === "ALL" || r.status === filter);
+  // Chỉ hiện chip của trạng thái đang có hợp đồng (và chip đang chọn)
+  const chips = FILTERS.filter((f) => f.value === "ALL" || f.value === filter || (counts[f.value] ?? 0) > 0);
 
   return (
     <section>
-      <h1 className="text-2xl font-bold text-slate-900">Hợp đồng đặt cọc</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Tạo hợp đồng từ trang chi tiết của khách đã xem nhà. AI soạn, quản lý duyệt, khách ký online.
-        {pending > 0 && <b className="ml-1 text-amber-700">Đang có {pending} hợp đồng chờ duyệt.</b>}
-      </p>
-
-      {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-          {error}
-        </p>
-      )}
-      {rows === null && !error && <p className="mt-6 text-slate-500">Đang tải...</p>}
+      <PageHeader
+        title="Hợp đồng đặt cọc"
+        description="Tạo hợp đồng từ trang chi tiết của khách đã xem nhà. AI soạn và rà soát, quản lý duyệt, khách ký online."
+      />
 
       {rows !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-3">#</th>
-                <th className="px-3 py-3">Khách</th>
-                <th className="px-3 py-3">Căn nhà</th>
-                <th className="px-3 py-3">Tiền cọc</th>
-                <th className="px-3 py-3">Trạng thái</th>
-                <th className="px-3 py-3">Tạo lúc</th>
-                <th className="px-3 py-3">Ký lúc</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
-                    Chưa có hợp đồng nào.
-                  </td>
-                </tr>
-              )}
-              {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-3">
-                    <Link href={`/admin/hop-dong/${r.id}`} className="font-medium text-blue-700 hover:underline">
-                      HD-{String(r.id).padStart(4, "0")}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-3">
-                    <Link href={`/admin/leads/${r.leadId}`} className="hover:underline">
-                      {r.leadName}
-                    </Link>
-                  </td>
-                  <td className="max-w-[260px] px-3 py-3 text-slate-600">{r.propertyName}</td>
-                  <td className="whitespace-nowrap px-3 py-3">{formatVnd(r.depositAmount)}</td>
-                  <td className="px-3 py-3">
-                    <ContractStatusBadge status={r.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">{formatDateTime(r.createdAt)}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">
-                    {r.signedAt ? formatDateTime(r.signedAt) : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <Summary label="Chờ quản lý duyệt" value={counts.PENDING_APPROVAL ?? 0} tone={(counts.PENDING_APPROVAL ?? 0) > 0 ? "text-amber-600" : "text-slate-900"} />
+          <Summary label="Đã gửi, chờ khách ký" value={counts.SENT ?? 0} tone="text-blue-600" />
+          <Summary label="Tiền cọc đã ký" value={formatVnd(signedTotal)} hint={`${counts.SIGNED ?? 0} hợp đồng`} tone="text-emerald-600" />
         </div>
+      )}
+
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {chips.map((f) => {
+          const active = filter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilter(f.value)}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition ${
+                active ? "bg-brand-600 text-white ring-brand-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {f.label} <span className={active ? "text-blue-100" : "text-slate-400"}>{counts[f.value] ?? 0}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {error && <Alert className="mt-4">{error}</Alert>}
+      {rows === null && !error && <Skeleton className="mt-5 h-64 rounded-xl" />}
+
+      {rows !== null && visible.length === 0 && (
+        <EmptyState
+          className="mt-4"
+          icon={<Icon name="contract" className="h-10 w-10" />}
+          title={rows.length === 0 ? "Chưa có hợp đồng nào" : "Không có hợp đồng ở trạng thái này"}
+          description="Mở một khách đã xem nhà rồi bấm Tạo hợp đồng đặt cọc."
+        />
+      )}
+
+      {visible.length > 0 && (
+        <ul className={`mt-4 divide-y divide-slate-100 ${CARD}`}>
+          {visible.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 transition hover:bg-slate-50">
+              <div className="w-28 shrink-0">
+                <Link href={`/admin/hop-dong/${r.id}`} className="font-mono text-sm font-semibold text-brand-700 hover:underline">
+                  {contractCode(r.id)}
+                </Link>
+                <p className="text-xs text-slate-400">{formatDateTime(r.createdAt)}</p>
+              </div>
+              <div className="min-w-[180px] flex-1">
+                <Link href={`/admin/leads/${r.leadId}`} className="font-medium text-slate-900 hover:text-brand-700">
+                  {r.leadName}
+                </Link>
+                <p className="text-sm text-slate-500">{r.propertyName}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-slate-900">{formatVnd(r.depositAmount)}</p>
+                <p className="text-xs text-slate-400">{r.signedAt ? `Ký ${formatDateTime(r.signedAt)}` : "Tiền cọc"}</p>
+              </div>
+              <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+                <ContractStatusBadge status={r.status} />
+                {r.status === "SIGNED" && (
+                  <Link
+                    href={`/admin/hop-dong/${r.id}/in`}
+                    target="_blank"
+                    title="In / Lưu PDF"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-white hover:text-slate-900"
+                  >
+                    <Icon name="printer" className="h-4 w-4" /> In
+                  </Link>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

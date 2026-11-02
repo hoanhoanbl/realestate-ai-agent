@@ -6,48 +6,112 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
+import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton } from "@/components/ui";
 import {
   formatDateTime,
   formatVnd,
   getLeads,
+  sourceLabel,
   type Lead,
   type LeadStatus,
   type Level,
 } from "@/lib/api";
+import { normalizeText } from "@/lib/property";
 
-type Filter = "ALL" | Level;
+// Mức AI chấm + hai nhóm theo điểm tương tác Mautic (Hậu, trục thứ hai)
+type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
 
-const FILTERS: { value: Filter; label: string }[] = [
+// Ngưỡng điểm Mautic coi là tương tác cao
+const ENGAGED_POINTS = 20;
+
+const FILTERS: { value: Filter; label: string; dot?: string }[] = [
   { value: "ALL", label: "Tất cả" },
-  { value: "HOT", label: "HOT" },
-  { value: "WARM", label: "WARM" },
-  { value: "COLD", label: "COLD" },
+  { value: "HOT", label: "HOT", dot: "bg-red-500" },
+  { value: "WARM", label: "WARM", dot: "bg-amber-400" },
+  { value: "COLD", label: "COLD", dot: "bg-sky-400" },
+  { value: "HIGH_ENGAGEMENT", label: `🔥 Tương tác cao (Mautic ≥ ${ENGAGED_POINTS})` },
+  { value: "VIP_HOT", label: "🚀 Ưu tiên chốt cọc" },
 ];
+
+function isEngaged(lead: Lead): boolean {
+  return (lead.mauticPoints ?? 0) >= ENGAGED_POINTS;
+}
+
+function matchesFilter(lead: Lead, filter: Filter): boolean {
+  if (filter === "ALL") return true;
+  if (filter === "HIGH_ENGAGEMENT") return isEngaged(lead);
+  if (filter === "VIP_HOT") return lead.level === "HOT" && isEngaged(lead);
+  return lead.level === filter;
+}
+
+// Điểm tương tác Mautic: nổi bật khi vượt ngưỡng, kèm nhãn ưu tiên nếu khách cũng HOT
+function MauticPoints({ lead }: { lead: Lead }) {
+  const pts = lead.mauticPoints ?? 0;
+  const engaged = pts >= ENGAGED_POINTS;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span
+        title="Điểm tương tác Mautic (mở mail, bấm link, xem trang)"
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+          engaged ? "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-300" : pts > 0 ? "bg-slate-100 text-slate-700" : "text-slate-400"
+        }`}
+      >
+        {engaged ? "🔥 " : ""}+{pts} pts
+      </span>
+      {lead.level === "HOT" && engaged && (
+        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">🚀 Ưu tiên</span>
+      )}
+    </div>
+  );
+}
 
 // Còn khách chờ chấm điểm thì tải lại nhanh, không thì thưa hơn
 const POLL_PENDING_MS = 5000;
 const POLL_IDLE_MS = 20000;
 
-function Flag({ value }: { value: boolean | null | undefined }) {
-  if (value === true) return <span className="text-emerald-600">✓</span>;
-  if (value === false) return <span className="text-slate-400">✗</span>;
-  return <span className="text-slate-300">-</span>;
-}
-
 const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "ALL", label: "Mọi trạng thái" },
-  { value: "NEW", label: "Mới (chờ duyệt)" },
+  { value: "NEW", label: "Mới, chờ duyệt" },
   { value: "CONFIRMED", label: "Đã chốt lịch" },
   { value: "VIEWED", label: "Đã xem nhà" },
   { value: "DEPOSIT", label: "Muốn đặt cọc" },
   { value: "SIGNED", label: "Đã ký" },
-  { value: "LOST", label: "Không mua" },
+  { value: "LOST", label: "Mất khách" },
 ];
 
-// useSearchParams cần nằm trong Suspense
+const LEVELS: Filter[] = FILTERS.map((f) => f.value);
+const STATUSES = STATUS_OPTIONS.map((o) => o.value);
+
+// Ba cờ tự động hoá gọn trong một ô: email đã gửi, đã báo nhân viên
+function Flags({ lead }: { lead: Lead }) {
+  const flag = (value: boolean | null, label: string) => (
+    <span
+      title={`${label}: ${value === null ? "chưa rõ" : value ? "có" : "chưa"}`}
+      className={`inline-flex h-6 items-center rounded-md px-1.5 text-[11px] font-medium ring-1 ${
+        value ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-slate-50 text-slate-400 ring-slate-200"
+      }`}
+    >
+      {label}
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {flag(lead.emailSent, "Email")}
+      {flag(lead.staffNotified, "Báo NV")}
+    </div>
+  );
+}
+
+function matchesSearch(lead: Lead, query: string): boolean {
+  const q = normalizeText(query);
+  if (!q) return true;
+  return normalizeText(`${lead.name} ${lead.email} ${lead.phone}`).includes(q);
+}
+
+// useSearchParams() cần nằm trong Suspense để Next.js không cảnh báo khi build
 export default function LeadsPage() {
   return (
-    <Suspense fallback={<p className="text-slate-500">Đang tải...</p>}>
+    <Suspense fallback={<Skeleton className="h-64 rounded-xl" />}>
       <LeadsContent />
     </Suspense>
   );
@@ -55,16 +119,21 @@ export default function LeadsPage() {
 
 function LeadsContent() {
   const searchParams = useSearchParams();
-  const initialStatus = searchParams.get("status");
+  // Link từ trang Tổng quan: ?level=HOT, ?filter=VIP_HOT hoặc ?status=NEW
+  const levelParam = (searchParams.get("filter") ?? searchParams.get("level")) as Filter | null;
+  const statusParam = searchParams.get("status") as "ALL" | LeadStatus | null;
+
+  const [filter, setFilter] = useState<Filter>(levelParam && LEVELS.includes(levelParam) ? levelParam : "ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | LeadStatus>(
-    STATUS_OPTIONS.some((o) => o.value === initialStatus) ? (initialStatus as LeadStatus) : "ALL",
+    statusParam && STATUSES.includes(statusParam) ? statusParam : "ALL",
   );
-  const [filter, setFilter] = useState<Filter>("ALL");
+  const [query, setQuery] = useState("");
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const hasPending = (leads ?? []).some((l) => l.automationStatus === "PENDING");
+  // Có lead nào đang PENDING (chờ AI chấm điểm) thì tự tải lại thường xuyên hơn
+  const hasPending = useMemo(() => leads?.some((l) => l.automationStatus === "PENDING") ?? false, [leads]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,56 +152,66 @@ function LeadsContent() {
         });
     }
 
+    const interval = hasPending ? POLL_PENDING_MS : POLL_IDLE_MS;
+    const timer = setInterval(load, interval);
     load();
-    const timer = setInterval(load, hasPending ? POLL_PENDING_MS : POLL_IDLE_MS);
+
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
   }, [hasPending]);
 
+  // Đếm theo mức trên tập đã lọc trạng thái + tìm kiếm, để số trên chip khớp với danh sách
+  const base = useMemo(
+    () => (leads ?? []).filter((l) => (statusFilter === "ALL" || l.status === statusFilter) && matchesSearch(l, query)),
+    [leads, statusFilter, query],
+  );
+
   const counts = useMemo(() => {
-    const result = { ALL: 0, HOT: 0, WARM: 0, COLD: 0 };
-    for (const lead of leads ?? []) {
-      result.ALL += 1;
-      if (lead.level) result[lead.level] += 1;
+    const result = Object.fromEntries(FILTERS.map((f) => [f.value, 0])) as Record<Filter, number>;
+    for (const lead of base) {
+      for (const f of FILTERS) if (matchesFilter(lead, f.value)) result[f.value] += 1;
     }
     return result;
-  }, [leads]);
+  }, [base]);
 
-  const visible = useMemo(
-    () =>
-      (leads ?? []).filter(
-        (l) => (filter === "ALL" || l.level === filter) && (statusFilter === "ALL" || l.status === statusFilter),
-      ),
-    [leads, filter, statusFilter],
-  );
+  const visible = useMemo(() => base.filter((l) => matchesFilter(l, filter)), [base, filter]);
 
   return (
     <section>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Danh sách khách</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Điểm và mức độ do AI chấm.{" "}
-            {hasPending
-              ? "Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
-              : "Trang tự cập nhật định kỳ."}
-          </p>
-        </div>
-        {updatedAt && (
-          <p className="text-xs text-slate-500">
-            Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}
-          </p>
-        )}
-      </div>
+      <PageHeader
+        title="Khách hàng"
+        description={
+          hasPending
+            ? "Điểm và mức do AI chấm. Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
+            : "Điểm và mức do AI chấm. Trang tự cập nhật định kỳ."
+        }
+        actions={updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+      />
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      <div className={`mt-5 flex flex-wrap items-center gap-3 p-3 ${CARD}`}>
+        <div className="relative min-w-[220px] flex-1">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+            <Icon name="search" className="h-4 w-4" />
+          </span>
+          <label htmlFor="lead-search" className="sr-only">
+            Tìm khách
+          </label>
+          <input
+            id="lead-search"
+            type="search"
+            placeholder="Tìm theo tên, email, số điện thoại"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={`${INPUT} pl-9`}
+          />
+        </div>
         <select
           aria-label="Lọc theo trạng thái"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as "ALL" | LeadStatus)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          className={INPUT.replace("w-full", "w-auto")}
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -140,130 +219,139 @@ function LeadsContent() {
             </option>
           ))}
         </select>
-        {FILTERS.map((f) => {
-          const active = filter === f.value;
-          return (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium ring-1 ${
-                active
-                  ? "bg-blue-600 text-white ring-blue-600"
-                  : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {f.label} ({counts[f.value]})
-            </button>
-          );
-        })}
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => {
+            const active = filter === f.value;
+            return (
+              <button
+                key={f.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setFilter(f.value)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition ${
+                  active ? "bg-brand-600 text-white ring-brand-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {f.dot && <span className={`h-2 w-2 rounded-full ${f.dot}`} />}
+                {f.label}
+                <span className={active ? "text-blue-100" : "text-slate-400"}>{counts[f.value]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200"
-        >
-          {error}
-        </p>
-      )}
+      {error && <Alert className="mt-4">{error}</Alert>}
 
       {leads === null && !error && (
-        <p className="mt-6 text-slate-500">Đang tải...</p>
+        <div className="mt-4 space-y-2">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
       )}
 
-      {leads !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[1000px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-3">Khách</th>
-                <th className="px-3 py-3">Ngân sách</th>
-                <th className="px-3 py-3">Nhu cầu</th>
-                <th className="px-3 py-3 text-center">Điểm</th>
-                <th className="px-3 py-3">Mức</th>
-                <th className="px-3 py-3">Lý do AI</th>
-                <th className="px-3 py-3 text-center">Email</th>
-                <th className="px-3 py-3 text-center">Báo NV</th>
-                <th className="px-3 py-3">Xử lý</th>
-                <th className="px-3 py-3">Trạng thái</th>
-                <th className="px-3 py-3">Tạo lúc</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visible.length === 0 && (
+      {leads !== null && visible.length === 0 && (
+        <EmptyState
+          className="mt-4"
+          title={leads.length === 0 ? "Chưa có khách nào" : "Không có khách khớp bộ lọc"}
+          description={leads.length === 0 ? "Khách đặt lịch trên trang web sẽ hiện ở đây." : "Thử xoá từ khoá hoặc chọn trạng thái khác."}
+        />
+      )}
+
+      {leads !== null && visible.length > 0 && (
+        <>
+          {/* Màn hình rộng (từ 1280px): bảng */}
+          <div className={`mt-4 hidden overflow-hidden xl:block ${CARD}`}>
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <td
-                    colSpan={11}
-                    className="px-3 py-8 text-center text-slate-500"
-                  >
-                    Chưa có khách nào.
-                  </td>
+                  <th className="px-4 py-3">Khách</th>
+                  <th className="px-4 py-3">Ngân sách</th>
+                  <th className="px-4 py-3">AI chấm</th>
+                  <th className="px-4 py-3">Mautic</th>
+                  <th className="w-[28%] px-4 py-3">Lý do AI</th>
+                  <th className="px-4 py-3">Tự động</th>
+                  <th className="px-4 py-3">Trạng thái</th>
                 </tr>
-              )}
-              {visible.map((lead) => (
-                <tr key={lead.id} className="align-top hover:bg-slate-50">
-                  <td className="px-3 py-3">
-                    <Link
-                      href={`/admin/leads/${lead.id}`}
-                      className="font-medium text-blue-700 hover:underline"
-                    >
-                      {lead.name}
-                    </Link>
-                    <div className="text-xs text-slate-500">{lead.email}</div>
-                    <div className="text-xs text-slate-500">{lead.phone}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
-                    {formatVnd(lead.budget)}
-                  </td>
-                  <td className="max-w-[200px] px-3 py-3 text-slate-600">
-                    {lead.needs ?? "-"}
-                  </td>
-                  <td className="px-3 py-3 text-center font-semibold">
-                    {lead.score ?? "-"}
-                  </td>
-                  <td className="px-3 py-3">
-                    <LevelBadge level={lead.level} />
-                  </td>
-                  <td className="max-w-[260px] px-3 py-3 text-slate-600">
-                    {lead.reason ?? "-"}
-                    {lead.aiReply && (
-                      <details className="mt-1 text-xs">
-                        <summary className="cursor-pointer text-blue-600">
-                          Xem email AI soạn
-                        </summary>
-                        <p className="mt-1 whitespace-pre-line text-slate-500">
-                          {lead.aiReply}
-                        </p>
-                      </details>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <Flag value={lead.emailSent} />
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <Flag value={lead.staffNotified} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={lead.automationStatus} />
-                    {lead.automationStatus === "FAILED" &&
-                      lead.automationError && (
-                        <p className="mt-1 max-w-[180px] text-xs text-rose-600">
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visible.map((lead) => (
+                  <tr key={lead.id} className="align-top transition hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Link href={`/admin/leads/${lead.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
+                        {lead.name}
+                      </Link>
+                      <div className="text-xs text-slate-500">{lead.phone}</div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                        <span>{formatDateTime(lead.createdAt)}</span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">{sourceLabel(lead.source)}</span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">{formatVnd(lead.budget)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 text-right text-base font-bold text-slate-900">{lead.score ?? "–"}</span>
+                        <LevelBadge level={lead.level} />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <MauticPoints lead={lead} />
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      <p className="line-clamp-2" title={lead.reason ?? undefined}>
+                        {lead.reason ?? "–"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Flags lead={lead} />
+                      <div className="mt-1">
+                        <StatusBadge status={lead.automationStatus} />
+                      </div>
+                      {lead.automationStatus === "FAILED" && lead.automationError && (
+                        <p className="mt-1 line-clamp-2 max-w-[180px] text-xs text-rose-600" title={lead.automationError}>
                           {lead.automationError}
                         </p>
                       )}
-                  </td>
-                  <td className="px-3 py-3">
+                    </td>
+                    <td className="px-4 py-3">
+                      <LeadStatusBadge status={lead.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Màn hình nhỏ hơn: thẻ, 2 cột từ cỡ máy tính bảng */}
+          <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:hidden">
+            {visible.map((lead) => (
+              <li key={lead.id}>
+                <Link href={`/admin/leads/${lead.id}`} className={`block p-4 ${CARD}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">{lead.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {lead.phone} · {formatVnd(lead.budget)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="font-bold text-slate-900">{lead.score ?? "–"}</span>
+                      <LevelBadge level={lead.level} />
+                    </div>
+                  </div>
+                  {lead.reason && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{lead.reason}</p>}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <LeadStatusBadge status={lead.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">
-                    {formatDateTime(lead.createdAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <StatusBadge status={lead.automationStatus} />
+                    <MauticPoints lead={lead} />
+                    <span className="ml-auto text-xs text-slate-400">{formatDateTime(lead.createdAt)}</span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import ContractDocument from "@/components/ContractDocument";
 import ContractStatusBadge from "@/components/ContractStatusBadge";
+import { Icon, buttonClass } from "@/components/ui";
 import {
   ApiError,
   approveContract,
@@ -14,6 +16,7 @@ import {
   type ContractDetail,
 } from "@/lib/api";
 import { useSession } from "@/lib/auth";
+import { contractCode } from "@/lib/contract";
 
 const POLL_MS = 4000;
 
@@ -100,7 +103,7 @@ function ContractDetailContent() {
   }
 
   const back = (
-    <Link href="/admin/hop-dong" className="text-sm text-blue-600 hover:underline">
+    <Link href="/admin/hop-dong" className="text-sm text-brand-600 hover:underline">
       ← Danh sách hợp đồng
     </Link>
   );
@@ -132,7 +135,7 @@ function ContractDetailContent() {
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            HD-{String(contract.id).padStart(4, "0")} · {contract.lead?.name}
+            {contractCode(contract.id)} · {contract.lead?.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <ContractStatusBadge status={contract.status} />
@@ -141,11 +144,19 @@ function ContractDetailContent() {
             </span>
           </div>
         </div>
-        {contract.lead && (
-          <Link href={`/admin/leads/${contract.lead.id}`} className="text-sm text-blue-600 hover:underline">
-            Xem hồ sơ khách →
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {contract.lead && (
+            <Link href={`/admin/leads/${contract.lead.id}`} className={buttonClass("ghost", "sm")}>
+              Hồ sơ khách →
+            </Link>
+          )}
+          {contract.content && (
+            <Link href={`/admin/hop-dong/${contract.id}/in`} target="_blank" className={buttonClass("secondary", "sm")}>
+              <Icon name="printer" className="h-4 w-4" />
+              {contract.status === "SIGNED" ? "In / Lưu PDF" : "Xem bản in"}
+            </Link>
+          )}
+        </div>
       </div>
 
       {contract.status === "DRAFTING" && (
@@ -258,9 +269,22 @@ function ContractDetailContent() {
       )}
 
       {contract.content && (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold uppercase text-slate-500">Toàn văn hợp đồng</h2>
-          <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">{contract.content}</pre>
+        <div className="mt-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase text-slate-500">Toàn văn hợp đồng</h2>
+          <div className="overflow-x-auto rounded-xl bg-slate-100 p-3 sm:p-6">
+            <ContractDocument
+              data={{
+                id: contract.id,
+                content: contract.content,
+                status: contract.status,
+                approvedBy: contract.approvedBy,
+                signerName: contract.signerName,
+                signature: contract.signature,
+                signedAt: contract.signedAt,
+                signedIp: contract.signedIp,
+              }}
+            />
+          </div>
         </div>
       )}
     </section>

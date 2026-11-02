@@ -23,6 +23,8 @@ export interface Property {
   area: string | number;
   type: string;
   status: string;
+  imageUrl: string | null;
+  description: string | null;
 }
 
 export interface Lead {
@@ -42,6 +44,10 @@ export interface Lead {
   automationStatus: AutomationStatus;
   automationError?: string | null;
   status: LeadStatus;
+  source: string | null;
+  mauticContactId?: number | null;
+  mauticPoints?: number;
+  consentMarketing?: boolean;
   createdAt: string;
 }
 
@@ -76,6 +82,7 @@ export const EVENT_LABELS: Record<string, string> = {
   REMINDER_SENT: "Đã nhắc lịch",
   FEEDBACK_ASKED: "Đã hỏi cảm nhận",
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
+  WARM_NURTURE_STARTED: "Bắt đầu nuôi khách WARM (Mautic)",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
@@ -87,6 +94,8 @@ export const EVENT_LABELS: Record<string, string> = {
   CONTRACT_REJECTED: "Hợp đồng bị từ chối",
   CONTRACT_EXPIRED: "Hợp đồng hết hạn",
   FOLLOWUP_FAILED: "Follow-up bị lỗi",
+  MAUTIC_SYNCED: "Đồng bộ sang Mautic",
+  MAUTIC_SCORE_CHANGED: "Điểm Mautic thay đổi",
   STATUS_CHANGED: "Đổi trạng thái",
 };
 
@@ -102,6 +111,8 @@ export interface CreateViewingInput {
   needs?: string;
   propertyId: number;
   viewingTime: string;
+  source?: string;
+  consentMarketing?: boolean;
 }
 
 export interface CreateViewingResult {
@@ -179,6 +190,9 @@ export interface PropertyInput {
   area: number;
   type: string;
   status?: string;
+  // Chuỗi rỗng = xoá
+  imageUrl?: string;
+  description?: string;
 }
 
 // Gồm cả căn đã ẩn (chỉ admin)
@@ -319,15 +333,22 @@ export function rejectContract(id: number, reason: string): Promise<{ ok: true }
 
 // Trang ký công khai của khách
 export interface SignInfo {
+  id: number;
   title: string | null;
   content: string | null;
   customerName: string;
   propertyName: string | null;
+  propertyAddress: string | null;
+  propertyPrice: string | number;
   depositAmount: string | number;
   status: ContractStatus;
   expiresAt: string | null;
+  createdAt: string;
+  approvedBy: string | null;
   signedAt: string | null;
   signerName: string | null;
+  // Chỉ có khi hợp đồng đã ký
+  signature: string | null;
 }
 
 export function getSignInfo(token: string): Promise<SignInfo> {
@@ -499,4 +520,47 @@ export function formatDateTime(iso: string): string {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+// ---- Quản lý tài khoản & phân quyền (chỉ quản lý) ----
+
+export interface UserAccount {
+  id: number;
+  email: string;
+  name: string;
+  role: "MANAGER" | "SALE";
+  pushToken: string | null;
+  createdAt: string;
+}
+
+export function getUsers(): Promise<UserAccount[]> {
+  return request<UserAccount[]>("/users");
+}
+
+export function createUser(data: {
+  email: string;
+  name: string;
+  password: string;
+  role: "MANAGER" | "SALE";
+}): Promise<UserAccount> {
+  return request<UserAccount>("/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+// Nhãn nguồn khách cho hiển thị
+export const SOURCE_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  zalo: "Zalo",
+  google: "Google",
+  tiktok: "TikTok",
+  referral: "Giới thiệu",
+  direct: "Trực tiếp",
+};
+
+export function sourceLabel(source: string | null): string {
+  if (!source) return "Trực tiếp";
+  return SOURCE_LABELS[source] ?? source;
 }

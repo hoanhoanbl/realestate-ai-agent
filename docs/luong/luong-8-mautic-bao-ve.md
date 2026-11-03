@@ -1,117 +1,55 @@
-# Luồng 8: Mautic báo về (Marketing Automation Feedback)
+# Luồng 8: Mautic gửi hành vi về backend
 
-File n8n: `n8n-workflows/luong-8-mautic-bao-ve.json` · ID: `luong8Realestat0` · Error Workflow: `errorWfRealestat`
-Trigger: **Webhook** `POST /webhook/mautic-event` (do Mautic gửi khi khách hàng mở email, bấm link, xem trang, hoặc đổi điểm tương tác).
+File: `n8n-workflows/luong-8-mautic-bao-ve.json`.
+Trigger: `POST /webhook/mautic-event?token=<token-rieng>`.
 
----
+## Cấu hình sau khi import
 
-## 1. Mục tiêu và nghiệp vụ
+1. Node Cấu hình: điền `backendUrl`, `webhookSecret`, `publicWebUrl` và `pointThreshold` (mặc định 20) của đúng môi trường.
+2. **Bắt buộc** đặt `mauticWebhookSecret` thành token ngẫu nhiên dài ít nhất 24 ký tự. Có thể nhập trực tiếp trong node Cấu hình; hoặc dùng biến môi trường `MAUTIC_WEBHOOK_SECRET` nếu container đã nhận biến. Không dùng mật khẩu Mautic làm token.
+3. Trong Mautic > Settings > Webhooks, đặt URL Production của L8 kèm token đó:
+   - Cùng Docker network local: `http://n8n:5678/webhook/mautic-event?token=<token>`.
+   - Server: `https://<n8n-domain>/webhook/mautic-event?token=<token>`.
+4. Bật các event đổi điểm, page hit và mở email. Chọn sub-workflow Thông báo nhân viên thật trong node tương ứng, kiểm tra SMTP và Telegram.
+5. Publish L8 sau khi cấu hình xong. Thiếu/sai token trả HTTP 403 và không cập nhật dữ liệu.
 
-Luồng 8 hoàn tất **vòng lặp phản hồi Marketing Automation (Data Flywheel)** trong hệ thống bất động sản:
-- **Theo dõi hành vi tương tác thực tế:** Mautic tự động tính điểm tương tác khi khách mở mail, click link xem căn nhà, truy cập lại trang web.
-- **Đồng bộ về Backend (Trục 2 - Mautic Points):** Điểm tương tác từ Mautic được lưu vào trường `leads.mautic_points` và ghi nhận lịch sử vào `lead_events` với sự kiện `MAUTIC_SCORE_CHANGED`.
-- **Cảnh báo nóng cho nhân viên Sale:** 
-  - Khi khách **bấm xem lại căn nhà** (page hit `/nha/:id`), hoặc
-  - Khi điểm tương tác Mautic **vượt ngưỡng** (ví dụ $\ge 20$ điểm).
-  ➔ n8n tự động gọi Sub-workflow `thong-bao-nhan-vien` để bắn thông báo ngay qua **Telegram** và **Email** kèm đường link đến trang chi tiết khách hàng và căn nhà mà khách vừa xem.
+L8 không đăng nhập Mautic bằng Basic Auth. Chiều gọi là Mautic → L8 → backend. `webhookSecret` dùng header X-Webhook-Secret cho backend, còn `mauticWebhookSecret` xác thực yêu cầu từ Mautic; đây là hai cấu hình khác nhau. Không chia sẻ ảnh có token hoặc commit giá trị token đã điền.
 
----
+Chọn đúng Error workflow trong Settings sau khi import; ID workflow và credential có thể khác giữa local và server.
 
-## 2. Kiến trúc tương tác
+## Thứ tự xử lý
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant M as Mautic 5
-    participant N8 as n8n (Luồng 8)
-    participant B as Backend NestJS
-    participant SUB as Sub-workflow Thông báo
-    participant S as Sale (Telegram / Email)
+1. Xác thực query token trước khi xử lý dữ liệu.
+2. Đọc tất cả phần tử của các mảng `mautic.lead_points_change`, `mautic.page_on_hit` / `mautic.page_hit`, `mautic.email_on_open`; hỗ trợ object đơn và payload thử.
+3. Loop xử lý tuần tự từng sự kiện, giữ đúng liên kết dữ liệu từng khách.
+4. Tra lead qua API backend bằng contactId hoặc email. Không có contact/lead thì ghi kết quả bỏ qua.
+5. Chỉ cập nhật điểm khi có số nguyên không âm hợp lệ; `0` được gửi rõ ràng vẫn hợp lệ. Thiếu/sai điểm thì giữ nguyên điểm cũ.
+6. Ghi sự kiện vào timeline. Báo sale khi điểm từ dưới ngưỡng lên đạt ngưỡng, hoặc có PAGE_HIT tới đường dẫn `/nha/:id` thuộc đúng origin của `publicWebUrl`.
+7. Gọi sub-workflow thông báo; kết quả phải xác nhận ít nhất email hoặc Telegram gửi được. Nếu sub-workflow báo không gửi được kênh nào, đánh dấu lỗi.
+8. Có lỗi thì chỉ ghi timeline khi biết lead hợp lệ; không dùng ID lead mặc định. Tiếp tục xử lý các sự kiện còn lại.
+9. Sau vòng lặp, trả **một** phản hồi tổng kết với `total`, `processed`, `skipped`, `failed`, `notified`. Có lỗi trả HTTP 500 và Stop And Error; không lỗi trả HTTP 200.
 
-    M->>N8: Webhook mautic-event (points_change / page_hit / email_open)
-    N8->>N8: Chuẩn hoá dữ liệu (trích xuất contactId, email, points, propertyId)
-    N8->>B: GET /api/leads/by-mautic/:contactId?email=...
-    B-->>N8: Trả về thông tin Lead (id, name, level, phone...)
-    N8->>B: PUT /api/leads/:id/mautic {mauticPoints}
-    N8->>B: POST /api/leads/:id/events (type: MAUTIC_SCORE_CHANGED)
-    opt Khách bấm xem căn nhà HOẶC Points >= 20
-        N8->>N8: Soạn thông báo (tên khách, căn vừa xem, điểm Mautic)
-        N8->>SUB: Gọi sub-workflow thongBaoNhanVien
-        SUB->>S: Bắn thông báo Telegram + Email cho nhân viên
-    end
-    N8-->>M: Phản hồi Webhook 200 OK
-```
+`notified` đếm số sự kiện được sub-workflow xác nhận đã gửi ít nhất một kênh, không đồng nghĩa mọi kênh đều thành công. Khi cần, xem output sub-workflow để kiểm tra từng kênh.
 
----
+## Payload thử
 
-## 3. Danh sách các bước trong Workflow (14 bước)
+Gửi tới URL đã có token, không gửi token trong body:
 
-1. **Webhook**: Nhận webhook `POST /webhook/mautic-event` từ Mautic (`responseMode = responseNode`).
-2. **Cấu hình**: Cấu hình URL backend nội bộ (`http://backend:8081`), Webhook Secret, ngưỡng điểm (`pointThreshold = 20`), và Public Web URL.
-3. **Chuẩn hoá dữ liệu**: Phân tích payload Mautic (`mautic.lead_points_change`, `mautic.page_hit`, `mautic.email_on_open`, hoặc custom payload), trích xuất `contactId`, `email`, `points`, `propertyId`, và mô tả hành vi.
-4. **Có Contact Mautic?**: Kiểm tra nếu có `contactId` hợp lệ hoặc email. Nếu không có ➔ chuyển sang bước Bỏ qua.
-5. **Tìm Lead Backend**: Gọi `GET /api/leads/by-mautic/:contactId?email=...` để tra cứu lead tương ứng trong hệ thống CRM (có bắt lỗi `continueErrorOutput`).
-6. **Lead tồn tại?**: Kiểm tra backend có tìm thấy lead tương ứng hay không.
-7. **Cập nhật Điểm Mautic**: Gọi `PUT /api/leads/:id/mautic` cập nhật trường `mautic_points` của lead.
-8. **Ghi nhận Event Backend**: Gọi `POST /api/leads/:id/events` ghi nhận sự kiện `MAUTIC_SCORE_CHANGED` hiển thị trên dòng thời gian khách hàng.
-9. **Cần báo nhân viên?**: Kiểm tra điều kiện tương tác cao: Khách xem căn nhà cụ thể (`propertyId > 0`) HOẶC điểm Mautic $\ge 20$.
-10. **Chuẩn bị thông báo**: Soạn nội dung thông báo, tiêu đề, và các nút điều hướng (link xem lead, link xem căn nhà).
-11. **Thông báo nhân viên**: Kích hoạt Sub-workflow `thongBaoNhanVien` gửi Telegram và Email cho nhân viên tư vấn.
-12. **Báo lỗi Backend**: Nhận lỗi nếu các bước gọi API backend thất bại, ghi log `FOLLOWUP_FAILED`.
-13. **Phản hồi Thành công**: Trả về HTTP 200 JSON cho Mautic thông báo đã xử lý thành công.
-14. **Bỏ qua & Phản hồi Webhook**: Trả về HTTP 200 JSON nếu contact chưa liên kết với lead trong hệ thống.
-
----
-
-## 4. Dữ liệu thử nghiệm (Payload mẫu)
-
-### Ví dụ 1: Mautic báo điểm tương tác thay đổi
 ```json
 {
   "mautic.lead_points_change": [
-    {
-      "contact": {
-        "id": 2,
-        "points": 25,
-        "email": "hauphanbtm.110606@gmail.com"
-      },
-      "points": {
-        "old_points": 10,
-        "new_points": 25
-      }
-    }
+    {"contact": {"id": 2, "email": "khach@example.com"}, "points": {"old_points": 10, "new_points": 25}},
+    {"contact": {"id": 3, "email": "khac@example.com"}, "points": {"old_points": 0, "new_points": 5}}
   ]
 }
 ```
 
-### Ví dụ 2: Khách bấm xem lại căn nhà từ email nuôi dưỡng
-```json
-{
-  "mautic.page_hit": [
-    {
-      "contact": {
-        "id": 2,
-        "points": 30,
-        "email": "hauphanbtm.110606@gmail.com"
-      },
-      "hit": {
-        "url": "http://localhost:3000/nha/3",
-        "urlTitle": "Nhà phố Thủ Đức 3 phòng ngủ"
-      }
-    }
-  ]
-}
-```
+Contact phải đã liên kết với lead đúng môi trường. Dùng email và contactId dữ liệu thử của bạn.
 
----
+## Giới hạn còn lại
 
-## 5. Kết quả ghi nhận trong hệ thống
-
-- **Bảng `leads`:** Cột `mautic_points` tự động cập nhật số điểm mới nhất.
-- **Bảng `lead_events`:** Dòng sự kiện `MAUTIC_SCORE_CHANGED` xuất hiện trên timeline web admin.
-- **Telegram / Email Sale:** Nhân viên nhận cảnh báo ngay lập tức:
-  > 🔴 **[ƯU TIÊN] Khách xem lại căn #3**  
-  > Khách hàng Nguyễn Văn A (0942881754) vừa có tương tác mới trên Mautic:  
-  > - Hành vi: Khách xem trang: Nhà phố Thủ Đức 3 phòng ngủ  
-  > - Điểm Mautic hiện tại: 30  
-  > [Xem chi tiết khách] [Xem căn nhà]
+- Chưa có chống trùng bền vững theo event ID hay timestamp để chặn webhook cũ ghi đè điểm mới.
+- Một phần lô lỗi sẽ trả HTTP 500; khi Mautic retry cả lô, các sự kiện đã thành công có thể được ghi hoặc báo lại.
+- Nếu cập nhật điểm thành công nhưng gửi thông báo thất bại, lần retry có thể không còn được xem là vượt ngưỡng. Cần outbox/trạng thái gửi trong backend để bảo đảm phục hồi.
+- Các request đồng thời chưa có khoá theo contact. Khối lượng sự kiện lớn cần cân nhắc hàng đợi và giới hạn thời gian xử lý webhook.
+- Cần import và thử trên n8n/Mautic thật; sửa JSON trong repo không tự cập nhật local hay server.

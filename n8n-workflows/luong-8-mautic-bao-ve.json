@@ -25,7 +25,7 @@
             {
               "id": "c1",
               "name": "backendUrl",
-              "value": "http://backend:8081",
+              "value": "={{ ($env.BACKEND_URL || 'http://backend:8081').replace(/\\/$/, '') }}",
               "type": "string"
             },
             {
@@ -45,6 +45,12 @@
               "name": "publicWebUrl",
               "value": "={{ $env.PUBLIC_WEB_URL || 'http://localhost:3000' }}",
               "type": "string"
+            },
+            {
+              "id": "l8-inbound-token",
+              "name": "mauticWebhookSecret",
+              "value": "={{ $env.MAUTIC_WEBHOOK_SECRET || '' }}",
+              "type": "string"
             }
           ]
         },
@@ -62,7 +68,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = $('Webhook').first().json.body ?? {};\n\nlet contactId = null;\nlet email = '';\nlet points = 0;\nlet eventType = 'UNKNOWN';\nlet pageUrl = '';\nlet description = 'Tương tác trên Mautic';\n\n// 1. Truong hop nhan event Mautic goc (webhook Mautic gui sang)\nif (body['mautic.lead_points_change']) {\n  const item = Array.isArray(body['mautic.lead_points_change']) ? body['mautic.lead_points_change'][0] : body['mautic.lead_points_change'];\n  contactId = item.contact?.id ?? null;\n  email = item.contact?.fields?.all?.email ?? item.contact?.email ?? '';\n  points = Number(item.points?.new_points ?? item.contact?.points ?? 0);\n  eventType = 'POINT_CHANGE';\n  description = `Điểm thay đổi từ ${item.points?.old_points ?? 0} lên ${points}`;\n} else if (body['mautic.page_on_hit'] || body['mautic.page_hit']) {\n  const rawPageHit = body['mautic.page_on_hit'] || body['mautic.page_hit'];\n  const item = Array.isArray(rawPageHit) ? rawPageHit[0] : rawPageHit;\n  contactId = item.contact?.id ?? null;\n  email = item.contact?.fields?.all?.email ?? item.contact?.email ?? '';\n  points = Number(item.contact?.points ?? 0);\n  pageUrl = item.hit?.url ?? '';\n  eventType = 'PAGE_HIT';\n  description = `Khách xem trang: ${item.hit?.urlTitle || pageUrl}`;\n} else if (body['mautic.email_on_open']) {\n  const item = Array.isArray(body['mautic.email_on_open']) ? body['mautic.email_on_open'][0] : body['mautic.email_on_open'];\n  contactId = item.contact?.id ?? null;\n  email = item.contact?.fields?.all?.email ?? item.contact?.email ?? '';\n  points = Number(item.contact?.points ?? 0);\n  eventType = 'EMAIL_OPEN';\n  description = `Khách mở email: ${item.email?.name || 'Chiến dịch'}`;\n} else if (body.contactId || body.email) {\n  // 2. Truong hop goi test hoac custom payload\n  contactId = body.contactId ? Number(body.contactId) : null;\n  email = (body.email || '').trim().toLowerCase();\n  points = Number(body.points ?? body.mauticPoints ?? 0);\n  eventType = body.eventType || body.event || 'TEST_EVENT';\n  pageUrl = body.url || body.pageUrl || '';\n  description = body.description || body.note || 'Cập nhật hành vi khách hàng';\n}\n\n// Trich xuat propertyId neu xem can nha (vd /nha/3 hoac /nha/12)\nlet propertyId = null;\nif (pageUrl) {\n  const match = pageUrl.match(/\\/nha\\/(\\d+)/);\n  if (match) propertyId = Number(match[1]);\n}\n\nreturn [{\n  json: {\n    contactId: contactId ? Number(contactId) : null,\n    email: email.trim().toLowerCase(),\n    points,\n    eventType,\n    pageUrl,\n    propertyId,\n    description\n  }\n}];"
+        "jsCode": "const body = $('Webhook').first().json.body ?? {};\nconst events = [];\nconst score = value => {\n  if (value == null || value === '' || typeof value === 'boolean') return null;\n  const n = Number(value);\n  return Number.isSafeInteger(n) && n >= 0 ? n : null;\n};\nconst add = (item,eventType) => {\n  if (!item || typeof item !== 'object') return;\n  const contact = item.contact ?? item.lead ?? {};\n  const id = Number(contact.id ?? item.contactId);\n  const email = String(contact.fields?.all?.email ?? contact.fields?.core?.email?.value ?? contact.email ?? item.email ?? '').trim().toLowerCase();\n  const points = score(eventType === 'POINT_CHANGE' ? (item.points?.new_points ?? contact.points) : (contact.points ?? item.mauticPoints ?? (typeof item.points !== 'object' ? item.points : null)));\n  const pageUrl = String(item.hit?.url ?? item.url ?? item.pageUrl ?? '');\n  let propertyId = null;\n  if (eventType === 'PAGE_HIT') {\n    // Không phụ thuộc global URL trong sandbox Code của n8n.\n    const url = pageUrl.match(/^(https?):\\/\\/([^/?#]+)(\\/[^?#]*)?(?:[?#].*)?$/i);\n    const web = String($('Cấu hình').first().json.publicWebUrl || '').match(/^(https?):\\/\\/([^/?#]+)(?:[/?#]|$)/i);\n    const match = url && (url[3] || '/').match(/^\\/nha\\/(\\d+)\\/?$/);\n    if (url && web && match && url[1].toLowerCase() === web[1].toLowerCase() && url[2].toLowerCase() === web[2].toLowerCase()) propertyId = Number(match[1]);\n  }\n  const description = eventType === 'POINT_CHANGE' ? `Điểm thay đổi lên ${points ?? 'không xác định'}`\n    : eventType === 'PAGE_HIT' ? `Khách xem trang: ${item.hit?.urlTitle || pageUrl}`\n    : eventType === 'EMAIL_OPEN' ? `Khách mở email: ${item.email?.name || 'Chiến dịch'}`\n    : String(item.description ?? item.note ?? 'Tương tác trên Mautic');\n  events.push({json:{contactId:Number.isSafeInteger(id) && id>0 ? id:null,email,points,eventType,pageUrl,propertyId,description}});\n};\nfor (const [key,type] of [['mautic.lead_points_change','POINT_CHANGE'],['mautic.page_on_hit','PAGE_HIT'],['mautic.page_hit','PAGE_HIT'],['mautic.email_on_open','EMAIL_OPEN']]) {\n  if (body[key]) for (const item of (Array.isArray(body[key]) ? body[key] : [body[key]])) add(item,type);\n}\nif (!events.length && (body.contactId || body.email)) add(body,String(body.eventType || body.event || 'TEST_EVENT'));\nreturn events.length ? events : [{json:{contactId:null,email:'',points:null,eventType:'UNKNOWN',propertyId:null,description:'Không có sự kiện được hỗ trợ'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -140,7 +146,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -153,7 +161,8 @@
       "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -190,7 +199,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $json.id }}/mautic",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Tìm Lead Backend').item.json.id }}/mautic",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -206,8 +215,10 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ mauticPoints: $('Chuẩn hoá dữ liệu').first().json.points }) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ mauticPoints: $('Từng sự kiện').item.json.points }) }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -225,7 +236,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $json.id }}/events",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Tìm Lead Backend').item.json.id }}/events",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -241,8 +252,10 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ type: 'MAUTIC_SCORE_CHANGED', note: 'Mautic ghi nhận: ' + $('Chuẩn hoá dữ liệu').first().json.description + ' (Điểm: ' + $('Chuẩn hoá dữ liệu').first().json.points + ')' }) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ type: 'MAUTIC_SCORE_CHANGED', note: 'Mautic ghi nhận: ' + $('Từng sự kiện').item.json.description + ' (Điểm: ' + ($('Từng sự kiện').item.json.points ?? $('Tìm Lead Backend').item.json.mauticPoints) + ')' }) }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -269,7 +282,7 @@
           "conditions": [
             {
               "id": "c-high-points",
-              "leftValue": "={{ Number($('Chuẩn hoá dữ liệu').first().json.points || 0) }}",
+              "leftValue": "={{ $('Từng sự kiện').item.json.points !== null && Number($('Tìm Lead Backend').item.json.mauticPoints ?? 0) < Number($('Cấu hình').first().json.pointThreshold || 20) ? $('Từng sự kiện').item.json.points : -1 }}",
               "operator": {
                 "type": "number",
                 "operation": "gte"
@@ -278,7 +291,7 @@
             },
             {
               "id": "c-view-prop",
-              "leftValue": "={{ Number($('Chuẩn hoá dữ liệu').first().json.propertyId || 0) }}",
+              "leftValue": "={{ Number($('Từng sự kiện').item.json.propertyId || 0) }}",
               "operator": {
                 "type": "number",
                 "operation": "gt"
@@ -300,8 +313,8 @@
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const lead = $('Tìm Lead Backend').first().json;\nconst data = $('Chuẩn hoá dữ liệu').first().json;\nconst cfg = $('Cấu hình').first().json;\n\nconst title = data.propertyId\n  ? `Khách xem lại căn #${data.propertyId}`\n  : `Khách đạt ${data.points} điểm tương tác Mautic`;\n\nconst message = `Khách hàng ${lead.name} (${lead.phone || lead.email}) vừa có tương tác mới trên Mautic:\\n`\n  + `- Hành vi: ${data.description}\\n`\n  + `- Điểm Mautic hiện tại: ${data.points}\\n`\n  + `- Phân khúc ban đầu: ${lead.level || 'Chưa phân loại'}`;\n\nconst actions = [\n  { label: 'Xem chi tiết khách', url: `${cfg.publicWebUrl}/admin/leads/${lead.id}` }\n];\n\nif (data.propertyId) {\n  actions.push({ label: 'Xem căn nhà', url: `${cfg.publicWebUrl}/nha/${data.propertyId}` });\n}\n\nreturn [{\n  json: {\n    leadId: lead.id,\n    level: lead.level || 'HOT',\n    title,\n    message,\n    actions\n  }\n}];"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Tìm Lead Backend').item.json;\nconst raw = $('Từng sự kiện').item.json;\nconst data = { ...raw, points: raw.points ?? lead.mauticPoints ?? 0 };\nconst cfg = $('Cấu hình').first().json;\n\nconst title = data.propertyId\n  ? `Khách xem lại căn #${data.propertyId}`\n  : `Khách đạt ${data.points} điểm tương tác Mautic`;\n\nconst message = `Khách hàng ${lead.name} (${lead.phone || lead.email}) vừa có tương tác mới trên Mautic:\\n`\n  + `- Hành vi: ${data.description}\\n`\n  + `- Điểm Mautic hiện tại: ${data.points}\\n`\n  + `- Phân khúc ban đầu: ${lead.level || 'Chưa phân loại'}`;\n\nconst actions = [\n  { label: 'Xem chi tiết khách', url: `${cfg.publicWebUrl}/admin/leads/${lead.id}` }\n];\n\nif (data.propertyId) {\n  actions.push({ label: 'Xem căn nhà', url: `${cfg.publicWebUrl}/nha/${data.propertyId}` });\n}\n\nreturn {\n  json: {\n    leadId: lead.id,\n    level: lead.level || 'HOT',\n    title,\n    message,\n    actions\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -344,7 +357,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Tìm Lead Backend').first()?.json?.id || 1 }}/events",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Tìm Lead Backend').item.json.id }}/events",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -361,7 +374,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ type: 'FOLLOWUP_FAILED', note: 'Lỗi xử lý webhook Mautic: ' + ($json.error?.message || $json.message || 'Không thể cập nhật điểm Mautic') }) }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -370,16 +385,19 @@
         440
       ],
       "id": "80010001-0000-4000-8000-000000000012",
-      "name": "Báo lỗi Backend"
+      "name": "Báo lỗi Backend",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, leadId: $('Tìm Lead Backend').first().json.id, mauticPoints: $('Chuẩn hoá dữ liệu').first().json.points, eventType: $('Chuẩn hoá dữ liệu').first().json.eventType, notified: $('Cần báo nhân viên?').first().json ? true : false }) }}",
-        "options": {}
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'processed',notified:false}};"
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         2460,
         200
@@ -389,18 +407,251 @@
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, skipped: true, reason: 'Contact hoặc Lead không tồn tại trong hệ thống' }) }}",
-        "options": {}
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'skipped',notified:false}};"
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1320,
         480
       ],
       "id": "80010001-0000-4000-8000-000000000014",
       "name": "Bỏ qua & Phản hồi Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "l8-valid-points-condition",
+              "leftValue": "={{ $('Từng sự kiện').item.json.points !== null ? 1 : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        40
+      ],
+      "id": "l8-valid-points",
+      "name": "Có điểm hợp lệ?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "l8-error-known-lead-condition",
+              "leftValue": "={{ (() => { try { return Number($('Tìm Lead Backend').item.json.id || 0); } catch { return 0; } })() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        760
+      ],
+      "id": "l8-error-known-lead",
+      "name": "Biết lead khi lỗi?"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'failed',notified:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        760
+      ],
+      "id": "l8-error-response",
+      "name": "Phản hồi Lỗi"
+    },
+    {
+      "id": "l8-event-loop",
+      "name": "Từng sự kiện",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        660,
+        40
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "l8-Xác thực Mautic",
+      "name": "Xác thực Mautic",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Xác thực Mautic",
+              "leftValue": "={{ typeof $('Cấu hình').first().json.mauticWebhookSecret === 'string' && $('Cấu hình').first().json.mauticWebhookSecret.length >= 24 && $('Webhook').first().json.query?.token === $('Cấu hình').first().json.mauticWebhookSecret }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "l8-Kết quả thông báo",
+      "name": "Kết quả thông báo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const result = $json;\nconst sent = result.emailSent === true || result.telegramSent === true;\nif (!sent) throw new Error('Sub-workflow không xác nhận gửi email hoặc Telegram thành công');\nreturn {json:{status:'processed',notified:true}};"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "l8-Tổng kết sự kiện",
+      "name": "Tổng kết sự kiện",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.status === 'failed').length;\nreturn [{json:{ok:failed===0,total:rows.length,processed:rows.filter(r=>r.status==='processed').length,skipped:rows.filter(r=>r.status==='skipped').length,failed,notified:rows.filter(r=>r.notified===true).length}}];"
+      }
+    },
+    {
+      "id": "l8-Phản hồi kết quả lô",
+      "name": "Phản hồi kết quả lô",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1180,
+        -320
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.failed > 0 ? 500 : 200 }}"
+        }
+      }
+    },
+    {
+      "id": "l8-Từ chối webhook",
+      "name": "Từ chối webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        -160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:false,error:\"Webhook token không hợp lệ hoặc chưa cấu hình\"} }}",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "l8-Lô có lỗi?",
+      "name": "Lô có lỗi?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1460,
+        -320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Lô có lỗi?",
+              "leftValue": "={{ $('Tổng kết sự kiện').first().json.failed > 0 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "l8-stop-error",
+      "name": "Dừng khi xử lý lỗi",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        -320
+      ],
+      "parameters": {
+        "errorMessage": "L8 có sự kiện xử lý thất bại; kiểm tra execution"
+      }
     }
   ],
   "connections": {
@@ -419,7 +670,7 @@
       "main": [
         [
           {
-            "node": "Chuẩn hoá dữ liệu",
+            "node": "Xác thực Mautic",
             "type": "main",
             "index": 0
           }
@@ -430,7 +681,7 @@
       "main": [
         [
           {
-            "node": "Có Contact Mautic?",
+            "node": "Từng sự kiện",
             "type": "main",
             "index": 0
           }
@@ -466,7 +717,7 @@
         ],
         [
           {
-            "node": "Báo lỗi Backend",
+            "node": "Biết lead khi lỗi?",
             "type": "main",
             "index": 0
           }
@@ -477,7 +728,7 @@
       "main": [
         [
           {
-            "node": "Cập nhật Điểm Mautic",
+            "node": "Có điểm hợp lệ?",
             "type": "main",
             "index": 0
           }
@@ -502,7 +753,7 @@
         ],
         [
           {
-            "node": "Báo lỗi Backend",
+            "node": "Biết lead khi lỗi?",
             "type": "main",
             "index": 0
           }
@@ -520,7 +771,7 @@
         ],
         [
           {
-            "node": "Báo lỗi Backend",
+            "node": "Biết lead khi lỗi?",
             "type": "main",
             "index": 0
           }
@@ -560,7 +811,14 @@
       "main": [
         [
           {
-            "node": "Phản hồi Thành công",
+            "node": "Kết quả thông báo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Biết lead khi lỗi?",
             "type": "main",
             "index": 0
           }
@@ -571,11 +829,168 @@
       "main": [
         [
           {
-            "node": "Phản hồi Thành công",
+            "node": "Phản hồi Lỗi",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Có điểm hợp lệ?": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật Điểm Mautic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi nhận Event Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Biết lead khi lỗi?": {
+      "main": [
+        [
+          {
+            "node": "Báo lỗi Backend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phản hồi Lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xác thực Mautic": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá dữ liệu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Từ chối webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Từng sự kiện": {
+      "main": [
+        [
+          {
+            "node": "Tổng kết sự kiện",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có Contact Mautic?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kết quả thông báo": {
+      "main": [
+        [
+          {
+            "node": "Từng sự kiện",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Biết lead khi lỗi?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phản hồi Thành công": {
+      "main": [
+        [
+          {
+            "node": "Từng sự kiện",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bỏ qua & Phản hồi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Từng sự kiện",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phản hồi Lỗi": {
+      "main": [
+        [
+          {
+            "node": "Từng sự kiện",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tổng kết sự kiện": {
+      "main": [
+        [
+          {
+            "node": "Phản hồi kết quả lô",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phản hồi kết quả lô": {
+      "main": [
+        [
+          {
+            "node": "Lô có lỗi?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lô có lỗi?": {
+      "main": [
+        [
+          {
+            "node": "Dừng khi xử lý lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

@@ -31,13 +31,16 @@ gitGraph
 |---|---|---|---|---|
 | `main` | | | Bản đang chạy trên VPS. CI tự deploy mỗi khi có commit mới | |
 | `dev` | `main` | | Gom các chức năng đã review, test chung trước khi phát hành | |
-| `feature/<ten>` | `dev` | `dev` | Chức năng mới | Squash and merge |
-| `bugfix/<ten>` | `dev` | `dev` | Lỗi tìm thấy khi test trên `dev` | Squash and merge |
+| `feature/<ten>` | `dev` | `dev` | Chức năng mới | Create a merge commit |
+| `bugfix/<ten>` | `dev` | `dev` | Lỗi tìm thấy khi test trên `dev` | Create a merge commit |
 | `hotfix/<ten>` | `main` | `main` | Lỗi đang xảy ra trên VPS, không chờ release được | Create a merge commit |
 | Release | | `dev` → `main` | Phát hành một lô chức năng | **Create a merge commit** |
 | Đồng bộ | | `main` → `dev` | Sau mỗi hotfix | **Create a merge commit** |
 
-PR giữa `dev` và `main` **không được squash**. Squash tạo commit mới chỉ có ở một bên, lần release sau sẽ xung đột với chính nó.
+**Mọi PR đều chọn "Create a merge commit", không dùng Squash hay Rebase.** Lý do:
+
+- Giữ nguyên từng commit với ngày giờ gốc của người làm, dùng làm bằng chứng thời gian làm việc.
+- PR giữa `dev` và `main` mà squash sẽ tạo commit chỉ có ở một bên, lần release sau xung đột với chính nó.
 
 Tên nhánh viết thường, không dấu, nối bằng gạch ngang: `feature/luong-6-homnay`, `bugfix/lich-xem-trung-gio`, `hotfix/web-404-chi-tiet-nha`. Nhánh tài liệu dùng `docs/<ten>`, nhánh CI hoặc cấu hình dùng `chore/<ten>`; cả hai đi vào `dev` như feature.
 
@@ -83,7 +86,7 @@ Mỗi nhánh một việc, làm trong 1–3 ngày. Việc lớn thì chia nhiề
 |---|---|---|
 | Review, chạy lại phần "Cách test" trên máy mình | Hậu | Hoàng |
 | Approve | Hậu | Hoàng |
-| Squash and merge vào `dev`, xoá nhánh | Hoàng | Hậu |
+| Create a merge commit vào `dev`, xoá nhánh | Hoàng | Hậu |
 
 Review trong vòng 1 ngày. Nếu người review bận quá 1 ngày, người viết được tự merge vào `dev` sau khi CI xanh và ghi rõ trong PR là chưa ai test lại.
 

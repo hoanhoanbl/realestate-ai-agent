@@ -238,6 +238,11 @@ export class LeadsService {
     });
   }
 
+  // Called only after the follow-up transaction has committed its status/event changes.
+  async notifyFollowupStatusChanged(id: number): Promise<void> {
+    this.fireLeadChanged(await this.findOne(id), 'status_changed');
+  }
+
   // Gọi webhook lead-changed cho n8n (L7 đồng bộ sang Mautic). Không có URL thì bỏ qua.
   private fireLeadChanged(lead: Lead, trigger: string): void {
     const url = process.env.N8N_LEAD_CHANGED_URL;

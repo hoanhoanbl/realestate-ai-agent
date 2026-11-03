@@ -26,10 +26,10 @@ WITH l AS (
   RETURNING id)
 INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() + interval '3 days', 'NEW' FROM l;
 
--- WARM_NUDGE: WARM, đã xem nhà, được hỏi cảm nhận 4 ngày trước nhưng chưa phản hồi
+-- WARM_NUDGE: WARM, đồng ý tiếp thị, đã xem nhà, được hỏi cảm nhận 4 ngày trước nhưng chưa phản hồi
 WITH l AS (
-  INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status)
-  VALUES ('Phạm Thị Lặng', 'nhadn2457+demo4@gmail.com', '0900000004', 2500000000, 'Căn hộ gần chợ', 60, 'WARM', 'Dữ liệu mẫu', 'VIEWED', 'COMPLETED')
+  INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status, consent_marketing)
+  VALUES ('Phạm Thị Lặng', 'nhadn2457+demo4@gmail.com', '0900000004', 2500000000, 'Căn hộ gần chợ', 60, 'WARM', 'Dữ liệu mẫu', 'VIEWED', 'COMPLETED', true)
   RETURNING id),
 v AS (
   INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() - interval '6 days', 'NEW' FROM l RETURNING lead_id)

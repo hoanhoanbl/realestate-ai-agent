@@ -119,9 +119,13 @@ Server `realestate-vm` có 8 GB RAM:
 2. **Name**: `Nuôi WARM (Lead Tiềm Năng)`
 3. **Alias**: `nuoi-warm`
 4. Sang tab **Filters**:
-   - `Tags` **including**: `WARM` HOẶC `nuoi-warm`
+   - `Tags` **including**: `nuoi-warm`
    - VÀ `Tags` **excluding**: `DEPOSIT`, `SIGNED`, `LOST`
 5. Bấm **Save & Close**.
+
+Tag `WARM` chỉ phân loại mức tiềm năng và được L7 đồng bộ ngay sau khi AI chấm điểm. Không dùng riêng tag này để đưa khách vào chiến dịch. L2 chỉ gắn `nuoi-warm` khi khách đã xem nhà, đồng ý nhận tiếp thị, được hỏi cảm nhận hơn 3 ngày, chưa gửi cảm nhận và chưa bắt đầu nuôi dưỡng.
+
+Nếu segment đã tồn tại, sửa bộ lọc theo điều kiện trên và kiểm tra lại danh sách contact cùng campaign đang dùng segment này trước khi chạy tiếp. Thay đổi file trong repo không tự cập nhật cấu hình Mautic trên server.
 
 ### 7.3. Tạo Webhook Báo động hành vi sang Luồng 8 n8n
 1. Vào **Settings** > **Webhooks** > Bấm **New**.

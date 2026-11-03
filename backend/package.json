@@ -15,6 +15,7 @@
     "start:prod": "node dist/main",
     "lint": "oxlint src/ test/",
     "test": "jest",
+    "test:followups": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --runTestsByPath src/followups/followups.service.spec.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",

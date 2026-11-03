@@ -47,7 +47,7 @@ Tuần hiện tại là tuần 3 (2–8/11). Phân việc bên dưới theo mụ
 | FE-22 | `feature/FE-22-mautic-server` | Cấu hình Mautic trên server: custom field `ai_nudge_text`, segment "Nuôi WARM", campaign; sau đó bật luồng 2 trên server. Cấu hình làm qua trình duyệt, nhánh chỉ chứa phần ghi lại vào `docs/mautic-setup.md` và JSON nếu có đổi | Hậu | Chưa làm |
 | DC-03 | `docs/DC-03-swimlane-luong-hoang` | Đưa swimlane luồng 1, 1b, 3 và error workflow (nhánh cũ `docs/luong-hoang`, 19/10, gộp vào `dev` không xung đột) | Hoàng | Chưa làm |
 | DC-04 | `docs/DC-04-tai-lieu-khop-main` | Sửa tài liệu cho khớp `main` (kế hoạch 1.4). Mục chung bàn trước khi sửa | Hậu | Chưa làm |
-| BF-05 | `bugfix/BF-05-nang-cap-nextjs` | Lúc build web, Next.js 16.4.0 báo có lỗ hổng bảo mật đã biết: nâng cấp lên bản vá | Hoàng | Chưa làm |
+| HF-01 | `hotfix/HF-01-nang-cap-nextjs` | Nâng Next.js 16.4.0 → 16.4.4: vá lỗi RCE mức critical (Image Optimization với SVG, `use cache`) và DoS Server Actions. Lỗi có trên production nên làm dạng hotfix từ `main` (mã BF-05 đã cấp trước đó bỏ, không dùng lại) | Hoàng | Đã commit, chờ PR vào `main`, sau đó PR đồng bộ `main` → `dev` |
 | CH-04 | `chore/sua-quy-trinh-merge` | Tài liệu quy trình: mọi PR dùng "Create a merge commit". Nhánh đã tạo trước khi có quy ước mã nên giữ tên cũ | Hoàng | Đã push, chờ PR |
 | CH-05 | `chore/CH-05-danh-sach-task` | File này | Hoàng | Chờ PR |
 

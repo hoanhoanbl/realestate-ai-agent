@@ -7,9 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { Contract } from './entities/contract.entity';
+import { ACTIVE_CONTRACT_INDEX, ACTIVE_CONTRACT_STATUSES, Contract } from './entities/contract.entity';
 import {
   CreateContractDto,
   DraftContractDto,
@@ -19,6 +19,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
+import { lockProperty } from '../viewings/booking-rules';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 
@@ -47,6 +48,32 @@ export class ContractsService {
     const contract = await this.contractRepository.findOne({ where: { id } });
     if (!contract) throw new NotFoundException(`Contract with id ${id} not found`);
     return contract;
+  }
+
+  // 409 nếu căn đã có hợp đồng còn hiệu lực, nêu rõ hợp đồng và khách để nhân viên biết
+  private async assertNoActiveContract(em: EntityManager, propertyId: number): Promise<void> {
+    const rows: { id: number; status: string; name: string }[] = await em.query(
+      `SELECT c.id, c.status, l.name
+         FROM contracts c JOIN leads l ON l.id = c.lead_id
+        WHERE c.property_id = $1 AND c.status = ANY($2)
+        LIMIT 1`,
+      [propertyId, ACTIVE_CONTRACT_STATUSES],
+    );
+    if (rows.length > 0) {
+      throw new ConflictException(
+        `Căn này đang có hợp đồng #${rows[0].id} (${rows[0].status}) của khách ${rows[0].name}, không lập thêm hợp đồng được`,
+      );
+    }
+  }
+
+  // Hợp đồng bị từ chối / hết hạn: trả căn về AVAILABLE nếu căn vẫn đang giữ cọc và không còn hợp đồng nào khác
+  private async releaseProperty(propertyId: number): Promise<void> {
+    await this.propertyRepository.query(
+      `UPDATE properties SET status = 'AVAILABLE'
+        WHERE id = $1 AND status = 'RESERVED'
+          AND NOT EXISTS (SELECT 1 FROM contracts WHERE property_id = $1 AND status = ANY($2))`,
+      [propertyId, ACTIVE_CONTRACT_STATUSES],
+    );
   }
 
   private findWithSecrets(where: { id?: number; signToken?: string }): Promise<Contract | null> {
@@ -78,19 +105,40 @@ export class ContractsService {
       throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá căn nhà');
     }
 
-    const contract = await this.contractRepository.save(
-      this.contractRepository.create({
-        leadId: lead.id,
-        propertyId: property.id,
-        depositAmount: dto.depositAmount,
-        propertyPrice: Number(property.price),
-        status: 'DRAFTING',
-        createdBy: user.name,
-      }),
-    );
+    // Mỗi căn chỉ một hợp đồng còn hiệu lực. Kiểm tra + tạo + giữ căn trong một transaction;
+    // chỉ mục uq_contracts_active_property chặn nốt trường hợp hai người bấm cùng lúc.
+    let contract: Contract;
+    try {
+      contract = await this.contractRepository.manager.transaction(async (em) => {
+        await lockProperty(em, property.id);
+        await this.assertNoActiveContract(em, property.id);
+        const current = await em.findOne(Property, { where: { id: property.id } });
+        if (!current || current.status !== 'AVAILABLE') {
+          throw new BadRequestException('Căn này đang ẩn hoặc không còn mở bán, không lập hợp đồng được');
+        }
+        const saved = await em.save(
+          em.create(Contract, {
+            leadId: lead.id,
+            propertyId: property.id,
+            depositAmount: dto.depositAmount,
+            propertyPrice: Number(property.price),
+            status: 'DRAFTING',
+            createdBy: user.name,
+          }),
+        );
+        await em.update(Property, property.id, { status: 'RESERVED' });
+        return saved;
+      });
+    } catch (err: any) {
+      if (err?.code === '23505' && String(err?.constraint ?? err?.driverError?.constraint) === ACTIVE_CONTRACT_INDEX) {
+        throw new ConflictException('Căn này vừa có hợp đồng khác được tạo, vui lòng tải lại trang');
+      }
+      throw err;
+    }
 
     await this.leadsService.updateStatus(lead.id, { status: 'DEPOSIT', note: `Tạo hợp đồng #${contract.id} (bởi ${user.name})` });
     await this.leadsService.addEvent(lead.id, { type: 'CONTRACT_CREATED', note: `Hợp đồng #${contract.id}, cọc ${dto.depositAmount.toLocaleString('vi-VN')} đ (bởi ${user.name})` });
+    await this.leadsService.addEvent(lead.id, { type: 'PROPERTY_RESERVED', note: `Căn "${property.name}" chuyển sang đang giữ cọc` });
 
     this.n8nService
       .callWebhook('contract-requested', { contractId: contract.id })
@@ -167,6 +215,22 @@ export class ContractsService {
     return { ok: true };
   }
 
+  // Quản lý xác nhận đã nhận tiền cọc (sau khi khách ký)
+  async markDepositReceived(id: number, user: AuthUser) {
+    const contract = await this.findOneOrFail(id);
+    if (contract.status !== 'SIGNED') {
+      throw new BadRequestException('Chỉ xác nhận nhận cọc được khi hợp đồng đã ký');
+    }
+    if (contract.depositReceivedAt) throw new ConflictException('Hợp đồng này đã được xác nhận nhận cọc rồi');
+    await this.contractRepository.update(id, { depositReceivedAt: new Date(), depositReceivedBy: user.name });
+    await this.leadsService.addEvent(contract.leadId, {
+      type: 'DEPOSIT_RECEIVED',
+      note: `Đã nhận tiền cọc ${Number(contract.depositAmount).toLocaleString('vi-VN')} đ của hợp đồng #${id} (bởi ${user.name})`,
+    });
+    // Trả cùng dạng với GET /contracts/:id (không lộ sign token)
+    return this.findDetail(id);
+  }
+
   // ---- n8n gọi vào ----
 
   // Bản nháp xong: lưu nội dung và link để chờ duyệt
@@ -212,6 +276,7 @@ export class ContractsService {
     const saved = await this.contractRepository.save(contract);
     await this.leadsService.addEvent(contract.leadId, { type: 'CONTRACT_REJECTED', note: `Hợp đồng #${id} bị từ chối: ${reason}` });
     await this.rollbackLead(contract.leadId, `Hợp đồng #${id} bị từ chối`);
+    await this.releaseProperty(contract.propertyId);
     return saved;
   }
 
@@ -226,6 +291,7 @@ export class ContractsService {
     const saved = await this.contractRepository.save(contract);
     await this.leadsService.addEvent(contract.leadId, { type: 'CONTRACT_EXPIRED', note: `Hợp đồng #${id} hết hạn: ${contract.rejectReason}` });
     await this.rollbackLead(contract.leadId, `Hợp đồng #${id} hết hạn`);
+    await this.releaseProperty(contract.propertyId);
     return saved;
   }
 

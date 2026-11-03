@@ -64,6 +64,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
       SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
+      BOOKING_RATE_LIMIT: ${BOOKING_RATE_LIMIT:-5}
+      BOOKING_RATE_TTL_MS: ${BOOKING_RATE_TTL_MS:-600000}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
     depends_on:

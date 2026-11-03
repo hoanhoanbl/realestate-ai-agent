@@ -6,13 +6,17 @@ import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import { Alert, CARD, Icon, PageHeader, Skeleton, type IconName } from "@/components/ui";
 import {
+  formatDateTime,
   formatVnd,
   getContracts,
   getFunnel,
   getLeads,
   getSchedule,
   getStats,
+  getTasks,
   type ContractRow,
+  type TaskRow,
+  type Tasks as SignalTasks,
   type Funnel,
   type Lead,
   type LeadStatus,
@@ -94,6 +98,56 @@ function TaskGroup({ title, count, href, empty, children }: {
   );
 }
 
+// Một dòng khách trong các nhóm việc lấy từ GET /stats/tasks
+function SignalItem({ row, detail }: { row: TaskRow; detail?: string | null }) {
+  return (
+    <li>
+      <Link href={`/admin/leads/${row.leadId}`} className="flex items-center justify-between gap-3 py-2 hover:text-brand-700">
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{row.leadName}</span>
+          <span className="block truncate text-xs text-slate-500">
+            {[row.propertyName, row.viewingTime ? formatDateTime(row.viewingTime) : null, detail].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+        <LevelBadge level={row.leadLevel} />
+      </Link>
+    </li>
+  );
+}
+
+// Các nhóm việc từ tín hiệu của khách và buổi xem
+const SIGNAL_GROUPS: {
+  key: keyof SignalTasks;
+  title: string;
+  empty: string;
+  detail?: (r: TaskRow) => string | null;
+}[] = [
+  { key: "pendingAttendance", title: "Buổi xem chờ xác nhận", empty: "Mọi buổi xem đã qua đều đã được ghi nhận." },
+  {
+    key: "wantsDeposit",
+    title: "Khách muốn đặt cọc",
+    empty: "Chưa có khách nào báo muốn đặt cọc.",
+    detail: (r) => (r.rating ? `${r.rating}/5 sao` : null),
+  },
+  {
+    key: "notInterested",
+    title: "Khách báo không còn nhu cầu",
+    empty: "Không có khách nào báo không còn nhu cầu.",
+    detail: (r) => r.comment ?? null,
+  },
+  {
+    key: "reservedBackups",
+    title: "Khách có lịch xem căn đã có người cọc",
+    empty: "Không có khách nào hẹn xem căn đang giữ cọc.",
+  },
+  {
+    key: "customerRequests",
+    title: "Khách xin đổi lịch",
+    empty: "Không có yêu cầu đổi lịch mới.",
+    detail: (r) => r.note ?? null,
+  },
+];
+
 // Ma trận 2 trục (Hậu): mức AI chấm × điểm tương tác Mautic
 const ENGAGED_POINTS = 20;
 
@@ -161,6 +215,7 @@ interface Tasks {
   todayViewings: ScheduleRow[];
   pendingContracts: ContractRow[];
   matrix: Matrix;
+  signals: SignalTasks;
 }
 
 export default function OverviewPage() {
@@ -173,8 +228,8 @@ export default function OverviewPage() {
   useEffect(() => {
     let cancelled = false;
     function load() {
-      Promise.all([getFunnel(), getStats(), getLeads(), getSchedule(), getContracts()])
-        .then(([f, s, leads, schedule, contracts]) => {
+      Promise.all([getFunnel(), getStats(), getLeads(), getSchedule(), getContracts(), getTasks()])
+        .then(([f, s, leads, schedule, contracts, signals]) => {
           if (cancelled) return;
           const today = vnDayKey(new Date());
           setFunnel(f);
@@ -183,10 +238,11 @@ export default function OverviewPage() {
             // Khách mới chờ duyệt: điểm AI cao xếp trước
             pendingLeads: leads.filter((l) => l.status === "NEW").sort((a, b) => (b.score ?? -1) - (a.score ?? -1)),
             todayViewings: schedule
-              .filter((v) => vnDayKey(v.viewingTime) === today && v.leadStatus !== "LOST")
+              .filter((v) => vnDayKey(v.viewingTime) === today && v.leadStatus !== "LOST" && v.viewingStatus !== "CANCELLED")
               .sort((a, b) => a.viewingTime.localeCompare(b.viewingTime)),
             pendingContracts: contracts.filter((c) => c.status === "PENDING_APPROVAL"),
             matrix: buildMatrix(leads),
+            signals,
           });
           setError(null);
         })
@@ -303,6 +359,20 @@ export default function OverviewPage() {
                       ))}
                     </TaskGroup>
                   </div>
+
+                  {SIGNAL_GROUPS.map((g) => (
+                    <TaskGroup
+                      key={g.key}
+                      title={g.title}
+                      count={tasks.signals[g.key].length}
+                      href="/admin/leads"
+                      empty={g.empty}
+                    >
+                      {tasks.signals[g.key].slice(0, 4).map((r) => (
+                        <SignalItem key={r.leadId} row={r} detail={g.detail?.(r)} />
+                      ))}
+                    </TaskGroup>
+                  ))}
                 </div>
               )}
             </div>
@@ -325,6 +395,9 @@ export default function OverviewPage() {
                 </ul>
                 <p className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3 text-sm text-slate-600">
                   <LeadStatusBadge status="LOST" /> {funnel.byStatus.LOST} khách không mua
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  {funnel.noShow ?? 0} lần khách không đến buổi xem
                 </p>
               </div>
 

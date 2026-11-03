@@ -5,9 +5,11 @@ import {
   createProperty,
   formatVnd,
   getAdminProperties,
+  PROPERTY_STATUS_LABELS,
   updateProperty,
   type Property,
   type PropertyInput,
+  type PropertyStatus,
 } from "@/lib/api";
 import PropertyImage from "@/components/PropertyImage";
 import { Alert, Button, Field, INPUT, PageHeader } from "@/components/ui";
@@ -135,9 +137,14 @@ export default function PropertiesAdminPage() {
     }
   }
 
-  async function toggle(p: Property) {
-    const next = p.status === "HIDDEN" ? "AVAILABLE" : "HIDDEN";
-    if (next === "HIDDEN" && !window.confirm(`Ẩn "${p.name}" khỏi trang khách? Các lịch xem đã đặt vẫn giữ nguyên.`)) return;
+  // Đổi trạng thái căn. RESERVED do hợp đồng cọc quyết định nên không có nút; backend báo lỗi nếu còn hợp đồng.
+  async function changeStatus(p: Property, next: PropertyStatus) {
+    const confirmText: Partial<Record<PropertyStatus, string>> = {
+      HIDDEN: `Ẩn "${p.name}" khỏi trang khách? Các lịch xem đã đặt vẫn giữ nguyên.`,
+      SOLD: `Đánh dấu "${p.name}" đã bán? Căn sẽ không còn hiện ở trang khách.`,
+    };
+    if (confirmText[next] && !window.confirm(confirmText[next])) return;
+    setError(null);
     try {
       await updateProperty(p.id, { status: next });
       reload();
@@ -150,7 +157,7 @@ export default function PropertiesAdminPage() {
     <section>
       <PageHeader
         title="Quản lý nhà"
-        description="Căn bị ẩn không hiện ở trang khách và không nhận đặt lịch."
+        description="Căn bị ẩn hoặc đã bán không hiện ở trang khách. Căn đang giữ cọc vẫn hiện nhưng không nhận đặt lịch."
         actions={<Button onClick={() => open("new")}>+ Thêm căn nhà</Button>}
       />
 
@@ -238,7 +245,7 @@ export default function PropertiesAdminPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {items.map((p) => (
-                <tr key={p.id} className={p.status === "HIDDEN" ? "bg-slate-50 text-slate-400" : "hover:bg-slate-50"}>
+                <tr key={p.id} className={p.status === "HIDDEN" || p.status === "SOLD" ? "bg-slate-50 text-slate-400" : "hover:bg-slate-50"}>
                   <td className="px-3 py-3">{p.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
@@ -252,12 +259,24 @@ export default function PropertiesAdminPage() {
                   <td className="px-3 py-3">{typeLabel(p.type)}</td>
                   <td className="whitespace-nowrap px-3 py-3">{formatVnd(p.price)}</td>
                   <td className="px-3 py-3">{Number(p.area)} m²</td>
-                  <td className="px-3 py-3">{p.status === "HIDDEN" ? "Đã ẩn" : "Đang bán"}</td>
+                  <td className="px-3 py-3">{PROPERTY_STATUS_LABELS[p.status as PropertyStatus] ?? p.status}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
                     <button type="button" onClick={() => open(p.id, p)} className="mr-2 text-brand-600 hover:underline">Sửa</button>
-                    <button type="button" onClick={() => toggle(p)} className="text-slate-600 hover:underline">
-                      {p.status === "HIDDEN" ? "Hiện lại" : "Ẩn"}
-                    </button>
+                    {p.status === "AVAILABLE" && (
+                      <button type="button" onClick={() => changeStatus(p, "HIDDEN")} className="text-slate-600 hover:underline">
+                        Ẩn
+                      </button>
+                    )}
+                    {p.status === "HIDDEN" && (
+                      <button type="button" onClick={() => changeStatus(p, "AVAILABLE")} className="text-slate-600 hover:underline">
+                        Hiện lại
+                      </button>
+                    )}
+                    {p.status === "RESERVED" && (
+                      <button type="button" onClick={() => changeStatus(p, "SOLD")} className="text-emerald-700 hover:underline">
+                        Đã bán
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

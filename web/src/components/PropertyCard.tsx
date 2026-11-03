@@ -10,7 +10,14 @@ export default function PropertyCard({ property: p, priority = false }: { proper
       href={`/nha/${p.id}`}
       className={`group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-card-hover ${CARD}`}
     >
-      <PropertyImage property={p} priority={priority} className="aspect-[3/2]" />
+      <div className="relative">
+        <PropertyImage property={p} priority={priority} className="aspect-[3/2]" />
+        {p.status === "RESERVED" && (
+          <span className="absolute left-3 top-3 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white shadow">
+            Đã có người đặt cọc
+          </span>
+        )}
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <h2 className="font-semibold text-slate-900 group-hover:text-brand-700">{p.name}</h2>
         <p className="mt-1 line-clamp-1 text-sm text-slate-500">{p.address}</p>

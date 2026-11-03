@@ -139,7 +139,11 @@ function PropertyDetail() {
           {property.status === "AVAILABLE" ? (
             <BookingForm property={property} />
           ) : (
-            <Alert tone="warning">Căn này hiện không nhận đặt lịch xem.</Alert>
+            <Alert tone="warning">
+              {property.status === "RESERVED"
+                ? "Căn này đã có người đặt cọc nên tạm ngừng nhận lịch xem. Anh/chị có thể xem các căn khác."
+                : "Căn này hiện không nhận đặt lịch xem."}
+            </Alert>
           )}
           <a
             href={TELEGRAM_BOT_URL}

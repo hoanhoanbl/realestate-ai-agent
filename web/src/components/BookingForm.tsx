@@ -61,6 +61,8 @@ export default function BookingForm({ property }: { property: Property }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Lead | null>(null);
+  // Ô bẫy bot: ẩn với người dùng, bot tự điền thì backend từ chối
+  const [website, setWebsite] = useState("");
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -92,6 +94,7 @@ export default function BookingForm({ property }: { property: Property }) {
         viewingTime,
         source: utmSource,
         consentMarketing: form.consentMarketing,
+        website: website || undefined,
       });
       setCreated(result.lead);
     } catch (e: unknown) {
@@ -127,10 +130,23 @@ export default function BookingForm({ property }: { property: Property }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-xl border border-slate-200 bg-white p-6"
+      className="relative space-y-4 rounded-xl border border-slate-200 bg-white p-6"
       noValidate
     >
       <h2 className="text-lg font-bold text-slate-900">Đăng ký xem nhà</h2>
+
+      <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+        />
+      </div>
 
       <div>
         <label htmlFor="name" className="mb-1 block text-sm font-medium">

@@ -55,6 +55,10 @@ export class Lead {
   @Column({ type: 'varchar', length: 50, default: 'NEW' })
   status: string;
 
+  // Lý do khi status = LOST (xem LOST_REASONS). Khách mất trước khi có cột này thì để trống.
+  @Column({ name: 'lost_reason', type: 'varchar', length: 30, nullable: true })
+  lostReason: string | null;
+
   @Column({ type: 'varchar', length: 50, nullable: true })
   source: string | null;
 

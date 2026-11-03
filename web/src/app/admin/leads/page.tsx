@@ -74,8 +74,8 @@ const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "NEW", label: "Mới, chờ duyệt" },
   { value: "CONFIRMED", label: "Đã chốt lịch" },
   { value: "VIEWED", label: "Đã xem nhà" },
-  { value: "DEPOSIT", label: "Muốn đặt cọc" },
-  { value: "SIGNED", label: "Đã ký" },
+  { value: "DEPOSIT", label: "Đang làm hợp đồng cọc" },
+  { value: "SIGNED", label: "Đã ký hợp đồng cọc" },
   { value: "LOST", label: "Mất khách" },
 ];
 

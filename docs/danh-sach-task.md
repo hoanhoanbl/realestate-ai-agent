@@ -2,7 +2,7 @@
 
 Mỗi nhánh làm một task và có một **mã**. Bảng này là nơi duy nhất cấp mã, để Hoàng và Hậu không đặt trùng số. Quy trình Git đầy đủ: [quy-trinh-git.md](quy-trinh-git.md). Kế hoạch theo tuần: [ke-hoach-tich-hop.md](ke-hoach-tich-hop.md).
 
-Cập nhật lần cuối: 3/11/2026.
+Cập nhật lần cuối: 4/11/2026.
 
 ## 1. Quy ước đặt tên
 
@@ -41,15 +41,13 @@ Tuần hiện tại là tuần 3 (2–8/11). Phân việc bên dưới theo mụ
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
-| FE-19 | `feature/FE-19-close-booking-gaps` | Vá 12 lỗ hổng từ đặt lịch đến đặt cọc (OpenSpec `close-booking-to-deposit-gaps`): chống trùng lịch, điểm danh, giữ chỗ căn nhà, đặt cọc, link quản lý lịch cho khách | Hoàng | Code xong và đã chạy end-to-end ở local, đã commit, chờ PR vào `dev`. Còn tài liệu `api-contract.md` (việc 8.1, gộp nội dung nhánh `docs/api-contract-hoang`) và đưa lên VPS khi release `v0.3.0` (10.1–10.6) |
+| HF-01 | `hotfix/HF-01-nang-cap-nextjs` | Nâng Next.js 16.4.0 → 16.4.4: vá lỗi RCE mức critical (Image Optimization với SVG, `use cache`) và DoS Server Actions. Lỗi có trên production nên làm dạng hotfix từ `main` (mã BF-05 đã cấp trước đó bỏ, không dùng lại) | Hoàng | Đã commit ở máy Hoàng, chưa push. Sau khi merge vào `main`: tag `v0.2.1`, PR đồng bộ `main` → `dev` |
+| DC-07 | `docs/DC-07-api-contract-close-gaps` | Việc 8.1 của OpenSpec `close-booking-to-deposit-gaps`: ghi endpoint mới, trạng thái mới, lỗi 409/429 vào `api-contract.md`; gộp nội dung nhánh `docs/api-contract-hoang`. Mục 6 (L2) Hậu vừa thêm vào file này viết không dấu, khi sửa phải giữ nguyên nội dung của Hậu | Hoàng | Chưa làm |
 | FE-20 | `feature/FE-20-telegram-homnay` | Telegram cho sale: lệnh `/homnay` (kế hoạch 3.2) | Hoàng | Chưa làm |
 | FE-21 | `feature/FE-21-mautic-form-nhan-tin` | Form đăng ký nhận tin của Mautic trên web khách (kế hoạch 2.7) | Hậu | Chưa làm |
 | FE-22 | `feature/FE-22-mautic-server` | Cấu hình Mautic trên server: custom field `ai_nudge_text`, segment "Nuôi WARM", campaign; sau đó bật luồng 2 trên server. Cấu hình làm qua trình duyệt, nhánh chỉ chứa phần ghi lại vào `docs/mautic-setup.md` và JSON nếu có đổi | Hậu | Chưa làm |
 | DC-03 | `docs/DC-03-swimlane-luong-hoang` | Đưa swimlane luồng 1, 1b, 3 và error workflow (nhánh cũ `docs/luong-hoang`, 19/10, gộp vào `dev` không xung đột) | Hoàng | Chưa làm |
 | DC-04 | `docs/DC-04-tai-lieu-khop-main` | Sửa tài liệu cho khớp `main` (kế hoạch 1.4). Mục chung bàn trước khi sửa | Hậu | Chưa làm |
-| BF-05 | `bugfix/BF-05-nang-cap-nextjs` | Lúc build web, Next.js 16.4.0 báo có lỗ hổng bảo mật đã biết: nâng cấp lên bản vá | Hoàng | Chưa làm |
-| CH-04 | `chore/sua-quy-trinh-merge` | Tài liệu quy trình: mọi PR dùng "Create a merge commit". Nhánh đã tạo trước khi có quy ước mã nên giữ tên cũ | Hoàng | Đã push, chờ PR |
-| CH-05 | `chore/CH-05-danh-sach-task` | File này | Hoàng | Chờ PR |
 
 ### Tuần 4 (9–15/11)
 
@@ -89,7 +87,8 @@ Video dự phòng làm không cần nhánh. Khoá code 3/12, nộp 5/12.
 
 | Phiên bản | Gồm | Bước làm tay trên VPS | Ai |
 |---|---|---|---|
-| `v0.3.0` | FE-18 (RAG), FE-19 (close-gaps) và các task xong trước đó | RAG: kiểm tra DB có extension `vector`, chạy `backend/sql/rag-kb.sql`, import và publish luồng 6b và luồng 6, restart n8n, chạy luồng 6b một lần. Close-gaps: theo phần 10 của OpenSpec | Hoàng |
+| `v0.2.1` | HF-01 | Kiểm tra web build và chạy được sau khi deploy | Hoàng |
+| `v0.3.0` | FE-18 (RAG), FE-19 (close-gaps), FE-29 (follow-up backend, cần bảng `followup_tasks` trên VPS trước khi import luồng 2) và các task xong trước đó | RAG: kiểm tra DB có extension `vector`, chạy `backend/sql/rag-kb.sql`, import và publish luồng 6b và luồng 6, restart n8n, chạy luồng 6b một lần. Close-gaps: theo phần 10 của OpenSpec | Hoàng |
 | `v1.0.0` | Web hoàn thành | | Hoàng |
 | `v1.1.0` | Bản nộp | | Hoàng |
 
@@ -121,6 +120,8 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | FE-16 | `feature/web-giao-dien-dot-1-2` | Làm mới giao diện web (đợt 1–5): component, ảnh và mô tả nhà, trang admin, PDF hợp đồng | Hoàng | #27, #29 | 29–30/10 |
 | FE-17 | `feature/luong-2-va-mautic-web` | Luồng 2 chuyển WARM sang Mautic, tracking, hai trục điểm, ô đồng ý nhận tin | Hậu | #28 | 30/10 |
 | FE-18 | `feature/rag-tri-thuc` | Luồng 6b nạp tri thức vào pgvector, tool "Hỏi đáp tri thức" cho luồng 6 | Hoàng | #32 | 03/11 |
+| FE-19 | `feature/FE-19-close-booking-gaps` | Vá 12 lỗ hổng từ đặt lịch đến đặt cọc (OpenSpec `close-booking-to-deposit-gaps`). Còn 8.1 (chuyển sang DC-07) và 10.1–10.6 (làm khi release `v0.3.0`) | Hoàng | #35 | 03/11 |
+| FE-29 | `feature/luong-2-va-mautic-web` (lần 2) | Backend follow-up (module `followups`, bảng `followup_tasks`, test), làm lại luồng 2, 7, 8, kịch bản demo phần Hậu | Hậu | (merge trực tiếp, `202d8b3`) | 03/11 |
 
 ### Sửa lỗi (BF)
 
@@ -145,6 +146,8 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | CH-01 | `claude/magical-albattani-4a06ae` | Dọn tài liệu tuần cũ, sửa nhỏ `viewings.service` | Hoàng | #14 | 19/10 |
 | CH-02 | `claude/source-analysis-integration-proposal-831874` | Kế hoạch tích hợp Mautic, Agentic AI và app (`ke-hoach-tich-hop.md`) | Hoàng | #16 | 20/10 |
 | CH-03 | `chore/quy-trinh-git` | Chuyển sang git-flow (`dev` → `main`), CI kiểm tra PR, PR template, tài liệu quy trình | Hoàng | #31 | 03/11 |
+| CH-04 | `chore/sua-quy-trinh-merge` | Mọi PR dùng "Create a merge commit" | Hoàng | #33 | 03/11 |
+| CH-05 | `chore/CH-05-danh-sach-task` | File danh sách task và mã nhánh | Hoàng | #34 | 03/11 |
 
 ### Nhánh cũ không có PR riêng
 
@@ -155,7 +158,6 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | Nhánh | Xử lý |
 |---|---|
 | `docs/luong-hoang` | Gộp lại ở DC-03 |
-| `docs/api-contract-hoang` | Xung đột `api-contract.md`; nội dung gộp vào việc 8.1 của FE-19, sau đó xoá nhánh |
-| `docs/phoi-hop` | Quy tắc Git cũ ("làm trên main"), đã được `quy-trinh-git.md` thay thế; xoá nhánh |
+| `docs/api-contract-hoang` | Xung đột `api-contract.md`; gộp vào DC-07, sau đó xoá nhánh |
 
 Lệnh xoá nhánh cũ xem mục 8 của `quy-trinh-git.md`.

@@ -254,7 +254,7 @@
     },
     {
       "parameters": {
-        "toolDescription": "Tìm các căn nhà đang bán của văn phòng. Trả về danh sách {id, name, address, price (đồng), area (m2), type}. Tham số nào khách không nói thì để chuỗi rỗng.",
+        "toolDescription": "Tìm các căn nhà đang bán của văn phòng. Trả về danh sách {id, name, address, price (đồng), area (m2), type, status}. status = RESERVED nghĩa là căn đã có người đặt cọc: có thể giới thiệu nhưng KHÔNG đặt lịch xem căn đó, hãy gợi ý căn khác. Tham số nào khách không nói thì để chuỗi rỗng.",
         "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/properties",
         "sendQuery": true,
         "queryParameters": {
@@ -300,14 +300,29 @@
     },
     {
       "parameters": {
-        "toolDescription": "Gửi yêu cầu đặt lịch xem nhà cho khách. CHỈ gọi sau khi khách đã xác nhận bản tóm tắt. Trả về lead và viewing vừa tạo; lỗi 400 nghĩa là thông tin chưa hợp lệ (đọc message để hỏi lại khách).",
+        "toolDescription": "Gửi yêu cầu đặt lịch xem nhà cho khách. CHỈ gọi sau khi khách đã xác nhận bản tóm tắt. Trả về lead và viewing vừa tạo; lỗi 400 nghĩa là thông tin chưa hợp lệ hoặc căn không còn nhận lịch (đọc message để hỏi lại khách); lỗi 409 nghĩa là giờ đó đã có khách khác hẹn xem căn này, hoặc khách đã có lịch xem căn này rồi: đọc message, báo lại đúng lý do cho khách và hỏi giờ khác (cách ít nhất 60 phút).",
         "method": "POST",
         "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/viewings",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({\n  name: $fromAI('name', 'Họ tên đầy đủ của khách', 'string'),\n  email: $fromAI('email', 'Email của khách', 'string'),\n  phone: $fromAI('phone', 'Số điện thoại của khách, chỉ gồm chữ số', 'string'),\n  budget: $fromAI('budget', 'Ngân sách của khách, số đồng (3 tỷ = 3000000000)', 'number'),\n  propertyId: $fromAI('propertyId', 'id căn nhà lấy từ kết quả Tìm nhà', 'number'),\n  viewingTime: $fromAI('viewingTime', 'Giờ xem, dạng YYYY-MM-DDTHH:mm:00+07:00, phải ở tương lai', 'string'),\n  needs: $fromAI('needs', 'Nhu cầu thêm của khách, rỗng nếu không có', 'string', ''),\n  source: 'telegram'\n}) }}",
         "options": {
-          "timeout": 15000
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": false
+            }
+          }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $env.WEBHOOK_SECRET }}"
+            }
+          ]
         }
       },
       "type": "n8n-nodes-base.httpRequestTool",

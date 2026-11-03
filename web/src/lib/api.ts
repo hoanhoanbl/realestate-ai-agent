@@ -14,6 +14,33 @@ export type LeadStatus =
   | "SIGNED"
   | "LOST";
 
+// Kết quả buổi xem (viewings.status)
+export type ViewingStatus = "NEW" | "ATTENDED" | "NO_SHOW" | "CANCELLED";
+export const VIEWING_STATUS_LABELS: Record<ViewingStatus, string> = {
+  NEW: "Chờ xem",
+  ATTENDED: "Khách đã đến",
+  NO_SHOW: "Khách không đến",
+  CANCELLED: "Đã huỷ",
+};
+
+// Lý do mất khách (leads.lost_reason)
+export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "OTHER";
+export const LOST_REASON_LABELS: Record<LostReason, string> = {
+  NO_SHOW: "Khách không đến xem",
+  NOT_INTERESTED: "Không còn nhu cầu",
+  CUSTOMER_CANCELLED: "Khách tự huỷ lịch",
+  OTHER: "Lý do khác",
+};
+
+// Trạng thái căn nhà: RESERVED do hệ thống đặt khi có hợp đồng cọc
+export type PropertyStatus = "AVAILABLE" | "RESERVED" | "SOLD" | "HIDDEN";
+export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
+  AVAILABLE: "Đang bán",
+  RESERVED: "Đang giữ cọc",
+  SOLD: "Đã bán",
+  HIDDEN: "Đã ẩn",
+};
+
 export interface Property {
   id: number;
   name: string;
@@ -48,6 +75,7 @@ export interface Lead {
   mauticContactId?: number | null;
   mauticPoints?: number;
   consentMarketing?: boolean;
+  lostReason?: LostReason | null;
   createdAt: string;
 }
 
@@ -56,7 +84,7 @@ export interface Viewing {
   propertyId: number;
   leadId: number;
   viewingTime: string;
-  status: string;
+  status: ViewingStatus;
 }
 
 export interface LeadEvent {
@@ -71,7 +99,17 @@ export interface LeadEvent {
 export type LeadDetail = Lead & {
   viewing: Viewing | null;
   property: Property | null;
+  // Các lần đặt lịch khác của cùng email (mỗi lần đặt là một lead)
+  otherBookings: OtherBooking[];
 };
+
+export interface OtherBooking {
+  id: number;
+  status: LeadStatus;
+  createdAt: string;
+  propertyName: string | null;
+  viewingTime: string | null;
+}
 
 // Tên tiếng Việt cho lead_events.type
 export const EVENT_LABELS: Record<string, string> = {
@@ -97,6 +135,14 @@ export const EVENT_LABELS: Record<string, string> = {
   MAUTIC_SYNCED: "Đồng bộ sang Mautic",
   MAUTIC_SCORE_CHANGED: "Điểm Mautic thay đổi",
   STATUS_CHANGED: "Đổi trạng thái",
+  VIEWING_NO_SHOW: "Khách không đến xem",
+  VIEWING_CANCELLED: "Lịch xem bị huỷ",
+  CUSTOMER_RESCHEDULE_REQUESTED: "Khách xin đổi lịch",
+  ATTENDANCE_CHECK_SENT: "Đã nhắc xác nhận buổi xem",
+  ATTENDANCE_ESCALATED: "Báo quản lý: buổi xem chưa xác nhận",
+  DEPOSIT_RECEIVED: "Đã nhận tiền cọc",
+  PROPERTY_RESERVED: "Căn chuyển sang giữ cọc",
+  PROPERTY_SOLD: "Căn đã bán",
 };
 
 export function eventLabel(type: string): string {
@@ -113,6 +159,8 @@ export interface CreateViewingInput {
   viewingTime: string;
   source?: string;
   consentMarketing?: boolean;
+  // Ô bẫy bot, người thật để trống
+  website?: string;
 }
 
 export interface CreateViewingResult {
@@ -296,6 +344,8 @@ export interface ContractDetail {
   signature: string | null;
   signedAt: string | null;
   signedIp: string | null;
+  depositReceivedAt: string | null;
+  depositReceivedBy: string | null;
   expiresAt: string | null;
   createdAt: string;
   signUrl: string | null;
@@ -317,6 +367,10 @@ export function createContract(leadId: number, depositAmount: number): Promise<{
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ leadId, depositAmount }),
   });
+}
+
+export function markDepositReceived(id: number): Promise<ContractDetail> {
+  return request<ContractDetail>(`/contracts/${id}/deposit-received`, { method: "POST" });
 }
 
 export function approveContract(id: number): Promise<{ ok: true }> {
@@ -452,6 +506,7 @@ export interface Funnel {
   pendingApproval: number;
   failedAutomation: number;
   viewingsToday: number;
+  noShow: number;
 }
 
 export function getFunnel(): Promise<Funnel> {
@@ -466,9 +521,11 @@ export interface ScheduleRow {
   leadPhone: string;
   leadLevel: Level | null;
   leadStatus: LeadStatus;
+  viewingStatus: ViewingStatus;
   propertyId: number;
   propertyName: string;
   propertyAddress: string;
+  propertyStatus: PropertyStatus;
 }
 
 export function getSchedule(): Promise<ScheduleRow[]> {
@@ -479,11 +536,91 @@ export function approveLead(id: number): Promise<{ via: "resume" | "manual" }> {
   return request(`/leads/${id}/approve`, { method: "POST" });
 }
 
-export function setLeadStatus(id: number, status: "VIEWED" | "LOST", note?: string): Promise<Lead> {
+export function setLeadStatus(
+  id: number,
+  status: "VIEWED" | "LOST",
+  note?: string,
+  reason?: LostReason,
+): Promise<Lead> {
   return request<Lead>(`/leads/${id}/admin-status`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, note }),
+    body: JSON.stringify({ status, note, reason }),
+  });
+}
+
+// Nhân viên ghi nhận kết quả buổi xem. Không đến: hẹn lại (kèm giờ mới) hoặc đóng (mất khách).
+export function recordAttendance(
+  viewingId: number,
+  body:
+    | { outcome: "ATTENDED"; note?: string }
+    | { outcome: "NO_SHOW"; next: "CLOSE"; note?: string }
+    | { outcome: "NO_SHOW"; next: "RESCHEDULE"; viewingTime: string; note?: string },
+): Promise<Lead> {
+  return request<Lead>(`/viewings/${viewingId}/attendance`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// Được ghi nhận buổi xem từ 30 phút trước giờ hẹn (giống backend)
+export const ATTENDANCE_GRACE_MS = 30 * 60 * 1000;
+export function viewingStarted(iso: string): boolean {
+  return Date.now() >= new Date(iso).getTime() - ATTENDANCE_GRACE_MS;
+}
+
+// ---- Việc cần làm trên trang Tổng quan ----
+export interface TaskRow {
+  leadId: number;
+  leadName: string;
+  leadPhone: string;
+  leadLevel: Level | null;
+  leadStatus: LeadStatus;
+  viewingTime: string | null;
+  propertyName: string | null;
+  rating?: number | null;
+  comment?: string | null;
+  note?: string | null;
+  requestedAt?: string;
+}
+
+export interface Tasks {
+  pendingAttendance: TaskRow[];
+  wantsDeposit: TaskRow[];
+  notInterested: TaskRow[];
+  reservedBackups: TaskRow[];
+  customerRequests: TaskRow[];
+}
+
+export function getTasks(): Promise<Tasks> {
+  return request<Tasks>("/stats/tasks");
+}
+
+// ---- Khách tự quản lý lịch qua link /lich/<token> ----
+export interface ManageBookingInfo {
+  leadName: string;
+  propertyName: string | null;
+  propertyAddress: string | null;
+  viewingTime: string | null;
+  leadStatus: LeadStatus;
+  viewingStatus: ViewingStatus;
+  canChange: boolean;
+}
+
+export function getManageBooking(token: string): Promise<ManageBookingInfo> {
+  return request<ManageBookingInfo>(`/viewings/manage/${encodeURIComponent(token)}`);
+}
+
+export function cancelBooking(token: string): Promise<{ ok: true }> {
+  return request(`/viewings/manage/${encodeURIComponent(token)}/cancel`, { method: "POST" });
+}
+
+export function requestReschedule(token: string, note: string): Promise<{ ok: true }> {
+  return request(`/viewings/manage/${encodeURIComponent(token)}/reschedule-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: note.trim() || undefined }),
   });
 }
 

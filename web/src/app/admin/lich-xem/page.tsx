@@ -6,7 +6,7 @@ import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import RescheduleControl from "@/components/RescheduleControl";
 import { Alert, CARD, EmptyState, Icon, PageHeader, Skeleton } from "@/components/ui";
-import { getSchedule, type ScheduleRow } from "@/lib/api";
+import { getSchedule, VIEWING_STATUS_LABELS, type ScheduleRow } from "@/lib/api";
 import { dayLabel, formatDate, formatTime, vnDayKey } from "@/lib/time";
 
 type Tab = "UPCOMING" | "PAST";
@@ -126,9 +126,15 @@ export default function SchedulePage() {
                   <div className="flex items-center gap-2">
                     <LevelBadge level={r.leadLevel} />
                     <LeadStatusBadge status={r.leadStatus} />
+                    {r.viewingStatus && r.viewingStatus !== "NEW" && (
+                      <span className="text-xs font-medium text-slate-500">{VIEWING_STATUS_LABELS[r.viewingStatus]}</span>
+                    )}
+                    {r.propertyStatus === "RESERVED" && r.viewingStatus === "NEW" && (
+                      <span className="text-xs font-medium text-amber-700">Căn đã có người cọc</span>
+                    )}
                   </div>
                   <div className="ml-auto">
-                    {(r.leadStatus === "NEW" || r.leadStatus === "CONFIRMED") && tab === "UPCOMING" && (
+                    {(r.leadStatus === "NEW" || r.leadStatus === "CONFIRMED") && r.viewingStatus === "NEW" && tab === "UPCOMING" && (
                       <RescheduleControl
                         viewingId={r.id}
                         currentTime={r.viewingTime}

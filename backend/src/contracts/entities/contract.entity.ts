@@ -4,8 +4,15 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Update
 // DRAFTING (chờ n8n soạn) -> PENDING_APPROVAL (chờ quản lý duyệt) -> SENT (đã gửi khách ký) -> SIGNED
 //                                         \-> REJECTED                      \-> EXPIRED
 export const CONTRACT_STATUSES = ['DRAFTING', 'PENDING_APPROVAL', 'SENT', 'SIGNED', 'REJECTED', 'EXPIRED'];
+// Hợp đồng còn hiệu lực: mỗi căn chỉ được có một hợp đồng ở các trạng thái này
+export const ACTIVE_CONTRACT_STATUSES = ['DRAFTING', 'PENDING_APPROVAL', 'SENT', 'SIGNED'];
+export const ACTIVE_CONTRACT_INDEX = 'uq_contracts_active_property';
 
 @Entity('contracts')
+@Index(ACTIVE_CONTRACT_INDEX, ['propertyId'], {
+  unique: true,
+  where: `status IN ('DRAFTING', 'PENDING_APPROVAL', 'SENT', 'SIGNED')`,
+})
 export class Contract {
   @PrimaryGeneratedColumn()
   id: number;
@@ -70,6 +77,13 @@ export class Contract {
 
   @Column({ name: 'signed_ip', type: 'varchar', length: 64, nullable: true })
   signedIp: string | null;
+
+  // Quản lý xác nhận đã nhận tiền cọc (chỉ khi hợp đồng đã ký)
+  @Column({ name: 'deposit_received_at', type: 'timestamptz', nullable: true })
+  depositReceivedAt: Date | null;
+
+  @Column({ name: 'deposit_received_by', type: 'varchar', length: 100, nullable: true })
+  depositReceivedBy: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

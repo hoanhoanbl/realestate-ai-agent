@@ -64,6 +64,13 @@ export class ContractsController {
     return this.contractsService.reject(id, dto.reason, req.user);
   }
 
+  @Post(':id/deposit-received')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  depositReceived(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.contractsService.markDepositReceived(id, req.user);
+  }
+
   // --- Cho n8n (X-Webhook-Secret) ---
 
   @Put(':id/draft')

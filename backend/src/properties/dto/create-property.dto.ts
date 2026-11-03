@@ -14,7 +14,9 @@ import {
 import { PartialType } from '@nestjs/swagger';
 
 export const PROPERTY_TYPES = ['APARTMENT', 'TOWNHOUSE', 'VILLA', 'SHOPHOUSE', 'LAND'];
-export const PROPERTY_STATUSES = ['AVAILABLE', 'HIDDEN'];
+// RESERVED do hệ thống đặt khi có hợp đồng cọc, quản lý không tự đặt được
+export const PROPERTY_STATUSES = ['AVAILABLE', 'RESERVED', 'SOLD', 'HIDDEN'];
+export const MANAGER_SETTABLE_PROPERTY_STATUSES = ['AVAILABLE', 'HIDDEN', 'SOLD'];
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const emptyToNull = ({ value }: { value: unknown }) => {
@@ -46,7 +48,7 @@ export class CreatePropertyDto {
   type: string;
 
   @IsOptional()
-  @IsIn(PROPERTY_STATUSES)
+  @IsIn(MANAGER_SETTABLE_PROPERTY_STATUSES, { message: 'Trạng thái căn chỉ được là AVAILABLE, HIDDEN hoặc SOLD' })
   status?: string;
 
   // Chuỗi rỗng = xoá ảnh/mô tả (lưu null)

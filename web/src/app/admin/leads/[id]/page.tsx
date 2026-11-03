@@ -17,7 +17,11 @@ import {
   getLead,
   getLeadEvents,
   getLeadFeedback,
+  LOST_REASON_LABELS,
+  PROPERTY_STATUS_LABELS,
   sourceLabel,
+  VIEWING_STATUS_LABELS,
+  type PropertyStatus,
   type Feedback,
   type LeadDetail,
   type LeadEvent,
@@ -145,6 +149,9 @@ function LeadDetailContent() {
                 <LeadStatusBadge status={lead.status} />
                 <LevelBadge level={lead.level} />
                 <StatusBadge status={lead.automationStatus} />
+                {lead.status === "LOST" && lead.lostReason && (
+                  <span className="text-xs text-rose-700">Lý do: {LOST_REASON_LABELS[lead.lostReason] ?? lead.lostReason}</span>
+                )}
               </div>
             </div>
             {updatedAt && (
@@ -178,16 +185,44 @@ function LeadDetailContent() {
                   <Field label="Căn nhà">{lead.property.name}</Field>
                   <Field label="Địa chỉ">{lead.property.address}</Field>
                   <Field label="Giá">{formatVnd(lead.property.price)}</Field>
+                  {lead.property.status !== "AVAILABLE" && (
+                    <Field label="Trạng thái căn">
+                      {PROPERTY_STATUS_LABELS[lead.property.status as PropertyStatus] ?? lead.property.status}
+                    </Field>
+                  )}
                 </>
               ) : (
                 <p className="text-slate-500">Chưa có căn nhà.</p>
               )}
               {lead.viewing && (
-                <Field label="Giờ xem nhà">
-                  {formatDateTime(lead.viewing.viewingTime)}
-                </Field>
+                <>
+                  <Field label="Giờ xem nhà">
+                    {formatDateTime(lead.viewing.viewingTime)}
+                  </Field>
+                  <Field label="Buổi xem">
+                    {VIEWING_STATUS_LABELS[lead.viewing.status] ?? lead.viewing.status}
+                  </Field>
+                </>
               )}
             </Card>
+
+            {lead.otherBookings?.length > 0 && (
+              <Card title={`Khách này đã đặt ${lead.otherBookings.length} lần khác`}>
+                <ul className="space-y-1">
+                  {lead.otherBookings.map((b) => (
+                    <li key={b.id} className="flex flex-wrap items-center gap-2">
+                      <Link href={`/admin/leads/${b.id}`} className="text-blue-600 hover:underline">
+                        #{b.id} {b.propertyName ?? "Chưa có căn"}
+                      </Link>
+                      <LeadStatusBadge status={b.status} />
+                      <span className="text-xs text-slate-500">
+                        {b.viewingTime ? `hẹn ${formatDateTime(b.viewingTime)}` : `đặt ${formatDateTime(b.createdAt)}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
 
             <Card title="Kết quả AI">
               {lead.score === null ? (

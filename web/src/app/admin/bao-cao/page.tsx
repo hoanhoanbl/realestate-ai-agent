@@ -28,6 +28,7 @@ const ROWS: { key: string; label: string }[] = [
   { key: "new_leads", label: "Khách mới" },
   { key: "confirmed", label: "Đã chốt lịch" },
   { key: "viewed", label: "Đã xem nhà" },
+  { key: "no_show", label: "Khách không đến" },
   { key: "deposits", label: "Tạo hợp đồng cọc" },
   { key: "signed", label: "Đã ký" },
   { key: "lost", label: "Mất khách" },

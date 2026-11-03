@@ -41,7 +41,7 @@ Tuần hiện tại là tuần 3 (2–8/11). Phân việc bên dưới theo mụ
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
-| FE-19 | `feature/FE-19-close-booking-gaps` | Vá 12 lỗ hổng từ đặt lịch đến đặt cọc (OpenSpec `close-booking-to-deposit-gaps`): chống trùng lịch, điểm danh, giữ chỗ căn nhà, đặt cọc, link quản lý lịch cho khách | Hoàng | Đang làm: xong 55/62 việc, code chạy ở local, **chưa commit**. Còn tài liệu `api-contract.md` (việc 8.1) và đưa lên VPS (10.1–10.6) |
+| FE-19 | `feature/FE-19-close-booking-gaps` | Vá 12 lỗ hổng từ đặt lịch đến đặt cọc (OpenSpec `close-booking-to-deposit-gaps`): chống trùng lịch, điểm danh, giữ chỗ căn nhà, đặt cọc, link quản lý lịch cho khách | Hoàng | Code xong và đã chạy end-to-end ở local, đã commit, chờ PR vào `dev`. Còn tài liệu `api-contract.md` (việc 8.1, gộp nội dung nhánh `docs/api-contract-hoang`) và đưa lên VPS khi release `v0.3.0` (10.1–10.6) |
 | FE-20 | `feature/FE-20-telegram-homnay` | Telegram cho sale: lệnh `/homnay` (kế hoạch 3.2) | Hoàng | Chưa làm |
 | FE-21 | `feature/FE-21-mautic-form-nhan-tin` | Form đăng ký nhận tin của Mautic trên web khách (kế hoạch 2.7) | Hậu | Chưa làm |
 | FE-22 | `feature/FE-22-mautic-server` | Cấu hình Mautic trên server: custom field `ai_nudge_text`, segment "Nuôi WARM", campaign; sau đó bật luồng 2 trên server. Cấu hình làm qua trình duyệt, nhánh chỉ chứa phần ghi lại vào `docs/mautic-setup.md` và JSON nếu có đổi | Hậu | Chưa làm |

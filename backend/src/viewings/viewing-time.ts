@@ -15,3 +15,12 @@ export function parseViewingTime(raw: string): { text: string; date: Date } {
   }
   return { text, date };
 }
+
+// Được ghi nhận "đã xem" / "không đến" từ 30 phút trước giờ hẹn trở đi
+export const ATTENDANCE_GRACE_MS = 30 * 60 * 1000;
+
+export function assertViewingStarted(viewingTime: Date | null): void {
+  if (viewingTime && Date.now() < viewingTime.getTime() - ATTENDANCE_GRACE_MS) {
+    throw new BadRequestException('Chưa đến giờ hẹn, chưa ghi nhận được khách có đến hay không');
+  }
+}

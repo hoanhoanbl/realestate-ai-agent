@@ -12,6 +12,12 @@ export class StatsController {
     return this.statsService.getStats();
   }
 
+  @Get('tasks')
+  @UseGuards(JwtAuthGuard)
+  getTasks() {
+    return this.statsService.getTasks();
+  }
+
   @Get('funnel')
   @UseGuards(JwtAuthGuard)
   getFunnel() {

@@ -46,7 +46,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   // Khung "Khách không đến": hẹn lại (chọn giờ mới) hoặc đóng
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowTime, setNoShowTime] = useState("");
-  // Khung "Mất khách": chọn lý do
+  // Khung "Không mua": chọn lý do
   const [loseOpen, setLoseOpen] = useState(false);
   const [loseReason, setLoseReason] = useState<LostReason>("OTHER");
   const [loseNote, setLoseNote] = useState("");
@@ -73,7 +73,9 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const attendancePending = lead.status === "CONFIRMED" && viewingPending;
   const started = viewing !== null && viewingStarted(viewing.viewingTime);
   const canMarkViewed = attendancePending && started;
-  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST";
+  // Đang cọc thì không đóng lead được: quản lý từ chối hợp đồng trước, khách tự về "Đã xem nhà" (BF-06)
+  const depositing = lead.status === "DEPOSIT";
+  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST" && !depositing;
   // Quá giờ hẹn thì dùng "Khách không đến > Hẹn lại" để còn ghi nhận lần vắng mặt
   const canReschedule = (lead.status === "NEW" || (lead.status === "CONFIRMED" && !started)) && viewingPending;
 
@@ -86,7 +88,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
     </Link>
   );
 
-  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink) return null;
+  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink && !depositing)
+    return null;
 
   return (
     <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50/50 p-5">
@@ -198,7 +201,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 }}
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
               >
-                Đóng (mất khách)
+                Đóng (Không mua)
               </button>
               <button
                 type="button"
@@ -239,6 +242,12 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
           </div>
         )}
         {contractLink}
+        {depositing && (
+          <p className="self-center text-sm text-slate-500">
+            Khách đang đặt cọc nên chưa chuyển sang &quot;Không mua&quot; được. Nếu khách không mua nữa, quản lý từ chối
+            hợp đồng trước; khách sẽ về &quot;Đã xem nhà&quot; và căn mở bán lại.
+          </p>
+        )}
         {canLose && !loseOpen && (
           <button
             type="button"
@@ -250,13 +259,13 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
             }}
             className={`${BTN} bg-white text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50`}
           >
-            Mất khách
+            Không mua
           </button>
         )}
         {canLose && loseOpen && (
           <div className="flex flex-col gap-2 rounded-lg bg-white p-3 ring-1 ring-rose-300">
             <label className="text-sm font-medium text-slate-700">
-              Lý do mất khách
+              Lý do không mua
               <select
                 value={loseReason}
                 onChange={(e) => setLoseReason(e.target.value as LostReason)}
@@ -280,14 +289,14 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 disabled={busy !== null}
                 onClick={() =>
                   run("lost", async () => {
-                    await setLeadStatus(lead.id, "LOST", loseNote.trim() || "Mất khách", loseReason);
+                    await setLeadStatus(lead.id, "LOST", loseNote.trim() || "Không mua", loseReason);
                     setLoseOpen(false);
-                    return "Đã đánh dấu mất khách.";
+                    return "Đã chuyển khách sang Không mua.";
                   })
                 }
                 className="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
               >
-                {busy === "lost" ? "Đang lưu..." : "Xác nhận mất khách"}
+                {busy === "lost" ? "Đang lưu..." : "Xác nhận không mua"}
               </button>
               <button
                 type="button"

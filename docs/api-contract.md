@@ -120,6 +120,7 @@ Chung cho moi callback:
 - `note`: tuy chon.
 - Backend luu `leads.status` va **tu ghi** mot dong `lead_events` voi `type = STATUS_CHANGED`, `note = "<cu> -> <moi>: <note>"`.
 - Neu trang thai moi **trung** trang thai cu: khong doi gi, khong ghi `STATUS_CHANGED`, van tra `200`.
+- Lead dang `DEPOSIT` khong chuyen thang sang `LOST` duoc: tra `400` (BF-06). Quan ly phai tu choi hop dong truoc, lead tu ve `VIEWED`. Ap dung ca cho `PUT /api/leads/{leadId}/admin-status` cua web admin.
 
 ### 2.4. Ghi su kien cua lead (tuan 2)
 

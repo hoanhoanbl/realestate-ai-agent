@@ -31,7 +31,7 @@ const ROWS: { key: string; label: string }[] = [
   { key: "no_show", label: "Khách không đến" },
   { key: "deposits", label: "Tạo hợp đồng cọc" },
   { key: "signed", label: "Đã ký" },
-  { key: "lost", label: "Mất khách" },
+  { key: "lost", label: "Không mua" },
 ];
 
 const FUNNEL: { key: string; label: string }[] = [

@@ -3,7 +3,7 @@ import { LeadsService, assertNotLosingDeposit } from './leads.service';
 import type { Lead } from './entities/lead.entity';
 import type { Viewing } from '../viewings/entities/viewing.entity';
 
-// Chạy: node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --runTestsByPath src/leads/leads.service.spec.ts
+// Chạy: npm test (trong backend/)
 const user = { id: 1, name: 'Sale A', role: 'SALE' } as any;
 
 describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => {

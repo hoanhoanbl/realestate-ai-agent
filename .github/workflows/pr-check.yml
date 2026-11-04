@@ -52,6 +52,26 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  # Test cần Node 24.9+: NestJS 12 là ESM, Jest 30 chỉ nạp được ESM bằng require khi Node có
+  # vm.SourceTextModule#hasAsyncGraph (từ 24.9, bật bằng --experimental-vm-modules trong npm test).
+  # Lint và build vẫn dùng Node 20 cho giống image Docker chạy trên VPS.
+  backend-test:
+    name: Backend test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
   web:
     name: Web lint + build
     runs-on: ubuntu-24.04

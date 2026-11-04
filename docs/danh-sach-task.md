@@ -168,6 +168,7 @@ BF-05 đã cấp cho việc nâng Next.js rồi bỏ (chuyển thành HF-01), kh
 | CH-03 | `chore/quy-trinh-git` | Chuyển sang git-flow (`dev` → `main`), CI kiểm tra PR, PR template, tài liệu quy trình | Hoàng | #31 | 03/11 |
 | CH-04 | `chore/sua-quy-trinh-merge` | Mọi PR dùng "Create a merge commit" | Hoàng | #33 | 03/11 |
 | CH-05 | `chore/CH-05-danh-sach-task` | File danh sách task và mã nhánh | Hoàng | #34 | 03/11 |
+| CH-06 | `chore/CH-06-sua-npm-test` | Sửa `npm test` của backend (chạy Jest chế độ ESM), xoá 6 file test khung mẫu không chạy được, CI kiểm tra PR có thêm job "Backend test" chạy Node 24 (test cần Node 24.9 trở lên) | Hoàng | #41 | 04/11 |
 
 ### Nhánh cũ không có PR riêng
 

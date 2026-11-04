@@ -76,7 +76,7 @@ const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "VIEWED", label: "Đã xem nhà" },
   { value: "DEPOSIT", label: "Đang làm hợp đồng cọc" },
   { value: "SIGNED", label: "Đã ký hợp đồng cọc" },
-  { value: "LOST", label: "Mất khách" },
+  { value: "LOST", label: "Không mua" },
 ];
 
 const LEVELS: Filter[] = FILTERS.map((f) => f.value);

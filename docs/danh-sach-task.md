@@ -97,7 +97,7 @@ Video dự phòng làm không cần nhánh. Khoá code 3/12, nộp 5/12.
 | Phiên bản | Gồm | Bước làm tay trên VPS | Ai |
 |---|---|---|---|
 | `v0.2.1` | HF-01 | Đã xong 04/11: CI deploy `b37eb1a`, web trả 200 | Hoàng |
-| `v0.3.0` | Code của FE-18 (RAG), FE-19 (close-gaps), BF-06, FE-29 (follow-up backend; bảng `followup_tasks` tự tạo khi backend khởi động) và các task xong trước đó. **Chưa import luồng 2, 7, 8**: luồng 7, 8 trên server giữ bản cũ, luồng 2 vẫn tắt | Kiểm tra trước (10.1) đã làm 04/11: không có căn trùng hợp đồng còn hiệu lực, căn 1 sẽ tự chuyển `RESERVED`, giữ lead #4 làm lead test (10.2). Sau deploy: RAG (DB đã có extension `vector`; chạy `backend/sql/rag-kb.sql`, import và publish luồng 6b, chạy 6b một lần); import và publish luồng 1, 1b, 4, 6; restart n8n; 10.5, 10.6 (trừ phần điểm danh, làm ở `v0.3.1`) | Hoàng |
+| `v0.3.0` | Code của FE-18 (RAG), FE-19 (close-gaps), BF-06, CH-06, FE-29 (follow-up backend; bảng `followup_tasks` tự tạo khi backend khởi động) và các task xong trước đó. PR release: đóng PR #30 "Mer dev to main" (mở 3/11, thiếu các task sau đó, không đúng tên), mở PR mới `Release v0.3.0` theo mục 3 của `quy-trinh-git.md` sau khi BF-06 và CH-06 vào `dev`. **Chưa import luồng 2, 7, 8**: luồng 7, 8 trên server giữ bản cũ, luồng 2 vẫn tắt | Kiểm tra trước (10.1) đã làm 04/11: không có căn trùng hợp đồng còn hiệu lực, căn 1 sẽ tự chuyển `RESERVED`, giữ lead #4 làm lead test (10.2). Sau deploy: RAG (DB đã có extension `vector`; chạy `backend/sql/rag-kb.sql`, import và publish luồng 6b, chạy 6b một lần); import và publish luồng 1, 1b, 4, 6; restart n8n; 10.5, 10.6 (trừ phần điểm danh, làm ở `v0.3.1`) | Hoàng |
 | `v0.3.1` | Phần n8n của FE-29 và FE-22. **Hạn 8/11** | Chạy các bước trong `docs/trien-khai.md` (DC-09, Hậu kiểm tra trước): tạo credential Mautic, import và publish luồng 2, 7, 8, restart n8n; bật luồng 2, kiểm tra lời nhắc điểm danh của lead #4 | Hoàng chạy, Hậu kiểm tra bước |
 | `v1.0.0` | Web hoàn thành | | Hoàng |
 | `v1.1.0` | Bản nộp | | Hoàng |
@@ -141,7 +141,7 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | BF-02 | `fix/n8n-luong-2-switch-fallback` | Luồng 2: Switch dùng fallback `extra` | Hậu | (merge trực tiếp, `7b21c70`) | 15/10 |
 | BF-03 | `fix/compose-env-auth` | Truyền `JWT_SECRET`, `SEED_USER_PASSWORD` vào backend | Hoàng | #15 | 19/10 |
 | BF-04 | `fix/mautic-url-env` | Luồng 7 đọc URL Mautic từ `MAUTIC_URL` | Hoàng | #26 | 29/10 |
-| BF-06 | `bugfix/BF-06-chan-khong-mua-khi-dang-coc` | Chặn "Không mua" khi lead đang `DEPOSIT`: backend trả 400 ở cả `admin-status` và `PUT status` của n8n, web ẩn nút "Mất khách" và hướng dẫn từ chối hợp đồng trước. Có test `leads.service.spec.ts` | Hoàng | #40 | 04/11 |
+| BF-06 | `bugfix/BF-06-chan-khong-mua-khi-dang-coc` | Chặn "Không mua" khi lead đang `DEPOSIT`: backend trả 400 ở cả `admin-status` và `PUT status` của n8n, web ẩn nút "Không mua" và hướng dẫn từ chối hợp đồng trước. Có test `leads.service.spec.ts`. Cùng PR: web admin và email báo cáo luồng 4 đổi chữ "Mất khách" thành "Không mua" cho khớp tên trạng thái | Hoàng | #40 | 04/11 |
 
 BF-05 đã cấp cho việc nâng Next.js rồi bỏ (chuyển thành HF-01), không dùng lại. Mã BF tiếp theo là BF-08 (BF-06, BF-07 đã cấp ở tuần 3).
 

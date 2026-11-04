@@ -20,7 +20,7 @@ import { assertViewingStarted } from '../viewings/viewing-time';
 export function assertNotLosingDeposit(fromStatus: string, toStatus: string): void {
   if (fromStatus === 'DEPOSIT' && toStatus === 'LOST') {
     throw new BadRequestException(
-      'Khách đang đặt cọc, không đánh dấu mất khách được. Quản lý từ chối hợp đồng trước, khách sẽ về "Đã xem nhà".',
+      'Khách đang đặt cọc, chưa chuyển sang "Không mua" được. Quản lý từ chối hợp đồng trước, khách sẽ về "Đã xem nhà".',
     );
   }
 }

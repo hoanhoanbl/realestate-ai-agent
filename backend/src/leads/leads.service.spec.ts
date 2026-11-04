@@ -6,7 +6,7 @@ import type { Viewing } from '../viewings/entities/viewing.entity';
 // Chạy: node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --runTestsByPath src/leads/leads.service.spec.ts
 const user = { id: 1, name: 'Sale A', role: 'SALE' } as any;
 
-describe('BF-06: không đánh dấu mất khách khi đang đặt cọc', () => {
+describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => {
   let lead: Partial<Lead>;
   let viewing: Partial<Viewing>;
   let events: { type: string; note?: string | null }[];
@@ -33,7 +33,7 @@ describe('BF-06: không đánh dấu mất khách khi đang đặt cọc', () =>
     service = new LeadsService(leadRepo as any, eventRepo as any, viewingRepo as any, {} as any, {} as any);
   });
 
-  it('chặn nút "Mất khách" trên web admin, không đổi gì', async () => {
+  it('chặn nút "Không mua" trên web admin, không đổi gì', async () => {
     await expect(service.adminSetStatus(4, { status: 'LOST', reason: 'OTHER' }, user)).rejects.toThrow(BadRequestException);
     expect(lead.status).toBe('DEPOSIT');
     expect(events).toHaveLength(0);

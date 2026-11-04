@@ -44,7 +44,7 @@ gitGraph
 
 Tên nhánh viết thường, không dấu, nối bằng gạch ngang: `feature/luong-6-homnay`, `bugfix/lich-xem-trung-gio`, `hotfix/web-404-chi-tiet-nha`. Nhánh tài liệu dùng `docs/<ten>`, nhánh CI hoặc cấu hình dùng `chore/<ten>`; cả hai đi vào `dev` như feature.
 
-CI `Kiem tra PR` (`.github/workflows/pr-check.yml`) chạy cho mọi PR vào `dev` và `main`: chặn PR vào `main` không đến từ `dev` hoặc `hotfix/*`, chạy lint và build cho backend và web, chạy test backend (`npm test`), đọc thử toàn bộ JSON n8n. PR đỏ thì sửa xong mới merge.
+CI `Kiem tra PR` (`.github/workflows/pr-check.yml`) chạy cho mọi PR vào `dev` và `main`: chặn PR vào `main` không đến từ `dev` hoặc `hotfix/*`, chạy lint và build cho backend và web, chạy test backend (`npm test`, job riêng dùng Node 24), đọc thử toàn bộ JSON n8n. PR đỏ thì sửa xong mới merge.
 
 ## 2. Làm một task
 
@@ -73,7 +73,7 @@ Mỗi nhánh một việc, làm trong 1–3 ngày. Việc lớn thì chia nhiề
 **Tự test trước khi mở PR** (người viết làm)
 
 - Backend, web: `npm run lint` và `npm run build` trong thư mục đã sửa. Backend chạy thêm `npm test`.
-- Test backend chạy Jest ở chế độ ESM (`node --experimental-vm-modules`, đã có sẵn trong `npm test`), vì `@nestjs/common` bản mới là ESM; gọi thẳng `npx jest` sẽ báo lỗi "Must use import to load ES Module". Test mới dựng service với repository giả (xem `src/leads/leads.service.spec.ts`, `src/followups/followups.service.spec.ts`), không dùng `Test.createTestingModule` vì cần đủ provider và database.
+- Test backend cần **Node 24.9 trở lên** (kiểm tra: `node -v`; cài bản LTS mới ở nodejs.org). NestJS 12 là ESM, Jest 30 chỉ nạp được khi Node đủ mới và chạy ở chế độ `--experimental-vm-modules` (đã có sẵn trong `npm test`). Node cũ hơn thì `npm test` dừng và báo phiên bản; gọi thẳng `npx jest` sẽ báo lỗi "Must use import to load ES Module". Chạy backend và build không cần Node 24, image Docker vẫn là Node 20. Test mới dựng service với repository giả (xem `src/leads/leads.service.spec.ts`, `src/followups/followups.service.spec.ts`), không dùng `Test.createTestingModule` vì cần đủ provider và database.
 - Chạy stack ở máy mình, build lại service vừa sửa: `docker compose -p realestate-ai-agent up -d --build --no-deps <service>`.
 - n8n: import JSON vào n8n local, chạy ít nhất một ca end-to-end thật, export JSON lại vào repo. Mỗi người chỉ sửa file luồng của mình.
 

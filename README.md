@@ -8,9 +8,21 @@ AI Real Estate Agent - dat lich xem nha, cham diem khach tiem nang bang AI, nhac
 - **Luong 2 (follow-up, moi gio):** nhac lich truoc 24h, hoi cam nhan sau buoi xem, nhac khach WARM im lang; chong gui trung nho bang `lead_events`.
 - **Error workflow:** luong nao loi thi gui email bao quan ly.
 
-Tong quan du an va lo trinh: [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md).
+## Bản đồ tài liệu
 
-Chi tiet dinh dang JSON: [docs/api-contract.md](docs/api-contract.md)
+Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. Đọc theo nhu cầu:
+
+| Cần biết | Đọc |
+|---|---|
+| Dự án làm gì, các luồng, lộ trình | [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md) |
+| Ai làm gì tuần này, mã nhánh, mốc phát hành | [docs/danh-sach-task.md](docs/danh-sach-task.md) |
+| Quy tắc nghiệp vụ: vai trò, trạng thái, đặt lịch đến đặt cọc, chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
+| Từng luồng n8n chạy thế nào | [docs/luong/](docs/luong/) |
+| Định dạng API giữa web, backend và n8n | [docs/api-contract.md](docs/api-contract.md) |
+| Cách tạo nhánh, mở PR, phát hành | [docs/quy-trinh-git.md](docs/quy-trinh-git.md) |
+| Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
+| Cài và cấu hình Mautic | [docs/mautic-setup.md](docs/mautic-setup.md) |
+| Kế hoạch gốc 20/10 và kịch bản demo cũ (sẽ chuyển vào `docs/luu-tru/`) | [docs/ke-hoach-tich-hop.md](docs/ke-hoach-tich-hop.md), [docs/kich-ban-demo-hau-backend-mautic.md](docs/kich-ban-demo-hau-backend-mautic.md) |
 
 ## Cau truc
 
@@ -19,7 +31,7 @@ Chi tiet dinh dang JSON: [docs/api-contract.md](docs/api-contract.md)
 | `backend/` | API, ket noi PostgreSQL |
 | `web/` | Giao dien web |
 | `n8n-workflows/` | File workflow n8n (export JSON) |
-| `docs/` | Tai lieu: hop dong API (`api-contract.md`), tong quan (`tong-quan-du-an.md`) |
+| `docs/` | Tài liệu (xem bản đồ ở trên) |
 | `docker-compose.yml` | PostgreSQL + n8n + backend + web |
 
 ## Chay local
@@ -39,5 +51,4 @@ docker compose up -d --build
 
 ## Quy uoc Git
 
-- Moi viec mot nhanh `feature/...` hoac `fix/...`, mo Pull Request, nguoi kia bam Approve roi moi merge. Khong push thang vao `main`.
-- Khong commit file `.env`.
+Xem [docs/quy-trinh-git.md](docs/quy-trinh-git.md): nhánh tạo từ `dev`, PR vào `dev`, phát hành `dev` → `main`. Không commit file `.env`.

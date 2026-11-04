@@ -124,7 +124,7 @@ stateDiagram-v2
 | `DEPOSIT` → `SIGNED` | Khách ký hợp đồng |
 | `NEW`, `CONFIRMED`, `VIEWED` → `LOST` | Nhân viên bấm "Không mua" kèm lý do. Buổi xem còn chờ thì chuyển "Đã huỷ" |
 
-Khách đang `DEPOSIT` **không** bấm "Không mua" được: quản lý phải từ chối hợp đồng trước, lead tự về `VIEWED`, căn tự về "Đang bán" *(chặn ở BF-06; trước khi sửa, backend vẫn cho bấm)*. `SIGNED` và `LOST` không đổi được nữa.
+Khách đang `DEPOSIT` **không** bấm "Không mua" được: quản lý phải từ chối hợp đồng trước, lead tự về `VIEWED`, căn tự về "Đang bán", rồi mới đóng lead nếu khách thật sự không mua. Trên trang chi tiết lead, nút "Mất khách" ẩn đi và thay bằng dòng hướng dẫn này. Nếu vẫn gọi API (web admin hoặc n8n), backend trả `400`: "Khách đang đặt cọc, không đánh dấu mất khách được. Quản lý từ chối hợp đồng trước, khách sẽ về "Đã xem nhà"." *(từ BF-06)*. `SIGNED` và `LOST` không đổi được nữa.
 
 **Lý do "Không mua"**
 

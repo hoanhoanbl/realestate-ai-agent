@@ -15,6 +15,16 @@ import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 import { assertViewingStarted } from '../viewings/viewing-time';
 
+// Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
+// vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
+export function assertNotLosingDeposit(fromStatus: string, toStatus: string): void {
+  if (fromStatus === 'DEPOSIT' && toStatus === 'LOST') {
+    throw new BadRequestException(
+      'Khách đang đặt cọc, không đánh dấu mất khách được. Quản lý từ chối hợp đồng trước, khách sẽ về "Đã xem nhà".',
+    );
+  }
+}
+
 @Injectable()
 export class LeadsService {
   private readonly logger = new Logger(LeadsService.name);
@@ -143,6 +153,7 @@ export class LeadsService {
     const lead = await this.findOne(id);
     const oldStatus = lead.status;
     if (oldStatus === data.status) return lead; // trung trang thai: khong doi, khong ghi log
+    assertNotLosingDeposit(oldStatus, data.status); // cả đường n8n gọi PUT /leads/:id/status
     lead.status = data.status;
     if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
     const saved = await this.leadRepository.save(lead);
@@ -258,6 +269,7 @@ export class LeadsService {
     if (lead.status === 'SIGNED' || lead.status === 'LOST') {
       throw new BadRequestException('Khách này đã ký hoặc đã mất, không đổi được');
     }
+    assertNotLosingDeposit(lead.status, 'LOST');
     // Mất khách khi buổi xem còn chờ: huỷ buổi xem để không còn chặn khung giờ của căn
     if (viewing && viewing.status === 'NEW') {
       await this.viewingRepository.update(viewing.id, { status: 'CANCELLED' });

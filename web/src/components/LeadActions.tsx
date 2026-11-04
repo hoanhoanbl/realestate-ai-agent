@@ -73,7 +73,9 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const attendancePending = lead.status === "CONFIRMED" && viewingPending;
   const started = viewing !== null && viewingStarted(viewing.viewingTime);
   const canMarkViewed = attendancePending && started;
-  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST";
+  // Đang cọc thì không đóng lead được: quản lý từ chối hợp đồng trước, khách tự về "Đã xem nhà" (BF-06)
+  const depositing = lead.status === "DEPOSIT";
+  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST" && !depositing;
   // Quá giờ hẹn thì dùng "Khách không đến > Hẹn lại" để còn ghi nhận lần vắng mặt
   const canReschedule = (lead.status === "NEW" || (lead.status === "CONFIRMED" && !started)) && viewingPending;
 
@@ -86,7 +88,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
     </Link>
   );
 
-  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink) return null;
+  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink && !depositing)
+    return null;
 
   return (
     <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50/50 p-5">
@@ -239,6 +242,12 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
           </div>
         )}
         {contractLink}
+        {depositing && (
+          <p className="self-center text-sm text-slate-500">
+            Khách đang đặt cọc nên không đánh dấu mất khách được. Nếu khách không mua nữa, quản lý từ chối hợp đồng
+            trước; khách sẽ về &quot;Đã xem nhà&quot; và căn mở bán lại.
+          </p>
+        )}
         {canLose && !loseOpen && (
           <button
             type="button"

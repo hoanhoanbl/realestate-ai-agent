@@ -7,10 +7,13 @@ import {
   getAdminProperties,
   PROPERTY_STATUS_LABELS,
   updateProperty,
+  type PanoramaRoom,
   type Property,
   type PropertyInput,
   type PropertyStatus,
 } from "@/lib/api";
+import PanoramaRoomsEditor, { cleanRooms, isHttpUrl, validateRooms } from "@/components/PanoramaRoomsEditor";
+import PropertyExtraFields, { EMPTY_EXTRA, extraFromProperty, extraToInput, type ExtraForm } from "@/components/PropertyExtraFields";
 import PropertyImage from "@/components/PropertyImage";
 import { Alert, Button, Field, INPUT, PageHeader } from "@/components/ui";
 import { useSession } from "@/lib/auth";
@@ -24,9 +27,22 @@ interface FormState {
   type: string;
   imageUrl: string;
   description: string;
+  panoramas: PanoramaRoom[];
+  // Thông tin chi tiết, ảnh thêm, tiện ích, nội thất, dịch vụ xung quanh (FE-31)
+  extra: ExtraForm;
 }
 
-const EMPTY: FormState = { name: "", address: "", price: "", area: "", type: "APARTMENT", imageUrl: "", description: "" };
+const EMPTY: FormState = {
+  name: "",
+  address: "",
+  price: "",
+  area: "",
+  type: "APARTMENT",
+  imageUrl: "",
+  description: "",
+  panoramas: [],
+  extra: EMPTY_EXTRA,
+};
 
 function toForm(p: Property): FormState {
   return {
@@ -37,16 +53,9 @@ function toForm(p: Property): FormState {
     type: p.type,
     imageUrl: p.imageUrl ?? "",
     description: p.description ?? "",
+    panoramas: p.panoramas ?? [],
+    extra: extraFromProperty(p),
   };
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function validate(f: FormState): string | null {
@@ -56,7 +65,7 @@ function validate(f: FormState): string | null {
   if (!Number.isInteger(price) || price < 1) return "Giá phải là số nguyên dương (VND).";
   if (!(Number(f.area) > 0)) return "Diện tích phải lớn hơn 0.";
   if (f.imageUrl.trim() && !isHttpUrl(f.imageUrl.trim())) return "Link ảnh phải bắt đầu bằng http:// hoặc https://";
-  return null;
+  return validateRooms(f.panoramas) ?? extraToInput(f.extra).error ?? null;
 }
 
 export default function PropertiesAdminPage() {
@@ -122,6 +131,9 @@ export default function PropertiesAdminPage() {
       // Gửi chuỗi rỗng để xoá ảnh/mô tả cũ
       imageUrl: form.imageUrl.trim(),
       description: form.description.trim(),
+      // Mảng rỗng = xoá hết phòng 360°
+      panoramas: cleanRooms(form.panoramas),
+      ...extraToInput(form.extra).input,
     };
     setSaving(true);
     setFormError(null);
@@ -204,16 +216,18 @@ export default function PropertiesAdminPage() {
                 className="aspect-[3/2] rounded-lg ring-1 ring-slate-200"
               />
             </div>
-            <Field id="p-description" label="Mô tả" hint="Hiện ở trang chi tiết căn nhà. Xuống dòng được giữ nguyên." className="sm:col-span-2">
+            <Field id="p-description" label="Mô tả" hint="Hiện ở trang chi tiết căn nhà, xuống dòng được giữ nguyên. Nên viết 2–3 đoạn: bố trí từng tầng hoặc từng phòng, hiện trạng và nội thất, điểm nổi bật quanh nhà." className="sm:col-span-2">
               <textarea
                 id="p-description"
-                rows={4}
+                rows={6}
                 maxLength={5000}
                 className={INPUT}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </Field>
+            <PropertyExtraFields value={form.extra} onChange={(extra) => setForm({ ...form, extra })} />
+            <PanoramaRoomsEditor value={form.panoramas} onChange={(panoramas) => setForm({ ...form, panoramas })} />
           </div>
           {formError && <p role="alert" className="mt-3 text-sm text-rose-600">{formError}</p>}
           <div className="mt-4 flex gap-2">
@@ -253,6 +267,9 @@ export default function PropertiesAdminPage() {
                       <div>
                         <div className="font-medium">{p.name}</div>
                         <div className="text-xs">{p.address}</div>
+                        {(p.panoramas?.length ?? 0) > 0 && (
+                          <div className="mt-0.5 text-xs text-brand-600">360°: {p.panoramas?.length} phòng</div>
+                        )}
                       </div>
                     </div>
                   </td>

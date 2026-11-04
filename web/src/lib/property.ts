@@ -85,3 +85,118 @@ export function sortProperties(list: Property[], sort: SortValue): Property[] {
   else copy.sort((a, b) => b.id - a.id);
   return copy;
 }
+
+// ---------- Thông tin chi tiết căn nhà (FE-31). Mã khớp backend/src/properties/property-options.ts ----------
+
+export const LEGAL_LABELS: Record<string, string> = {
+  SO_HONG: "Sổ hồng",
+  SO_DO: "Sổ đỏ",
+  HDMB: "Hợp đồng mua bán",
+  CHO_SO: "Đang chờ sổ",
+};
+
+export const FURNISHING_LABELS: Record<string, string> = {
+  FULL: "Đầy đủ nội thất",
+  BASIC: "Nội thất cơ bản",
+  NONE: "Bàn giao thô",
+};
+
+export const OCCUPANCY_LABELS: Record<string, string> = {
+  VACANT: "Nhà trống",
+  OWNER_LIVING: "Chủ đang ở",
+  RENTED: "Đang cho thuê",
+};
+
+export const DIRECTION_LABELS: Record<string, string> = {
+  DONG: "Đông",
+  TAY: "Tây",
+  NAM: "Nam",
+  BAC: "Bắc",
+  DONG_BAC: "Đông Bắc",
+  DONG_NAM: "Đông Nam",
+  TAY_BAC: "Tây Bắc",
+  TAY_NAM: "Tây Nam",
+};
+
+export const NEARBY_LABELS: Record<string, string> = {
+  SCHOOL: "Trường học",
+  HOSPITAL: "Y tế",
+  MARKET: "Chợ, siêu thị",
+  MALL: "Trung tâm thương mại",
+  PARK: "Công viên, cảnh quan",
+  TRANSPORT: "Giao thông",
+  OTHER: "Khác",
+};
+
+// Gợi ý để quản lý bấm chọn nhanh; vẫn gõ thêm được mục khác
+export const FEATURE_SUGGESTIONS = [
+  "Ban công",
+  "Sân vườn",
+  "Sân thượng",
+  "Chỗ đậu ô tô",
+  "Gara ô tô",
+  "Thang máy",
+  "Hồ bơi",
+  "Phòng gym",
+  "An ninh 24/7",
+  "View sông",
+  "Căn góc",
+  "Mặt tiền kinh doanh",
+];
+
+export const FURNITURE_SUGGESTIONS = [
+  "Sofa",
+  "Bàn ăn",
+  "Giường",
+  "Tủ quần áo",
+  "Tủ lạnh",
+  "Máy giặt",
+  "Điều hòa",
+  "Tivi",
+  "Bếp từ",
+  "Tủ bếp",
+  "Bình nóng lạnh",
+];
+
+// Số thập phân từ backend là chuỗi "63.60": hiện "63,6"
+export function formatNumber(value: string | number): string {
+  return Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+}
+
+export function bedroomsLabel(p: Pick<Property, "bedrooms" | "type">): string | null {
+  if (p.bedrooms === null || p.bedrooms === undefined) return null;
+  if (p.bedrooms === 0) return p.type === "APARTMENT" ? "Studio" : "0";
+  return String(p.bedrooms);
+}
+
+export interface InfoRow {
+  label: string;
+  value: string;
+}
+
+// Các dòng "Thông tin cơ bản" ở trang chi tiết; dòng nào chưa nhập thì bỏ
+export function basicInfoRows(p: Property): InfoRow[] {
+  const m2 = (v: string | number | null | undefined) => (v === null || v === undefined ? null : `${formatNumber(v)} m²`);
+  const isLand = p.type === "LAND";
+  // Đất nền thường có diện tích đất = diện tích chính: không lặp hai dòng
+  const landArea = p.landArea != null && Number(p.landArea) !== Number(p.area) ? p.landArea : null;
+  const occupancy =
+    p.occupancy === "VACANT" && isLand ? "Đất trống" : p.occupancy ? (OCCUPANCY_LABELS[p.occupancy] ?? p.occupancy) : null;
+  const directionLabel = p.type === "APARTMENT" ? "Hướng ban công" : isLand ? "Hướng" : "Hướng nhà";
+  const rows: [string, string | null][] = [
+    ["Loại hình", typeLabel(p.type)],
+    ["Phòng ngủ", bedroomsLabel(p)],
+    ["Phòng tắm, WC", p.bathrooms === null || p.bathrooms === undefined ? null : String(p.bathrooms)],
+    [p.type === "APARTMENT" ? "Tầng" : "Số tầng", p.floors === null || p.floors === undefined ? null : String(p.floors)],
+    ["Diện tích", m2(p.area)],
+    ["Diện tích đất", m2(landArea)],
+    ["Diện tích sàn", m2(p.floorArea)],
+    [directionLabel, p.direction ? (DIRECTION_LABELS[p.direction] ?? p.direction) : null],
+    ["Pháp lý", p.legalStatus ? (LEGAL_LABELS[p.legalStatus] ?? p.legalStatus) : null],
+    ["Nội thất", p.furnishing ? (FURNISHING_LABELS[p.furnishing] ?? p.furnishing) : null],
+    ["Tình trạng sử dụng", occupancy],
+    ["Đường, hẻm trước nhà", p.roadWidth === null || p.roadWidth === undefined ? null : `${formatNumber(p.roadWidth)} m`],
+    ["Giá bán", formatBillion(p.price)],
+  ];
+  return rows.filter((r): r is [string, string] => r[1] !== null).map(([label, value]) => ({ label, value }));
+}

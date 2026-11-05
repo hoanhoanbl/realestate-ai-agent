@@ -18,7 +18,7 @@ import {
   type LostReason,
 } from "@/lib/api";
 
-const BTN = "rounded-lg px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60";
+const BTN = "min-h-11 rounded-lg px-4 py-2 text-sm font-medium sm:min-h-0 disabled:cursor-not-allowed disabled:opacity-60";
 
 // Các việc nhân viên làm với một khách, tuỳ trạng thái hiện tại. Duyệt lịch vẫn do n8n xử lý (gửi email, ghi log).
 export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onChanged: () => void }) {
@@ -46,7 +46,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   // Khung "Khách không đến": hẹn lại (chọn giờ mới) hoặc đóng
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowTime, setNoShowTime] = useState("");
-  // Khung "Mất khách": chọn lý do
+  // Khung "Không mua": chọn lý do
   const [loseOpen, setLoseOpen] = useState(false);
   const [loseReason, setLoseReason] = useState<LostReason>("OTHER");
   const [loseNote, setLoseNote] = useState("");
@@ -73,7 +73,9 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const attendancePending = lead.status === "CONFIRMED" && viewingPending;
   const started = viewing !== null && viewingStarted(viewing.viewingTime);
   const canMarkViewed = attendancePending && started;
-  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST";
+  // Đang cọc thì không đóng lead được: quản lý từ chối hợp đồng trước, khách tự về "Đã xem nhà" (BF-06)
+  const depositing = lead.status === "DEPOSIT";
+  const canLose = lead.status !== "SIGNED" && lead.status !== "LOST" && !depositing;
   // Quá giờ hẹn thì dùng "Khách không đến > Hẹn lại" để còn ghi nhận lần vắng mặt
   const canReschedule = (lead.status === "NEW" || (lead.status === "CONFIRMED" && !started)) && viewingPending;
 
@@ -86,7 +88,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
     </Link>
   );
 
-  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink) return null;
+  if (!canApprove && !attendancePending && !canLose && !canReschedule && !canCreateContract && !contractLink && !depositing)
+    return null;
 
   return (
     <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50/50 p-5">
@@ -161,7 +164,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 min={toLocalInput(new Date().toISOString())}
                 onChange={(e) => setNoShowTime(e.target.value)}
                 aria-label="Giờ hẹn lại"
-                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                className="rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
               />
               <button
                 type="button"
@@ -196,14 +199,14 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                     return "Đã ghi nhận khách không đến và đóng khách.";
                   });
                 }}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
+                className="min-h-11 rounded-md px-3 py-1.5 text-sm sm:min-h-0 font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
               >
-                Đóng (mất khách)
+                Đóng (Không mua)
               </button>
               <button
                 type="button"
                 onClick={() => setNoShowOpen(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+                className="min-h-11 rounded-md px-3 py-1.5 text-sm sm:min-h-0 text-slate-600 hover:bg-slate-100"
               >
                 Huỷ
               </button>
@@ -219,7 +222,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
               onChange={(e) => setDeposit(e.target.value)}
               placeholder={`Tiền cọc, gợi ý ${formatVnd(defaultDeposit)}`}
               aria-label="Tiền đặt cọc (VND)"
-              className="w-56 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              className="w-56 rounded-md border border-slate-300 min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
             />
             <button
               type="button"
@@ -239,6 +242,12 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
           </div>
         )}
         {contractLink}
+        {depositing && (
+          <p className="self-center text-sm text-slate-500">
+            Khách đang đặt cọc nên chưa chuyển sang &quot;Không mua&quot; được. Nếu khách không mua nữa, quản lý từ chối
+            hợp đồng trước; khách sẽ về &quot;Đã xem nhà&quot; và căn mở bán lại.
+          </p>
+        )}
         {canLose && !loseOpen && (
           <button
             type="button"
@@ -250,17 +259,17 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
             }}
             className={`${BTN} bg-white text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50`}
           >
-            Mất khách
+            Không mua
           </button>
         )}
         {canLose && loseOpen && (
           <div className="flex flex-col gap-2 rounded-lg bg-white p-3 ring-1 ring-rose-300">
             <label className="text-sm font-medium text-slate-700">
-              Lý do mất khách
+              Lý do không mua
               <select
                 value={loseReason}
                 onChange={(e) => setLoseReason(e.target.value as LostReason)}
-                className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                className="mt-1 block w-full rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
               >
                 <option value="OTHER">Lý do khác</option>
                 <option value="NOT_INTERESTED">Không còn nhu cầu</option>
@@ -272,7 +281,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
               onChange={(e) => setLoseNote(e.target.value)}
               placeholder="Ghi chú (không bắt buộc)"
               maxLength={300}
-              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              className="rounded-md border border-slate-300 min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
             />
             <div className="flex gap-2">
               <button
@@ -280,19 +289,19 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 disabled={busy !== null}
                 onClick={() =>
                   run("lost", async () => {
-                    await setLeadStatus(lead.id, "LOST", loseNote.trim() || "Mất khách", loseReason);
+                    await setLeadStatus(lead.id, "LOST", loseNote.trim() || "Không mua", loseReason);
                     setLoseOpen(false);
-                    return "Đã đánh dấu mất khách.";
+                    return "Đã chuyển khách sang Không mua.";
                   })
                 }
                 className="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
               >
-                {busy === "lost" ? "Đang lưu..." : "Xác nhận mất khách"}
+                {busy === "lost" ? "Đang lưu..." : "Xác nhận không mua"}
               </button>
               <button
                 type="button"
                 onClick={() => setLoseOpen(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+                className="min-h-11 rounded-md px-3 py-1.5 text-sm sm:min-h-0 text-slate-600 hover:bg-slate-100"
               >
                 Huỷ
               </button>

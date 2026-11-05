@@ -114,7 +114,7 @@ Nguyên tắc: **web làm trước, app làm sau**.
 | Sản phẩm | Nội dung |
 |---|---|
 | 8 luồng n8n + Sub-workflow + Error | Như mục 6 |
-| Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
+| Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà (bộ ảnh, xem 360° từng phòng, thông tin cơ bản, tiện ích, nội thất, bản đồ và dịch vụ xung quanh) + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
 | Web admin | Đăng nhập JWT, tổng quan (phễu theo trạng thái, tỉ lệ chốt, việc tồn), danh sách lead (hiện nguồn), chi tiết lead (dòng thời gian, duyệt, đổi giờ), lịch xem, quản lý nhà, hợp đồng, báo cáo AI hằng tuần, phân quyền tài khoản (RBAC) |
 | Mautic 5 | Quản lý contact, phân khúc khách hàng, chiến dịch nuôi WARM |
 | App nhân viên (Expo) | Đăng nhập, việc hôm nay, chi tiết lead (Duyệt, Đổi giờ, Gọi, Email), thông báo đẩy |

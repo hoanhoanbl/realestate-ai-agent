@@ -8,8 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Font hệ thống: build trong Docker không cần mạng Internet */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  /* Be Vietnam Pro tự lưu (@fontsource, nạp ở app/layout.tsx); font hệ thống làm dự phòng */
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -31,6 +31,45 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Tailwind 4 bỏ con trỏ tay mặc định của nút: thêm lại cho mọi thứ bấm được */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  select,
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}
+
+/* Người dùng bật "giảm chuyển động" trong hệ điều hành: tắt hiệu ứng (skill ui-ux-pro-max, mục reduced-motion) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hiện dần khi tải (dùng cho khối đầu trang); tự tắt khi giảm chuyển động */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
 }
 
 /* Bản hợp đồng khổ A4: trên màn hình là tờ giấy có bóng, khi in thì bỏ khung để máy in dùng lề của @page */

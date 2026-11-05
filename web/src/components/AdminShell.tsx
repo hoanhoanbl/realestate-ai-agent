@@ -42,7 +42,7 @@ function isActive(link: NavLink, pathname: string): boolean {
 
 function Brand() {
   return (
-    <Link href="/admin" className="flex items-center gap-2">
+    <Link href="/admin" className="flex min-h-11 items-center gap-2">
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
         <Icon name="home" className="h-4 w-4" />
       </span>
@@ -113,7 +113,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     href={link.href}
                     onClick={() => setDrawerOpen(false)}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition lg:min-h-0 ${
                       active ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`}
                   >
@@ -174,7 +174,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col bg-white shadow-xl">
             <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
               <Brand />
-              <button type="button" aria-label="Đóng menu" onClick={() => setDrawerOpen(false)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100">
+              <button type="button" aria-label="Đóng menu" onClick={() => setDrawerOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <Icon name="close" />
               </button>
             </div>
@@ -190,7 +190,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             type="button"
             aria-label="Mở menu"
             onClick={() => setDrawerOpen(true)}
-            className="-ml-1 rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="-ml-1 flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
           >
             <Icon name="menu" />
           </button>
@@ -202,8 +202,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <span className="font-medium text-slate-900">{current?.label ?? "Chi tiết"}</span>
           </p>
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/" target="_blank" className="hidden rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 sm:inline-block">
-              Xem trang khách ↗
+            <Link href="/" target="_blank" className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 sm:inline-flex">
+              Xem trang khách <Icon name="externalLink" className="h-4 w-4" />
             </Link>
           </div>
         </header>

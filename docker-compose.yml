@@ -42,6 +42,8 @@ services:
       # Tai khoan API Mautic cho luong 7 (Basic auth)
       MAUTIC_API_USER: ${MAUTIC_API_USER:-}
       MAUTIC_API_PASSWORD: ${MAUTIC_API_PASSWORD:-}
+      # Token Mautic gui kem khi goi webhook luong 8 (?token=...), it nhat 24 ky tu. Trong thi luong 8 tra 403
+      MAUTIC_WEBHOOK_SECRET: ${MAUTIC_WEBHOOK_SECRET:-}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n

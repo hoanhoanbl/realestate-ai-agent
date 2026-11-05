@@ -17,6 +17,7 @@ export default function LoginPage() {
   const session = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -91,15 +92,26 @@ export default function LoginPage() {
             />
           </Field>
           <Field id="password" label="Mật khẩu">
-            <input
-              id="password"
-              type="password"
-              className={INPUT}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                className={`${INPUT} pr-12`}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-500 hover:text-slate-800"
+              >
+                <Icon name={showPassword ? "eyeOff" : "eye"} className="h-5 w-5" />
+              </button>
+            </div>
           </Field>
           {error && <Alert>{error}</Alert>}
           <Button type="submit" size="lg" disabled={submitting} className="w-full">

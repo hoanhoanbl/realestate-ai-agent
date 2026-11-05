@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createUser, formatDateTime, getUsers, type UserAccount } from "@/lib/api";
 import { useSession, type Role } from "@/lib/auth";
+import { Button, Icon, PageHeader } from "@/components/ui";
 
 const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+  "w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 sm:min-h-10 sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 interface FormState {
   email: string;
@@ -28,58 +29,65 @@ interface PermissionRow {
   manager: boolean;
 }
 
+// Khớp bảng "Vai trò và quyền" ở docs/nghiep-vu/vai-tro-va-trang-thai.md mục 3. Quyền thật do backend kiểm, bảng này để đối chiếu
 const PERMISSIONS_MATRIX: PermissionRow[] = [
   {
-    feature: "Đăng nhập & Xác thực JWT",
-    description: "Đăng nhập hệ thống bằng email và mật khẩu, cấp token 8 giờ",
+    feature: "Xem khách, lịch xem, hợp đồng, số liệu tổng quan",
+    description: "Danh sách và chi tiết khách, mức AI chấm, lịch xem nhà, hợp đồng, việc cần làm trên trang Tổng quan",
     sale: true,
     manager: true,
   },
   {
-    feature: "Xem & Lọc Khách hàng",
-    description: "Xem danh sách lead, chi tiết nhu cầu, điểm AI (HOT/WARM/COLD)",
+    feature: "Duyệt lịch, đổi giờ xem",
+    description: "Duyệt lịch khách đặt hoặc đổi sang giờ khác; khách nhận email chốt lịch hoặc báo giờ mới",
     sale: true,
     manager: true,
   },
   {
-    feature: "Duyệt lịch & Đổi giờ xem",
-    description: "Bấm Duyệt lịch xem nhà (kích hoạt n8n) hoặc dời lịch hẹn",
+    feature: "Điểm danh buổi xem",
+    description: "Ghi nhận khách có đến hay không, từ 30 phút trước giờ hẹn trở đi",
     sale: true,
     manager: true,
   },
   {
-    feature: "Cập nhật kết quả buổi xem",
-    description: "Đánh dấu khách Đã xem nhà (VIEWED) hoặc Mất khách (LOST)",
+    feature: "Đánh dấu \"Không mua\"",
+    description: "Đóng khách kèm lý do",
     sale: true,
     manager: true,
   },
   {
-    feature: "Tạo hợp đồng đặt cọc",
-    description: "Soạn hợp đồng cọc cho khách đã xem nhà (chuyển sang DEPOSIT)",
+    feature: "Lập hợp đồng đặt cọc",
+    description: "Lập hợp đồng cho khách đã xem nhà; AI soạn và rà nội dung",
     sale: true,
     manager: true,
   },
   {
-    feature: "Phê duyệt / Từ chối Hợp đồng",
-    description: "Kiểm tra hợp đồng do AI rà soát, duyệt gửi khách ký hoặc từ chối",
+    feature: "Duyệt hoặc từ chối hợp đồng",
+    description: "Duyệt để gửi link ký cho khách, hoặc từ chối kèm lý do",
     sale: false,
     manager: true,
   },
   {
-    feature: "Xem Báo cáo kinh doanh (AI)",
-    description: "Xem số liệu phễu, phân tích AI và yêu cầu n8n tạo báo cáo tuần",
+    feature: "Xác nhận tiền cọc, đánh dấu căn đã bán",
+    description: "\"Đã nhận tiền cọc\" sau khi khách ký; căn \"Đã bán\" khi hợp đồng của căn đã ký",
     sale: false,
     manager: true,
   },
   {
-    feature: "Quản lý Bất động sản",
-    description: "Thêm căn mới, cập nhật giá/diện tích, ẩn/xoá mềm căn nhà",
+    feature: "Quản lý nhà",
+    description: "Thêm, sửa, ẩn căn nhà; ảnh, 360°, thông tin chi tiết",
     sale: false,
     manager: true,
   },
   {
-    feature: "Quản trị Tài khoản & Phân quyền",
-    description: "Xem danh sách tài khoản, tạo nhân sự mới, phân vai trò RBAC",
+    feature: "Báo cáo tuần",
+    description: "Xem báo cáo AI hằng tuần, bấm tạo báo cáo ngay",
+    sale: false,
+    manager: true,
+  },
+  {
+    feature: "Tạo tài khoản nhân viên",
+    description: "Thêm tài khoản và chọn vai trò",
     sale: false,
     manager: true,
   },
@@ -158,25 +166,21 @@ export default function PermissionsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản trị Tài khoản & Phân quyền (RBAC)</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Quản lý nhân sự, phân quyền vai trò và đối soát ma trận quyền hạn hệ thống.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setShowModal(true);
-            setFormError(null);
-          }}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-        >
-          + Thêm nhân sự mới
-        </button>
-      </div>
+      <PageHeader
+        title="Tài khoản và phân quyền"
+        description="Tài khoản nhân viên, vai trò và bảng đối chiếu quyền của từng vai trò."
+        actions={
+          <Button
+            onClick={() => {
+              setShowModal(true);
+              setFormError(null);
+            }}
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            Thêm nhân sự
+          </Button>
+        }
+      />
 
       {successMsg && (
         <div className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200">
@@ -188,15 +192,12 @@ export default function PermissionsPage() {
         <div className="rounded-lg bg-red-50 p-4 text-sm font-medium text-red-800 ring-1 ring-red-200">{error}</div>
       )}
 
-      {/* Danh sách tài khoản người dùng */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-card">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Danh sách Tài khoản Hệ thống</h2>
-            <p className="text-xs text-slate-500">Dữ liệu từ bảng `users` trong PostgreSQL</p>
-          </div>
+      {/* Danh sách tài khoản. Cột trạng thái app điện thoại ẩn đến khi làm app (FE-27) */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-card sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-slate-900">Tài khoản</h2>
           <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-            Tổng cộng: {users ? users.length : "..."} tài khoản
+            {users ? users.length : "..."} tài khoản
           </span>
         </div>
 
@@ -205,103 +206,92 @@ export default function PermissionsPage() {
         ) : users.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">Chưa có tài khoản nào.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">Họ và tên</th>
-                  <th className="px-4 py-3">Email đăng nhập</th>
-                  <th className="px-4 py-3">Vai trò (Role)</th>
-                  <th className="px-4 py-3">Thông báo App Mobile</th>
-                  <th className="px-4 py-3">Ngày tạo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-400">#{u.id}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{u.name}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          u.role === "MANAGER"
-                            ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300"
-                            : "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
-                        }`}
-                      >
-                        {u.role === "MANAGER" ? "Quản lý (MANAGER)" : "Nhân viên (SALE)"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {u.pushToken ? (
-                        <span className="inline-flex items-center text-emerald-600 font-medium">
-                          <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500"></span>
-                          Đã kết nối Expo Push
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">Chưa cài app</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(u.createdAt)}</td>
+          <>
+            {/* Điện thoại: dạng thẻ */}
+            <ul className="space-y-2 md:hidden">
+              {users.map((u) => (
+                <li key={u.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
+                    {u.name.trim().charAt(0).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-slate-900">{u.name}</span>
+                    <span className="block text-xs text-slate-600 [overflow-wrap:anywhere]">{u.email}</span>
+                  </span>
+                  <RoleBadge role={u.role} />
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Họ và tên</th>
+                    <th className="px-4 py-3">Email đăng nhập</th>
+                    <th className="px-4 py-3">Vai trò</th>
+                    <th className="px-4 py-3">Ngày tạo</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {users.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/80">
+                      <td className="px-4 py-3 font-medium text-slate-900">{u.name}</td>
+                      <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                      <td className="px-4 py-3">
+                        <RoleBadge role={u.role} />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(u.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
-      {/* Ma trận Phân quyền RBAC Matrix */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-card">
+      {/* Bảng đối chiếu quyền */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-card sm:p-6">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Ma trận Phân quyền (Role-Based Access Control)</h2>
-          <p className="text-sm text-slate-500">
-            Quy định giới hạn quyền truy cập nghiệp vụ giữa hai vai trò chính trong hệ thống.
-          </p>
+          <h2 className="text-lg font-bold text-slate-900">Quyền của từng vai trò</h2>
+          <p className="mt-1 text-sm text-slate-500">Hệ thống kiểm quyền ở máy chủ; bảng này để đối chiếu.</p>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Điện thoại: mỗi quyền một thẻ, hai nhãn vai trò bên dưới */}
+        <ul className="space-y-2 md:hidden">
+          {PERMISSIONS_MATRIX.map((row) => (
+            <li key={row.feature} className="rounded-lg border border-slate-200 p-3">
+              <p className="font-semibold text-slate-900">{row.feature}</p>
+              <p className="mt-0.5 text-sm text-slate-600">{row.description}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+                <Allowed ok={row.sale} label="Nhân viên" />
+                <Allowed ok={row.manager} label="Quản lý" />
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-600">
               <tr>
-                <th className="px-4 py-3">Tính năng / Nghiệp vụ</th>
-                <th className="px-4 py-3">Mô tả hành vi</th>
-                <th className="px-4 py-3 text-center">
-                  <span className="rounded bg-blue-100 px-2 py-1 text-blue-700 font-bold">Nhân viên sale (SALE)</span>
-                </th>
-                <th className="px-4 py-3 text-center">
-                  <span className="rounded bg-purple-100 px-2 py-1 text-purple-700 font-bold">Quản lý (MANAGER)</span>
-                </th>
+                <th className="px-4 py-3">Việc</th>
+                <th className="px-4 py-3">Mô tả</th>
+                <th className="px-4 py-3 text-center">Nhân viên</th>
+                <th className="px-4 py-3 text-center">Quản lý</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {PERMISSIONS_MATRIX.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/60">
+              {PERMISSIONS_MATRIX.map((row) => (
+                <tr key={row.feature} className="hover:bg-slate-50/60">
                   <td className="px-4 py-3.5 font-semibold text-slate-900">{row.feature}</td>
-                  <td className="px-4 py-3.5 text-xs text-slate-500 max-w-md">{row.description}</td>
+                  <td className="max-w-md px-4 py-3.5 text-slate-600">{row.description}</td>
                   <td className="px-4 py-3.5 text-center">
-                    {row.sale ? (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
-                        ✓
-                      </span>
-                    ) : (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-400 font-bold text-sm">
-                        ✕
-                      </span>
-                    )}
+                    <Mark ok={row.sale} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    {row.manager ? (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
-                        ✓
-                      </span>
-                    ) : (
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-400 font-bold text-sm">
-                        ✕
-                      </span>
-                    )}
+                    <Mark ok={row.manager} />
                   </td>
                 </tr>
               ))}
@@ -319,9 +309,10 @@ export default function PermissionsPage() {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Đóng"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 sm:h-9 sm:w-9"
               >
-                ✕
+                <Icon name="close" />
               </button>
             </div>
 
@@ -405,5 +396,44 @@ export default function PermissionsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function RoleBadge({ role }: { role: Role }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+        role === "MANAGER" ? "bg-purple-50 text-purple-700 ring-purple-200" : "bg-blue-50 text-blue-700 ring-blue-200"
+      }`}
+    >
+      {role === "MANAGER" ? "Quản lý" : "Nhân viên"}
+    </span>
+  );
+}
+
+// Dấu có / không có quyền trong bảng (máy tính)
+function Mark({ ok }: { ok: boolean }) {
+  return ok ? (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-label="Có quyền">
+      <Icon name="check" className="h-4 w-4" />
+    </span>
+  ) : (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500" aria-label="Không có quyền">
+      <Icon name="close" className="h-3.5 w-3.5" />
+    </span>
+  );
+}
+
+// Nhãn vai trò có / không có quyền (thẻ trên điện thoại): có chữ, không chỉ dựa vào màu
+function Allowed({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 ring-1 ${
+        ok ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-slate-50 text-slate-500 ring-slate-200 line-through"
+      }`}
+    >
+      <Icon name={ok ? "check" : "close"} className="h-3.5 w-3.5" />
+      {label}
+    </span>
   );
 }

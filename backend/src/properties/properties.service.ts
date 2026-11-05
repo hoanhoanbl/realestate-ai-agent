@@ -16,6 +16,16 @@ import { CreatePropertyDto, UpdatePropertyDto } from './dto/create-property.dto'
 import { SearchPropertyDto } from './dto/search-property.dto';
 import { SAMPLE_PROPERTIES } from './sample-properties';
 
+export type PropertyListItem = Omit<Property, 'images' | 'panoramas'> & {
+  imageCount: number;
+  panoramaCount: number;
+};
+
+export function toListItem(p: Property): PropertyListItem {
+  const { images, panoramas, ...rest } = p;
+  return { ...rest, imageCount: images?.length ?? 0, panoramaCount: panoramas?.length ?? 0 };
+}
+
 @Injectable()
 export class PropertiesService implements OnModuleInit {
   private readonly logger = new Logger(PropertiesService.name);
@@ -54,12 +64,14 @@ export class PropertiesService implements OnModuleInit {
       if (count === 0) {
         this.logger.log('Seeding 10 initial properties...');
         await this.propertyRepository.save(
-          this.propertyRepository.create(SAMPLE_PROPERTIES),
+          this.propertyRepository.create(SAMPLE_PROPERTIES.map(({ legacyDescription: _old, ...p }) => p)),
         );
         this.logger.log('Successfully seeded 10 properties.');
         return;
       }
       await this.backfillSampleDetails();
+      await this.backfillSamplePanoramas();
+      await this.backfillSampleExtras();
     } catch (error: any) {
       this.logger.warn(`Property seeding skipped or failed: ${error.message}`);
     }
@@ -81,8 +93,69 @@ export class PropertiesService implements OnModuleInit {
     if (filled > 0) this.logger.log(`Backfilled image and description for ${filled} sample properties.`);
   }
 
-  // Công khai: không trả các căn đã ẩn hoặc đã bán (căn đang giữ cọc vẫn hiện, kèm nhãn). Bộ lọc để trống thì trả hết như trước
-  findAll(filter: SearchPropertyDto = {}): Promise<Property[]> {
+  // DB tạo trước khi có cột panoramas: điền phòng 360° mẫu theo tên.
+  // Chỉ điền căn còn null; quản lý xoá hết phòng thì lưu [] nên không bị điền lại.
+  private async backfillSamplePanoramas() {
+    let filled = 0;
+    for (const sample of SAMPLE_PROPERTIES) {
+      if (!sample.panoramas) continue;
+      const result = await this.propertyRepository
+        .createQueryBuilder()
+        .update(Property)
+        .set({ panoramas: sample.panoramas })
+        .where('name = :name AND panoramas IS NULL', { name: sample.name })
+        .execute();
+      filled += result.affected ?? 0;
+    }
+    if (filled > 0) this.logger.log(`Backfilled 360° rooms for ${filled} sample properties.`);
+  }
+
+  // DB tạo trước FE-31: điền thông tin chi tiết, ảnh thêm, tiện ích, nội thất, dịch vụ xung quanh cho căn mẫu theo tên.
+  // Chỉ điền căn có cả bốn mảng còn null (chưa từng lưu bằng form mới; form luôn gửi mảng, kể cả rỗng).
+  // Mô tả chỉ thay khi vẫn còn đúng bản mẫu cũ, để không đè lên mô tả quản lý đã sửa.
+  private async backfillSampleExtras() {
+    let filled = 0;
+    for (const s of SAMPLE_PROPERTIES) {
+      const result = await this.propertyRepository
+        .createQueryBuilder()
+        .update(Property)
+        .set({
+          bedrooms: s.bedrooms ?? null,
+          bathrooms: s.bathrooms ?? null,
+          floors: s.floors ?? null,
+          landArea: s.landArea ?? null,
+          floorArea: s.floorArea ?? null,
+          roadWidth: s.roadWidth ?? null,
+          direction: s.direction ?? null,
+          legalStatus: s.legalStatus ?? null,
+          furnishing: s.furnishing ?? null,
+          occupancy: s.occupancy ?? null,
+          images: s.images ?? [],
+          features: s.features ?? [],
+          furniture: s.furniture ?? [],
+          nearby: s.nearby ?? [],
+        })
+        .where(
+          'name = :name AND images IS NULL AND features IS NULL AND furniture IS NULL AND nearby IS NULL',
+          { name: s.name },
+        )
+        .execute();
+      if ((result.affected ?? 0) > 0 && s.legacyDescription) {
+        await this.propertyRepository
+          .createQueryBuilder()
+          .update(Property)
+          .set({ description: s.description })
+          .where('name = :name AND description = :old', { name: s.name, old: s.legacyDescription })
+          .execute();
+      }
+      filled += result.affected ?? 0;
+    }
+    if (filled > 0) this.logger.log(`Backfilled details for ${filled} sample properties.`);
+  }
+
+  // Công khai: không trả các căn đã ẩn hoặc đã bán (căn đang giữ cọc vẫn hiện, kèm nhãn). Bộ lọc để trống thì trả hết như trước.
+  // Bản gọn cho danh sách: bỏ link ảnh thêm và link 360° (tool "Tìm nhà" của luồng 6 đưa nguyên kết quả cho AI), thay bằng số lượng
+  async findAll(filter: SearchPropertyDto = {}): Promise<PropertyListItem[]> {
     const qb = this.propertyRepository
       .createQueryBuilder('p')
       .where('p.status NOT IN (:...hidden)', { hidden: ['HIDDEN', 'SOLD'] });
@@ -99,7 +172,7 @@ export class PropertiesService implements OnModuleInit {
 
     qb.orderBy('p.id', 'ASC');
     if (filter.limit) qb.take(filter.limit);
-    return qb.getMany();
+    return (await qb.getMany()).map(toListItem);
   }
 
   findAllAdmin(): Promise<Property[]> {

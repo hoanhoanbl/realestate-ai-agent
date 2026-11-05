@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import BookingForm from "@/components/BookingForm";
-import PropertyImage from "@/components/PropertyImage";
+import PropertyMedia from "@/components/PropertyMedia";
+import { BasicInfoSection, LocationSection, TagListSection } from "@/components/PropertySections";
 import { Alert, CARD, Skeleton } from "@/components/ui";
 import { ApiError, formatVnd, getProperty, type Property } from "@/lib/api";
-import { cityOf, formatBillion } from "@/lib/property";
+import { bedroomsLabel, cityOf, formatBillion, formatNumber } from "@/lib/property";
 import { TELEGRAM_BOT_URL } from "@/lib/site";
 
 const STEPS = [
@@ -78,13 +79,22 @@ function PropertyDetail() {
   if (!property) return <DetailSkeleton />;
 
   const pricePerM2 = Number(property.area) > 0 ? Number(property.price) / Number(property.area) : 0;
+  // "3 PN · 2 WC"; căn chưa nhập số phòng (đất nền) thì hiện khu vực
+  const bedrooms = bedroomsLabel(property);
+  const rooms = [
+    bedrooms && (bedrooms === "Studio" ? "Studio" : `${bedrooms} PN`),
+    property.bathrooms != null && `${property.bathrooms} WC`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section>
       {back}
       <div className="mt-4 grid gap-8 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <PropertyImage property={property} priority className="aspect-[16/10] rounded-2xl" />
+        {/* min-w-0: dải ảnh nhỏ cuộn ngang không được đẩy cột rộng ra trên điện thoại */}
+        <div className="min-w-0 lg:col-span-3">
+          <PropertyMedia property={property} />
           <h1 className="mt-5 text-2xl font-bold text-slate-900">{property.name}</h1>
           <p className="mt-1 text-slate-600">{property.address}</p>
 
@@ -97,12 +107,19 @@ function PropertyDetail() {
             </div>
             <div>
               <dt className="text-slate-500">Diện tích</dt>
-              <dd className="mt-1 font-semibold">{Number(property.area)} m²</dd>
+              <dd className="mt-1 font-semibold">{formatNumber(property.area)} m²</dd>
             </div>
-            <div>
-              <dt className="text-slate-500">Khu vực</dt>
-              <dd className="mt-1 font-semibold">{cityOf(property.address)}</dd>
-            </div>
+            {rooms ? (
+              <div>
+                <dt className="text-slate-500">Phòng ngủ, WC</dt>
+                <dd className="mt-1 font-semibold">{rooms}</dd>
+              </div>
+            ) : (
+              <div>
+                <dt className="text-slate-500">Khu vực</dt>
+                <dd className="mt-1 font-semibold">{cityOf(property.address)}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-slate-500">Giá mỗi m²</dt>
               <dd className="mt-1 font-semibold">
@@ -111,14 +128,20 @@ function PropertyDetail() {
             </div>
           </dl>
 
+          <BasicInfoSection property={property} />
+
           {property.description && (
-            <div className="mt-6">
+            <section className="mt-8 border-t border-slate-200 pt-6">
               <h2 className="text-lg font-semibold text-slate-900">Mô tả</h2>
               <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-700">{property.description}</p>
-            </div>
+            </section>
           )}
 
-          <div className="mt-8">
+          <TagListSection title="Tiện ích" items={property.features} />
+          <TagListSection title="Nội thất" items={property.furniture} />
+          <LocationSection property={property} />
+
+          <div className="mt-8 border-t border-slate-200 pt-6">
             <h2 className="text-lg font-semibold text-slate-900">Quy trình xem nhà</h2>
             <ol className="mt-3 grid gap-3 sm:grid-cols-3">
               {STEPS.map((step, i) => (

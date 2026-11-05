@@ -18,6 +18,19 @@ const PATHS = {
   printer: "M7 8V3h10v5M7 17H5a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M7 14h10v7H7v-7Z",
   arrowRight: "M5 12h14m-5-5 5 5-5 5",
   sparkles: "M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5m7 7L18 18M6 18l2.5-2.5m7-7L18 6",
+  // Trang chi tiết nhà (FE-31)
+  chevronLeft: "M15 5l-7 7 7 7",
+  chevronRight: "M9 5l7 7-7 7",
+  bed: "M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 15h18M3 18v2m18-2v2M6 9V6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v3",
+  bath: "M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2Zm2 0V6a2 2 0 0 1 4 0M7 19l-1 2m11-2 1 2",
+  area: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  pin: "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  school: "M3 9l9-5 9 5-9 5-9-5Zm4 2.5V16c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5M21 9v6",
+  hospital: "M5 21V5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v16M3 21h18M12 7v6m-3-3h6M10 21v-4h4v4",
+  market: "M3 4h2l2.2 10.5a1 1 0 0 0 1 .8h9.3a1 1 0 0 0 1-.8L20 8H6M9 20a1 1 0 1 0 0-.01M17 20a1 1 0 1 0 0-.01",
+  mall: "M6 8h12l1 12H5L6 8Zm3 0V6a3 3 0 0 1 6 0v2",
+  park: "M12 21v-6m0 0c-3.3 0-6-2.2-6-5 0-2.5 2-4.2 3-5.2C9.8 3.6 11 3 12 3s2.2.6 3 1.8c1 1 3 2.7 3 5.2 0 2.8-2.7 5-6 5Z",
+  transport: "M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm-2 7h16M8 17l-2 3m10-3 2 3M8 14h.01M16 14h.01",
 } as const;
 
 export type IconName = keyof typeof PATHS;

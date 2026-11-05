@@ -92,7 +92,8 @@ function PropertyDetail() {
     <section>
       {back}
       <div className="mt-4 grid gap-8 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+        {/* min-w-0: dải ảnh nhỏ cuộn ngang không được đẩy cột rộng ra trên điện thoại */}
+        <div className="min-w-0 lg:col-span-3">
           <PropertyMedia property={property} />
           <h1 className="mt-5 text-2xl font-bold text-slate-900">{property.name}</h1>
           <p className="mt-1 text-slate-600">{property.address}</p>

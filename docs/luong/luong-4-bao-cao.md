@@ -69,7 +69,7 @@ sequenceDiagram
 | 1 | Thứ Hai 8h / Chạy tay / Quản lý bấm tạo ngay | Ba cách khởi động, cùng dẫn vào một đường |
 | 2 | Cấu hình | Địa chỉ backend, web, email quản lý |
 | 3 | Kỳ báo cáo (Code) | Từ 00:00 bảy ngày trước đến 00:00 hôm nay, giờ Việt Nam |
-| 4–5 | Số liệu tuần này / tuần trước (Postgres) | Một câu SQL cho 15 chỉ số: khách mới theo mức, chốt lịch, đã xem, hợp đồng, đã ký, tiền cọc, mất khách, thời gian duyệt trung bình, số lỗi tự động, điểm hài lòng, khách chờ duyệt quá 24 giờ |
+| 4–5 | Số liệu tuần này / tuần trước (Postgres) | Đếm khách, trạng thái, hợp đồng, cảm nhận, thời gian duyệt và số lead quá hạn không xử lý. `expired` đếm mỗi lead một lần theo thời điểm event `LEAD_EXPIRED` trong kỳ, không đếm event thông báo, không gộp với `no_show`. |
 | 6 | Tính phễu và cảnh báo (Code) | Tỉ lệ chuyển đổi, chênh lệch, **6 quy tắc cảnh báo cố định** |
 | 7 | AI Agent phân tích | Gemini + công cụ tra cứu + bộ phân tích đầu ra có cấu trúc. Tối đa 6 vòng suy luận |
 | 8 | Kiểm tra AI (Code) | **Guardrail**: AI thiếu hoặc lỗi thì dựng báo cáo tối thiểu từ số liệu, báo cáo vẫn được gửi |

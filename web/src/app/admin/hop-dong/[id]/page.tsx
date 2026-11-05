@@ -12,6 +12,7 @@ import {
   formatDateTime,
   formatVnd,
   getContract,
+  markDepositReceived,
   rejectContract,
   type ContractDetail,
 } from "@/lib/api";
@@ -251,6 +252,32 @@ function ContractDetailContent() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={contract.signature} alt="Chữ ký của khách" className="mt-3 h-24 rounded border border-slate-200 bg-white p-1" />
           )}
+          <div className="mt-4 border-t border-emerald-200 pt-3">
+            {contract.depositReceivedAt ? (
+              <p>
+                Đã nhận tiền cọc {formatVnd(contract.depositAmount)} lúc {formatDateTime(contract.depositReceivedAt)}
+                {contract.depositReceivedBy && <> (xác nhận bởi {contract.depositReceivedBy})</>}
+              </p>
+            ) : isManager ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (!window.confirm(`Xác nhận đã nhận tiền cọc ${formatVnd(contract.depositAmount)}?`)) return;
+                  act(() => markDepositReceived(contract.id), "Đã ghi nhận đã nhận tiền cọc.");
+                }}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                Đã nhận tiền cọc
+              </button>
+            ) : (
+              <p className="text-slate-600">Chưa xác nhận nhận tiền cọc (quản lý xác nhận).</p>
+            )}
+            {message && <p className="mt-2 text-emerald-700">{message}</p>}
+            {actionError && (
+              <p role="alert" className="mt-2 rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{actionError}</p>
+            )}
+          </div>
         </div>
       )}
 

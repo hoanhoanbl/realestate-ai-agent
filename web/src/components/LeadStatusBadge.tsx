@@ -14,11 +14,11 @@ const CONFIG: Record<LeadStatus, { label: string; style: string }> = {
     style: "bg-violet-100 text-violet-700 ring-violet-200",
   },
   DEPOSIT: {
-    label: "Muốn đặt cọc",
+    label: "Đang làm hợp đồng cọc",
     style: "bg-amber-100 text-amber-800 ring-amber-200",
   },
   SIGNED: {
-    label: "Đã ký",
+    label: "Đã ký hợp đồng cọc",
     style: "bg-emerald-100 text-emerald-700 ring-emerald-200",
   },
   LOST: {

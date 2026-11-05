@@ -120,6 +120,7 @@ Chung cho moi callback:
 - `note`: tuy chon.
 - Backend luu `leads.status` va **tu ghi** mot dong `lead_events` voi `type = STATUS_CHANGED`, `note = "<cu> -> <moi>: <note>"`.
 - Neu trang thai moi **trung** trang thai cu: khong doi gi, khong ghi `STATUS_CHANGED`, van tra `200`.
+- Lead dang `DEPOSIT` khong chuyen thang sang `LOST` duoc: tra `400` (BF-06). Quan ly phai tu choi hop dong truoc, lead tu ve `VIEWED`. Ap dung ca cho `PUT /api/leads/{leadId}/admin-status` cua web admin.
 
 ### 2.4. Ghi su kien cua lead (tuan 2)
 
@@ -198,6 +199,23 @@ Gia tri `lead_events.type`:
 
 - Backend: neu goi n8n that bai, thu lai toi da 3 lan (cach nhau 2 giay), van loi thi dat `automationStatus = FAILED` va ghi log.
 - n8n: bat Retry On Fail (3 lan, cho 5 giay) cho **moi** node co the loi. Cac node goi Mautic bat `continueErrorOutput` de re nhanh sang node "Bao loi Backend" ghi `FOLLOWUP_FAILED`.
+
+## 6. L2: giu tac vu va checkpoint gui
+
+Tat ca endpoint sau can `X-Webhook-Secret`. Chi deploy workflow L2 moi sau khi backend da co module Followups va bang `followup_tasks`.
+
+| Method | Duong dan | Noi dung |
+|---|---|---|
+| POST | `/api/followups/claim` | `{leadId, viewingId, viewingTime, type, owner}`; backend kiem tra dieu kien va tra `{claimed, taskId?, token?, resume?}` |
+| POST | `/api/followups/{id}/start` | `{token}`; tra `{allowed}`; ghi ACTION_STARTED truoc khi goi dich vu ngoai |
+| POST | `/api/followups/{id}/action-done` | `{token, mauticContactId?}`; checkpoint sau khi dich vu ngoai xac nhan; contact ID bat buoc voi WARM |
+| POST | `/api/followups/{id}/complete` | `{token}`; transaction luu event, trang thai tac vu va contact ID; khong tu doi khach sang VIEWED; lap lai khong tao them event |
+| POST | `/api/followups/{id}/fail` | `{token, error}`; FAILED truoc khi gui, REVIEW khi khong chac ket qua gui, giu ACTION_DONE de chi thu lai metadata |
+| POST | `/api/followups/{id}/resolve` | Xu ly REVIEW sau khi kiem tra nha cung cap: `{token, resolution: "delivered" / "not-delivered", mauticContactId?}` |
+
+`owner` la execution ID n8n. Token tac vu la bi mat quyen so huu, khong tra ve API cong khai. REMINDER, ATTENDANCE_CHECK va ATTENDANCE_ESCALATE dung khoa theo lead + viewing + thoi gian xem; cac loai con lai theo lead + loai. FEEDBACK chi chon VIEWED + viewing ATTENDED; lich qua gio chua ghi nhan duoc nhac xac nhan, khong tu xem la da den. Hai execution cung nhan mot tac vu bi chan bang row lock va unique task key. SMTP khong ho tro giao dich chung voi PostgreSQL: mat phan hoi sau khi gui thi giu REVIEW, khong tu gui lai. Chi state ACTION_DONE duoc tu tiep tuc hoan tat database.
+
+Chi tiet cau hinh va cach kiem tra: `docs/luong/luong-2-follow-up.md`.
 
 ## Lich su thay doi
 

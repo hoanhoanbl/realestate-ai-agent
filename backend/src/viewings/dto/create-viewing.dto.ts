@@ -47,4 +47,9 @@ export class CreateViewingDto {
   @IsOptional()
   @IsBoolean()
   consentMarketing?: boolean;
+
+  // Ô ẩn bẫy bot: người thật không thấy nên luôn để trống
+  @IsOptional()
+  @IsString()
+  website?: string;
 }

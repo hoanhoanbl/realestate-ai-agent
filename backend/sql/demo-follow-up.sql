@@ -12,7 +12,7 @@ WITH l AS (
   RETURNING id)
 INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() + interval '5 hours', 'NEW' FROM l;
 
--- FEEDBACK: đã chốt lịch, giờ xem đã qua 2 ngày
+-- FEEDBACK: nhân viên đã ghi nhận khách đến xem (VIEWED/ATTENDED), giờ xem qua 2 ngày
 WITH l AS (
   INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status)
   VALUES ('Trần Thị Cảm', 'nhadn2457+demo2@gmail.com', '0900000002', 2800000000, 'Căn hộ gần trường học', 78, 'HOT', 'Dữ liệu mẫu', 'CONFIRMED', 'COMPLETED')
@@ -26,11 +26,11 @@ WITH l AS (
   RETURNING id)
 INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() + interval '3 days', 'NEW' FROM l;
 
--- WARM_NUDGE: WARM, đã xem nhà, được hỏi cảm nhận 4 ngày trước nhưng chưa phản hồi
+-- WARM_NUDGE: WARM, đồng ý tiếp thị, đã xem nhà, được hỏi cảm nhận 4 ngày trước nhưng chưa phản hồi
 WITH l AS (
-  INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status)
-  VALUES ('Phạm Thị Lặng', 'nhadn2457+demo4@gmail.com', '0900000004', 2500000000, 'Căn hộ gần chợ', 60, 'WARM', 'Dữ liệu mẫu', 'VIEWED', 'COMPLETED')
+  INSERT INTO leads (name, email, phone, budget, needs, score, level, reason, status, automation_status, consent_marketing)
+  VALUES ('Phạm Thị Lặng', 'nhadn2457+demo4@gmail.com', '0900000004', 2500000000, 'Căn hộ gần chợ', 60, 'WARM', 'Dữ liệu mẫu', 'VIEWED', 'COMPLETED', true)
   RETURNING id),
 v AS (
-  INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() - interval '6 days', 'NEW' FROM l RETURNING lead_id)
+  INSERT INTO viewings (property_id, lead_id, viewing_time, status) SELECT 1, id, now() - interval '6 days', 'ATTENDED' FROM l RETURNING lead_id)
 INSERT INTO lead_events (lead_id, type, note, created_at) SELECT lead_id, 'FEEDBACK_ASKED', 'Dữ liệu mẫu', now() - interval '4 days' FROM v;

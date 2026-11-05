@@ -45,6 +45,12 @@
               "name": "managerEmail",
               "value": "nhadn2457+quanly@gmail.com",
               "type": "string"
+            },
+            {
+              "id": "b67fca0c-4ba5-47bd-84c4-302195eefcf0",
+              "name": "publicWebUrl",
+              "value": "={{ $env.PUBLIC_WEB_URL || 'http://localhost:3000' }}",
+              "type": "string"
             }
           ]
         },
@@ -563,7 +569,7 @@
                 "conditions": [
                   {
                     "id": "9b344264-35c1-5b4c-b83a-1a8efb41af2d",
-                    "leftValue": "={{ $json.query?.action }}",
+                    "leftValue": "={{ $('Chờ duyệt').first().json.query?.action }}",
                     "rightValue": "approve",
                     "operator": {
                       "type": "string",
@@ -588,7 +594,7 @@
                 "conditions": [
                   {
                     "id": "9560215d-331d-09d6-38eb-81baaca029d0",
-                    "leftValue": "={{ $json.query?.action }}",
+                    "leftValue": "={{ $('Chờ duyệt').first().json.query?.action }}",
                     "rightValue": "reschedule",
                     "operator": {
                       "type": "string",
@@ -612,7 +618,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        3520,
+        3740,
         200
       ],
       "id": "70c2fc47-5216-f69a-38db-07e917337b03",
@@ -636,7 +642,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3740,
+        4180,
         20
       ],
       "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
@@ -660,7 +666,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        3740,
+        4180,
         200
       ],
       "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
@@ -671,7 +677,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
         "subject": "Xác nhận lịch xem nhà",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#16a34a;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã được xác nhận</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, nhân viên đã xác nhận lịch xem nhà của anh/chị. Rất mong được đón anh/chị đúng giờ.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#16a34a;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã được xác nhận</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, nhân viên đã xác nhận lịch xem nhà của anh/chị. Rất mong được đón anh/chị đúng giờ.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO(new Date($('Kiểm tra lịch còn chờ duyệt').first().json.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n    {{ $('Kiểm tra lịch còn chờ duyệt').first().json.manage_token ? '<p style=\"margin-top:20px\">Nếu cần huỷ hoặc đổi lịch, anh/chị bấm: <a href=\"' + $('Cấu hình').first().json.publicWebUrl + '/lich/' + $('Kiểm tra lịch còn chờ duyệt').first().json.manage_token + '\" style=\"color:#2563eb;font-weight:bold\">Huỷ / xin đổi lịch</a></p>' : '' }}\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -679,7 +685,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3960,
+        4400,
         20
       ],
       "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
@@ -707,7 +713,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3960,
+        4400,
         200
       ],
       "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
@@ -735,7 +741,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        3740,
+        4180,
         420
       ],
       "id": "351610fb-49f7-6934-0fca-bda8fab90001",
@@ -764,7 +770,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4180,
+        4620,
         20
       ],
       "id": "e9522c19-4b97-77be-b497-01f4b3554260",
@@ -793,7 +799,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4400,
+        4840,
         20
       ],
       "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
@@ -822,7 +828,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4180,
+        4620,
         200
       ],
       "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
@@ -851,7 +857,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3960,
+        4400,
         420
       ],
       "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
@@ -985,7 +991,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4620,
+        5060,
         220
       ],
       "id": "c2a7d003-0000-4000-8000-000000000000",
@@ -1013,12 +1019,203 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        4840,
+        5280,
         220
       ],
       "id": "c2a7d004-0000-4000-8000-000000000000",
       "name": "Cập nhật Telegram",
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Đọc lại lịch ngay lúc duyệt: khách có thể đã tự huỷ, hoặc lịch đã được duyệt / đổi giờ ở nơi khác\nSELECT l.status AS lead_status, v.status AS viewing_status, v.viewing_time, v.manage_token\nFROM leads l\nJOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true\nWHERE l.id = $1::int;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').first().json.body.leadId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3520,
+        200
+      ],
+      "id": "458a630d-9bdb-42e9-bd08-01b387971148",
+      "name": "Kiểm tra lịch còn chờ duyệt",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "postgres_account_id",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "02ab8351-a106-424b-b832-c798e33be786",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "afc8b49b-e4fe-439f-a1f7-e9f65c189557",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3960,
+        20
+      ],
+      "id": "2e9d3217-b4cf-4ae7-87db-280a24aef2d6",
+      "name": "Lịch còn chờ duyệt?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Không duyệt được</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Lịch này đã bị huỷ hoặc đã được xử lý. Không gửi email cho khách.</h2></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4180,
+        -160
+      ],
+      "id": "774751f4-c36a-48d9-853a-15136098e3c4",
+      "name": "Trả lời lịch đã xử lý"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "63ac412f-5a68-46dd-81c2-3a278deb257e",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "fd98ccde-6f1d-4a2e-84f0-123242f25898",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3960,
+        200
+      ],
+      "id": "573322f3-357b-487e-a36f-3ef1d85630ee",
+      "name": "Lịch còn chờ (đổi giờ)?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9c25ab1e-7850-428a-961d-c8d9deae330f",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "9e821c4c-183f-4b84-ab4d-18b4ff7ecb8f",
+              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3960,
+        380
+      ],
+      "id": "ac43eead-779b-471e-b41e-128e92e4af2c",
+      "name": "Lịch còn chờ (hết giờ)?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        560
+      ],
+      "id": "c2c56ca1-ba21-4947-a5a7-c43bd83bf42e",
+      "name": "Bỏ qua cảnh báo (lịch đã xử lý)"
     }
   ],
   "pinData": {},
@@ -1266,7 +1463,7 @@
       "main": [
         [
           {
-            "node": "Kết quả duyệt",
+            "node": "Kiểm tra lịch còn chờ duyệt",
             "type": "main",
             "index": 0
           }
@@ -1277,21 +1474,21 @@
       "main": [
         [
           {
-            "node": "Trả lời duyệt",
+            "node": "Lịch còn chờ duyệt?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Trả lời đổi giờ",
+            "node": "Lịch còn chờ (đổi giờ)?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Email cảnh báo quản lý",
+            "node": "Lịch còn chờ (hết giờ)?",
             "type": "main",
             "index": 0
           }
@@ -1471,6 +1668,71 @@
         [
           {
             "node": "Cập nhật Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra lịch còn chờ duyệt": {
+      "main": [
+        [
+          {
+            "node": "Kết quả duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lịch còn chờ duyệt?": {
+      "main": [
+        [
+          {
+            "node": "Trả lời duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả lời lịch đã xử lý",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lịch còn chờ (đổi giờ)?": {
+      "main": [
+        [
+          {
+            "node": "Trả lời đổi giờ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả lời lịch đã xử lý",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lịch còn chờ (hết giờ)?": {
+      "main": [
+        [
+          {
+            "node": "Email cảnh báo quản lý",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bỏ qua cảnh báo (lịch đã xử lý)",
             "type": "main",
             "index": 0
           }

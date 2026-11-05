@@ -49,7 +49,7 @@ const PERMISSIONS_MATRIX: PermissionRow[] = [
   },
   {
     feature: "Cập nhật kết quả buổi xem",
-    description: "Đánh dấu khách Đã xem nhà (VIEWED) hoặc Mất khách (LOST)",
+    description: "Đánh dấu khách Đã xem nhà (VIEWED) hoặc Không mua (LOST)",
     sale: true,
     manager: true,
   },

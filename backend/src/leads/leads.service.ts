@@ -13,6 +13,17 @@ import { Viewing } from '../viewings/entities/viewing.entity';
 import { Property } from '../properties/entities/property.entity';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
+import { assertViewingStarted } from '../viewings/viewing-time';
+
+// Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
+// vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
+export function assertNotLosingDeposit(fromStatus: string, toStatus: string): void {
+  if (fromStatus === 'DEPOSIT' && toStatus === 'LOST') {
+    throw new BadRequestException(
+      'Khách đang đặt cọc, chưa chuyển sang "Không mua" được. Quản lý từ chối hợp đồng trước, khách sẽ về "Đã xem nhà".',
+    );
+  }
+}
 
 @Injectable()
 export class LeadsService {
@@ -69,7 +80,25 @@ export class LeadsService {
           where: { id: viewing.propertyId },
         })
       : null;
-    return { ...lead, viewing, property };
+    // Mỗi lần đặt lịch là một lead mới: liệt kê các lần đặt khác của cùng email để nhân viên biết khách cũ
+    const otherBookings: {
+      id: number;
+      status: string;
+      createdAt: Date;
+      propertyName: string | null;
+      viewingTime: Date | null;
+    }[] = await this.leadRepository.query(
+      `SELECT l.id, l.status, l.created_at AS "createdAt",
+              p.name AS "propertyName", v.viewing_time AS "viewingTime"
+         FROM leads l
+         LEFT JOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true
+         LEFT JOIN properties p ON p.id = v.property_id
+        WHERE lower(l.email) = lower($1) AND l.id <> $2
+        ORDER BY l.created_at DESC
+        LIMIT 20`,
+      [lead.email, lead.id],
+    );
+    return { ...lead, viewing, property, otherBookings };
   }
 
   async updateAiResult(
@@ -119,12 +148,14 @@ export class LeadsService {
 
   async updateStatus(
     id: number,
-    data: { status: string; note?: string },
+    data: { status: string; note?: string; lostReason?: string },
   ): Promise<Lead> {
     const lead = await this.findOne(id);
     const oldStatus = lead.status;
     if (oldStatus === data.status) return lead; // trung trang thai: khong doi, khong ghi log
+    assertNotLosingDeposit(oldStatus, data.status); // cả đường n8n gọi PUT /leads/:id/status
     lead.status = data.status;
+    if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
     const saved = await this.leadRepository.save(lead);
     await this.addEvent(id, {
       type: 'STATUS_CHANGED',
@@ -224,18 +255,51 @@ export class LeadsService {
   }
 
   // Nhân viên tự đặt trạng thái VIEWED (đã xem) hoặc LOST (mất khách / khách không đến)
-  async adminSetStatus(id: number, data: { status: string; note?: string }, user: AuthUser): Promise<Lead> {
+  async adminSetStatus(
+    id: number,
+    data: { status: string; note?: string; reason?: string },
+    user: AuthUser,
+  ): Promise<Lead> {
     const lead = await this.findOne(id);
-    if (data.status === 'VIEWED' && lead.status !== 'CONFIRMED') {
-      throw new BadRequestException('Chỉ đánh dấu "đã xem" được khi khách đã chốt lịch (CONFIRMED)');
+    const viewing = await this.viewingRepository.findOne({ where: { leadId: id }, order: { id: 'DESC' } });
+    if (data.status === 'VIEWED') {
+      if (!viewing) throw new BadRequestException('Khách chưa có lịch xem');
+      return this.markAttended(lead, viewing, user, data.note);
     }
-    if (data.status === 'LOST' && (lead.status === 'SIGNED' || lead.status === 'LOST')) {
+    if (lead.status === 'SIGNED' || lead.status === 'LOST') {
       throw new BadRequestException('Khách này đã ký hoặc đã mất, không đổi được');
     }
+    assertNotLosingDeposit(lead.status, 'LOST');
+    // Mất khách khi buổi xem còn chờ: huỷ buổi xem để không còn chặn khung giờ của căn
+    if (viewing && viewing.status === 'NEW') {
+      await this.viewingRepository.update(viewing.id, { status: 'CANCELLED' });
+    }
     return this.updateStatus(id, {
-      status: data.status,
+      status: 'LOST',
+      lostReason: data.reason ?? 'OTHER',
       note: `${data.note ? data.note + ' ' : ''}(bởi ${user.name})`,
     });
+  }
+
+  // Khách có đến xem: buổi xem ATTENDED, khách VIEWED. Dùng cho cả nút "Đã xem nhà" cũ và API ghi nhận buổi xem.
+  async markAttended(lead: Lead, viewing: Viewing, user: AuthUser, note?: string): Promise<Lead> {
+    if (lead.status !== 'CONFIRMED') {
+      throw new BadRequestException('Chỉ đánh dấu "đã xem" được khi khách đã chốt lịch (CONFIRMED)');
+    }
+    if (viewing.status !== 'NEW') {
+      throw new BadRequestException('Buổi xem này đã được ghi nhận rồi');
+    }
+    assertViewingStarted(viewing.viewingTime);
+    await this.viewingRepository.update(viewing.id, { status: 'ATTENDED' });
+    return this.updateStatus(lead.id, {
+      status: 'VIEWED',
+      note: `${note ? note + ' ' : ''}(bởi ${user.name})`,
+    });
+  }
+
+  // Called only after the follow-up transaction has committed its status/event changes.
+  async notifyFollowupStatusChanged(id: number): Promise<void> {
+    this.fireLeadChanged(await this.findOne(id), 'status_changed');
   }
 
   // Gọi webhook lead-changed cho n8n (L7 đồng bộ sang Mautic). Không có URL thì bỏ qua.

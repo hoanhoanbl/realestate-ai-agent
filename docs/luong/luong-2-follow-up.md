@@ -1,147 +1,100 @@
-# Luồng 2: Follow-up tự động & Chuyển nuôi dưỡng Mautic
+# Luồng 2: Follow-up tự động
 
-File n8n: `n8n-workflows/luong-2-follow-up.json` · ID: `luong2Realestat0` · Error Workflow: `errorWfRealestat`
-Trigger: **Schedule, mỗi giờ** (và nút "Chạy tay" để thử nghiệm)
+File: `n8n-workflows/luong-2-follow-up.json`. Chạy mỗi giờ hoặc trigger Chạy tay.
+Backend API mới: `/api/followups`, bảo vệ bằng `X-Webhook-Secret`.
 
----
+## Sáu loại tác vụ (đã tích hợp quy tắc ghi nhận buổi xem trên dev)
 
-## 1. Ngoài đời luồng này giải quyết việc gì?
-
-Nhân viên môi giới thường quên: quên nhắc khách trước giờ xem nhà, quên hỏi cảm nhận sau buổi xem, quên duyệt lịch hẹn của khách mới, và không đủ thời gian nuôi dưỡng các khách đang nguội dần. 
-
-Luồng 2 mỗi giờ tự động quét database và thực hiện đúng nghiệp vụ cho từng phân khúc khách, **mỗi hành động chỉ thực hiện một lần cho mỗi khách**:
-
-| Loại | Điều kiện kích hoạt | Hành động tự động |
+| Loại | Điều kiện | Hành động |
 |---|---|---|
-| `REMINDER` | Khách đã chốt lịch (`CONFIRMED`), giờ xem trong 24 giờ tới | AI soạn email nhắc lịch chi tiết cho khách (giờ xem, tên căn, địa chỉ) |
-| `FEEDBACK` | Giờ xem đã qua: nhân viên đã bấm "Đã xem" (`VIEWED`) qua hơn 2 giờ; hoặc nhân viên quên bấm mà giờ xem qua hơn 1 ngày | Tạo link cảm nhận bảo mật, gửi email hỏi cảm nhận kèm nút "Gửi cảm nhận" (nếu nhân viên quên bấm thì n8n tự đổi sang `VIEWED`) |
-| `WARM_NUDGE` (D-10) | Khách WARM đã `VIEWED`, được hỏi cảm nhận hơn 3 ngày mà chưa phản hồi | AI soạn đoạn mở đầu `ai_nudge_text` $\rightarrow$ gọi Mautic API gán field và gắn tag `nuoi-warm` $\rightarrow$ ghi log `WARM_NURTURE_STARTED`. Không gửi mail trực tiếp; Mautic đảm nhận chuỗi chiến dịch nuôi dưỡng tự động |
-| `STAFF_NUDGE` | Khách HOT/WARM đăng ký hơn 3 ngày nhưng vẫn `NEW` (nhân viên chưa duyệt) | Kích hoạt Sub-workflow `thongBaoNhanVien` gửi cảnh báo qua **Telegram** và **Email** kèm nút bấm mở chi tiết hồ sơ khách |
+| REMINDER | CONFIRMED + buổi xem NEW, giờ xem trong 24 giờ tới | Email nhắc lịch; HOT/WARM/COLD đều được |
+| FEEDBACK | VIEWED + buổi xem ATTENDED, giờ xem qua hơn 2 giờ, chưa hỏi và chưa phản hồi | Email có link cảm nhận; không tự đổi trạng thái khách |
+| WARM_NUDGE | WARM + VIEWED + buổi xem ATTENDED + đồng ý tiếp thị + được hỏi cảm nhận hơn 3 ngày + chưa phản hồi + chưa nuôi | Tìm contact đúng email, tạo/cập nhật ai_nudge_text và tag nuoi-warm |
+| STAFF_NUDGE | HOT/WARM + NEW + buổi xem NEW + tạo hơn 3 ngày | Gọi sub-workflow thông báo nhân viên |
+| ATTENDANCE_CHECK | CONFIRMED + buổi xem NEW + qua giờ hẹn hơn 2 giờ, chưa nhắc trong lịch hiện tại | Nhắc nhân viên ghi nhận khách có đến hay không |
+| ATTENDANCE_ESCALATE | Vẫn CONFIRMED + buổi xem NEW, đã nhắc xác nhận hơn 24 giờ và chưa báo quản lý trong lịch hiện tại | Thông báo tới email quản lý qua sub-workflow |
 
----
+Chỉ dùng lịch xem mới nhất của mỗi lead. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic của L7/L8 không chặn nhắc lịch. Khách đã gửi cảm nhận không được chọn để hỏi lại hoặc nuôi theo nhánh im lặng. Segment Mautic nhận `nuoi-warm`, không nhận riêng `WARM`.
 
-## 2. Ai tham gia?
+## Luồng xử lý
 
-| Thành phần | Vai trò |
-|---|---|
-| Đồng hồ (Schedule) | Đánh thức luồng chạy định kỳ mỗi giờ |
-| n8n (Luồng 2) | Điều phối luồng, phân loại tác vụ, xử lý lỗi và tổng hợp |
-| PostgreSQL | n8n **đọc** danh sách khách cần chăm sóc (chống gửi trùng bằng `NOT EXISTS`) |
-| Backend NestJS | n8n **ghi** (sự kiện dòng thời gian `POST /events`, đổi trạng thái `PUT /status`) |
-| Gemini AI | Soạn email nhắc lịch, email cảm nhận và đoạn mở đầu nuôi dưỡng `ai_nudge_text` |
-| Mautic 5 REST API | Nhận contact WARM, lưu `ai_nudge_text`, gắn tag `nuoi-warm` để kích hoạt chiến dịch |
-| Sub-workflow Thông báo | Nhận cảnh báo `STAFF_NUDGE` và bắn Telegram + Email cho nhân viên |
-| Email SMTP | Gửi email nhắc lịch và hỏi cảm nhận tới khách hàng |
+1. SQL chọn tối đa 50 tác vụ, kèm viewing_id. Không có tác vụ thì xuất NO_TASKS và số liệu chẩn đoán.
+2. Loop từng tác vụ → gọi claim. Backend khoá lead trong transaction, kiểm tra lại điều kiện và cấp token sở hữu tác vụ. Execution khác bị bỏ qua.
+3. Tác vụ ACTION_DONE chỉ chạy hoàn tất database, không gửi lại. Tác vụ mới lấy nhà, chuẩn bị link và nội dung. AI lỗi/đầu ra không hợp lệ thì dùng mẫu dự phòng.
+4. WARM tìm contact chính xác theo email trước khi tạo/cập nhật; không lấy tuỳ ý contact đầu tiên.
+5. Trước khi gửi, backend kiểm tra lại lịch, trạng thái, đồng ý tiếp thị và quyền sở hữu; ghi ACTION_STARTED.
+6. Gửi email / Mautic / thông báo sale. Node gửi email khách và node ghi Mautic không tự retry khi không xác định kết quả. Sub-workflow sale phải xác nhận ít nhất một kênh thành công.
+7. Ghi ACTION_DONE ngay sau khi dịch vụ ngoài xác nhận. WARM phải có contactId hợp lệ.
+8. Complete ghi contact ID, timeline và trạng thái tác vụ trong **một transaction**. Hoàn tất lặp lại không tạo thêm event. L2 không tự chuyển CONFIRMED → VIEWED: nhân viên ghi nhận ATTENDED qua nghiệp vụ trên web; lịch quá giờ chưa xác nhận được nhắc qua hai nhánh attendance.
+9. Tổng hợp thành công, bỏ qua, lỗi và REVIEW; gửi báo cáo quản lý, gồm cả số nhắc xác nhận buổi xem và báo quá hạn.
 
----
+## Chống trùng và phục hồi
 
-## 3. Sơ đồ tương tác (Swimlane)
+Bảng `followup_tasks` có task_key duy nhất. REMINDER, ATTENDANCE_CHECK và ATTENDANCE_ESCALATE dùng lead + viewing ID + thời gian xem; ba loại còn lại dùng loại tác vụ + lead. Đổi giờ cho phép tạo tác vụ nhắc mới. Event REMINDER_SENT cũ vẫn được tôn trọng, nhưng chỉ trong lịch chưa đổi giờ.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant T as Đồng hồ (Mỗi giờ)
-    participant N as n8n (Luồng 2)
-    participant D as PostgreSQL
-    participant B as Backend
-    participant G as Gemini
-    participant M as Mautic API
-    participant SUB as Sub-workflow Thông báo
-    participant E as Email SMTP
-    actor K as Khách hàng
-    actor S as Nhân viên / Quản lý
+- CLAIMED: giữ tác vụ 30 phút. Chưa bắt đầu gửi thì execution khác có thể nhận lại sau khi hết hạn.
+- ACTION_STARTED: đã cho phép gọi dịch vụ ngoài. Nếu lỗi/mất phản hồi, chuyển REVIEW hoặc execution sau đưa tác vụ hết hạn vào REVIEW. Không tự gửi lại.
+- ACTION_DONE: dịch vụ ngoài đã xác nhận. Nếu cập nhật database lỗi, giữ checkpoint; lượt sau chỉ hoàn tất metadata.
+- COMPLETED: đã hoàn tất, không làm lại.
+- FAILED: lỗi trước khi gửi; chờ 6 giờ và kiểm tra lại điều kiện.
+- REVIEW: cần kiểm tra lịch sử nhà cung cấp để biết có gửi thành công hay chưa.
 
-    T->>N: Đến giờ chạy
-    N->>D: SELECT khách cần REMINDER / FEEDBACK / WARM_NUDGE / STAFF_NUDGE
-    D-->>N: Danh sách khách (tối đa 50)
-    loop Từng khách hàng
-        N->>B: GET /api/properties/:id (Lấy thông tin căn nhà)
-        alt STAFF_NUDGE (Nhân viên quên duyệt lịch)
-            N->>B: POST /events (STAFF_NUDGE_SENT)
-            N->>SUB: Gọi sub-workflow thongBaoNhanVien
-            SUB->>S: Bắn thông báo Telegram + Email
-        else REMINDER / FEEDBACK / WARM_NUDGE
-            opt Là FEEDBACK
-                N->>B: POST /api/feedback/link/:id (Tạo link cảm nhận riêng)
-            end
-            N->>G: Soạn nội dung (subject + body)
-            G-->>N: Kết quả AI
-            N->>N: Kiểm tra Guardrail (độ dài, tên khách, chống chèn mã)
-            alt WARM_NUDGE (Chuyển sang Mautic nuôi dưỡng)
-                N->>M: POST /contacts/new { email, ai_nudge_text, tags: ['nuoi-warm', 'WARM'] }
-                N->>B: POST /events (WARM_NURTURE_STARTED)
-            else REMINDER / FEEDBACK (Email trực tiếp)
-                N->>E: Gửi email cho khách
-                E-->>K: Nhận email nhắc lịch / hỏi cảm nhận
-                N->>B: POST /events (REMINDER_SENT / FEEDBACK_ASKED)
-                opt Là FEEDBACK
-                    N->>B: PUT /status VIEWED
-                end
-            end
-        end
-    end
-    N->>E: Gửi email tổng hợp báo cáo cho Quản lý
-    E-->>S: [BÁO CÁO] Follow-up hoàn thành
+Không thể bảo đảm gửi đúng một lần qua SMTP khi mất kết nối đúng thời điểm nhà cung cấp nhận email. Cơ chế này chọn giữ REVIEW thay vì tự gửi lại; retry bên trong sub-workflow thông báo vẫn cần theo dõi riêng.
+
+Nếu lịch hoặc khách thay đổi trong lúc đang gửi, không thể thu hồi email đã gửi; checkpoint cũ vẫn được hoàn tất và không đổi ngược trạng thái khách đã tiến triển.
+
+## Xử lý REVIEW
+
+Chỉ người vận hành có quyền dùng webhook secret mới gọi API này, sau khi kiểm tra Gmail/Mautic/Telegram:
+
+`POST /api/followups/{taskId}/resolve`
+
+```json
+{"token":"token-tu-node-Giu-tac-vu","resolution":"delivered","mauticContactId":42}
 ```
 
----
+- `delivered`: xác nhận dịch vụ ngoài đã nhận; backend chỉ hoàn tất dữ liệu. `mauticContactId` bắt buộc cho WARM, bỏ trường này với email/sale.
+- `not-delivered`: xác nhận chưa gửi, cho phép chuẩn bị lại sau 6 giờ. Không tự xoá event hoặc reset state để ép gửi lại.
+- Token tác vụ lấy trong execution được cấp tác vụ; giữ riêng, không commit hoặc chia sẻ ảnh có token.
 
-## 4. Từng bước trong Workflow (24 nodes)
+Có thể xem danh sách cần xử lý bằng truy vấn chỉ đọc:
 
-1. **Mỗi giờ / Chạy tay**: Khởi động luồng định kỳ hoặc chạy thủ công.
-2. **Cấu hình**: Thiết lập URL Backend, Mautic API, Webhook Secret, Public Web URL, email quản lý.
-3. **Lấy lead cần follow-up (Postgres)**: Truy vấn gộp 4 loại tác vụ với điều kiện loại trừ `NOT EXISTS` để chống trùng.
-4. **Có dữ liệu?**: Nếu không có khách nào thì kết thúc lượt chạy.
-5. **Loop Over Items**: Lặp qua từng khách hàng một.
-6. **Lấy thông tin nhà**: Gọi `GET /api/properties/:id` lấy tên và địa chỉ nhà.
-7. **Chuẩn bị ngữ cảnh**: Chuẩn hoá tên, giờ xem theo giờ Việt Nam, mục đích cho AI.
-8. **Cần qua AI?**: Rẽ nhánh kiểm tra:
-   - Nếu `STAFF_NUDGE`: bỏ qua AI và email khách $\rightarrow$ đi thẳng tới ghi log và thông báo nhân viên.
-   - Nếu `REMINDER / FEEDBACK / WARM_NUDGE`: đi vào nhánh xử lý AI.
-9. **Là cảm nhận?**: Rẽ nhánh kiểm tra có phải loại `FEEDBACK` không.
-10. **Tạo link cảm nhận**: Gọi backend sinh token cảm nhận độc nhất cho khách.
-11. **AI soạn email**: Gemini tạo tiêu đề và nội dung theo ngữ cảnh từng khách.
-12. **Kiểm tra nội dung AI**: **Guardrail** xác thực tên khách, độ dài, loại bỏ mã lỗi; nếu không đạt thì dùng mẫu dự phòng an toàn.
-13. **Là WARM nuôi dưỡng?**:
-    - **Nhánh WARM_NUDGE**:
-      - **Gửi Mautic Nuôi WARM**: Gọi `POST /contacts/new` Mautic cập nhật `ai_nudge_text` và gắn tag `nuoi-warm, WARM`.
-      - **Ghi log WARM Started**: Gọi backend ghi `WARM_NURTURE_STARTED` $\rightarrow$ chuyển sang Gom kết quả.
-    - **Nhánh REMINDER / FEEDBACK**:
-      - **Email khách**: Gửi email qua SMTP Gmail.
-      - **Ghi log**: Gọi backend ghi sự kiện `REMINDER_SENT` hoặc `FEEDBACK_ASKED`.
-      - **Việc thêm (Switch)**: Nếu là `FEEDBACK` $\rightarrow$ gọi `Chuyển VIEWED`.
-14. **Ghi log STAFF_NUDGE**: Ghi sự kiện `STAFF_NUDGE_SENT` về backend.
-15. **Chuẩn bị thông báo NV**: Định dạng tiêu đề, nội dung và nút bấm mở hồ sơ khách.
-16. **Thông báo nhân viên**: Kích hoạt Sub-workflow `thongBaoNhanVien` gửi Telegram và Email cho Sale.
-17. **Gom kết quả**: Thu thập kết quả xử lý của từng khách.
-18. **Ghi lỗi follow-up**: Bắt lỗi nếu bất kỳ bước nào thất bại, ghi `FOLLOWUP_FAILED` (bỏ qua thử lại trong 6 giờ).
-19. **Gom lỗi**: Thu thập lỗi để không làm dừng cả mẻ chạy.
-20. **Tổng hợp**: Thống kê số lượng từng loại tác vụ (`reminder`, `feedback`, `warmNudge`, `staffNudge`, `failed`, `fallback`).
-21. **Có gửi email?**: Kiểm tra nếu có tác vụ được xử lý.
-22. **Email báo cáo quản lý**: Gửi email tổng kết cho Quản lý.
+```sql
+SELECT id,lead_id,type,state,error,updated_at
+FROM followup_tasks WHERE state='REVIEW' ORDER BY updated_at DESC;
+```
 
----
+## Cập nhật local/server
 
-## 5. Nối với hệ thống & Chống gửi trùng
+**Cập nhật backend trước, import L2 sau.** Không import vào hệ thống vẫn chạy backend cũ vì chưa có API claim/checkpoint.
 
-- **Đọc trực tiếp PostgreSQL:** Đọc các bảng `leads`, `viewings`, `lead_events`.
-- **Ghi qua Backend REST API:** Có xác thực `X-Webhook-Secret`.
-- **Chống gửi trùng tuyệt đối:**
-  - `REMINDER`: `NOT EXISTS (lead_events WHERE type = 'REMINDER_SENT')`
-  - `FEEDBACK`: `NOT EXISTS (lead_events WHERE type = 'FEEDBACK_ASKED')`
-  - `WARM_NUDGE`: `NOT EXISTS (lead_events WHERE type IN ('WARM_NUDGE_SENT', 'WARM_NURTURE_STARTED'))`
-  - `STAFF_NUDGE`: `NOT EXISTS (lead_events WHERE type = 'STAFF_NUDGE_SENT')`
-  - Lỗi `FOLLOWUP_FAILED`: Tạm bỏ qua trong vòng 6 giờ để tránh spam hệ thống.
+1. Build/deploy backend mới. Module Followups đăng ký entity `followup_tasks`; cấu hình TypeORM hiện tại của dự án dùng synchronize nên tạo bảng khi backend khởi động. Không xoá volume database.
+2. Tạm dừng L2 cũ, export dự phòng rồi import JSON mới. Không để hai bản khác phiên bản cùng chạy: bản cũ chưa dùng claim.
+3. Chọn credential Postgres, Gemini, SMTP và Basic Auth Mautic cho cả Tìm contact nuôi dưỡng / Gửi Mautic Nuôi WARM.
+4. Chọn sub-workflow thông báo nhân viên đã publish trong node Thông báo nhân viên, chọn đúng Error workflow trong Settings.
+5. Kiểm tra Cấu hình: backendUrl, webhookSecret, mauticUrl, publicWebUrl và email quản lý. Các dịch vụ phải thuộc môi trường bạn muốn dùng. Không nhập secret vào Git.
+6. Mautic phải có custom field ai_nudge_text, segment nhận tag nuoi-warm và campaign đã cấu hình; gắn tag không tự tạo campaign.
+7. Thử với khách riêng của bạn; xem task state, timeline, contact ID và báo cáo. Publish sau khi credential và sub-workflow hợp lệ.
 
----
+## Kiểm tra trong repo
 
-## 6. Cách chạy thử
+Từ thư mục gốc:
 
-1. Chạy file SQL tạo 4 khách mẫu: `docker exec -i realestate-db psql -U realestate -d realestate < backend/sql/demo-follow-up.sql`
-2. Mở n8n UI, chọn workflow `luong-2-follow-up` và bấm **Test step** tại trigger `Chạy tay`.
-3. Kết quả kỳ vọng:
-   - Khách `Nguyễn Văn Nhắc` nhận email nhắc lịch xem nhà.
-   - Khách `Trần Thị Cảm` nhận email hỏi cảm nhận kèm nút bấm.
-   - Khách `Phạm Thị Lặng` (WARM) được cập nhật `ai_nudge_text` và tag `nuoi-warm` trên Mautic, backend ghi nhận `WARM_NURTURE_STARTED`.
-   - Nhân viên Sale nhận cảnh báo Telegram + Email về khách `Lê Minh Ấm` chưa duyệt lịch.
-   - Quản lý nhận 1 email báo cáo tổng hợp đầy đủ số liệu 4 loại việc.
+```powershell
+node scripts/check-followup-workflow.cjs
+```
+
+Trong backend:
+
+```powershell
+npm run test:followups
+node node_modules/typescript/bin/tsc --noEmit --incremental false
+```
+
+Kiểm tra SQL bằng bảng tạm + dữ liệu giả, cuối cùng ROLLBACK (không gửi email, không sửa dữ liệu khách):
+
+```powershell
+node scripts/check-followup-workflow.cjs --sql | docker exec -i realestate-db psql -U realestate -d realestate -v ON_ERROR_STOP=1
+```
+
+Thay DB user/name nếu cấu hình của bạn khác. `backend/sql/preview-follow-up.sql` là bản chỉ đọc của câu chọn tác vụ, cần backend mới đã tạo bảng trước khi dùng trên dữ liệu thật. Kiểm tra giả lập không thay thế thử các credential và chiến dịch Mautic thật.

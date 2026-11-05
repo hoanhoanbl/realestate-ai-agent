@@ -11,6 +11,7 @@ import { N8nModule } from './n8n/n8n.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { ContractsModule } from './contracts/contracts.module';
 import { ReportsModule } from './reports/reports.module';
+import { FollowupsModule } from './followups/followups.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { ReportsModule } from './reports/reports.module';
     ContractsModule,
 
     ReportsModule,
+    FollowupsModule,
   ],
 })
 export class AppModule {}

@@ -15,8 +15,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -900,
-        -40
+        -1400,
+        0
       ],
       "id": "11111111-1111-4000-8000-000000000001",
       "name": "Mỗi giờ"
@@ -26,8 +26,8 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -900,
-        140
+        -1400,
+        220
       ],
       "id": "11111111-1111-4000-8000-000000000002",
       "name": "Chạy tay"
@@ -39,13 +39,13 @@
             {
               "id": "c1",
               "name": "backendUrl",
-              "value": "http://backend:8081",
+              "value": "={{ ($env.BACKEND_URL || 'http://backend:8081').replace(/\\/$/, '') }}",
               "type": "string"
             },
             {
               "id": "c2",
               "name": "mauticUrl",
-              "value": "={{ $env.MAUTIC_URL || 'http://mautic_web:80/api' }}",
+              "value": "={{ ($env.MAUTIC_URL || 'http://mautic_web:80/api').replace(/\\/$/, '') }}",
               "type": "string"
             },
             {
@@ -58,12 +58,6 @@
               "id": "c4",
               "name": "webhookSecret",
               "value": "={{ $env.WEBHOOK_SECRET }}",
-              "type": "string"
-            },
-            {
-              "id": "c5",
-              "name": "mauticAuth",
-              "value": "={{ 'Basic ' + (($env.MAUTIC_API_USER || '') + ':' + ($env.MAUTIC_API_PASSWORD || '')).base64Encode() }}",
               "type": "string"
             },
             {
@@ -85,8 +79,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -680,
-        40
+        -1160,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000003",
       "name": "Cấu hình"
@@ -94,17 +88,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT 'REMINDER' AS type, l.id AS lead_id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'CONFIRMED'\n  AND v.viewing_time BETWEEN now() AND now() + interval '24 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'REMINDER_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\nSELECT 'FEEDBACK', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE ((l.status = 'VIEWED' AND v.viewing_time < now() - interval '2 hours')\n       OR (l.status = 'CONFIRMED' AND v.viewing_time < now() - interval '1 day'))\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách WARM đã xem nhà, được hỏi cảm nhận hơn 3 ngày: chuyển Mautic nuôi dưỡng tự động (D-10)\nSELECT 'WARM_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.level = 'WARM' AND l.status = 'VIEWED'\n  AND COALESCE(l.consent_marketing, false) = true\n  AND EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED' AND e.created_at < now() - interval '3 days')\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type IN ('WARM_NUDGE_SENT', 'WARM_NURTURE_STARTED'))\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách HOT/WARM đăng ký hơn 3 ngày chưa duyệt: nhắc nhân viên qua Sub-workflow\nSELECT 'STAFF_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id\nFROM leads l JOIN viewings v ON v.lead_id = l.id\nWHERE l.status = 'NEW' AND l.level IN ('HOT', 'WARM')\n  AND l.created_at < now() - interval '3 days'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'STAFF_NUDGE_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND f.created_at > now() - interval '6 hours')\nLIMIT 50;"
+        "query": "WITH latest_viewings AS (\n SELECT DISTINCT ON (lead_id) * FROM viewings ORDER BY lead_id,id DESC\n), candidates AS (\nSELECT 'REMINDER' AS type, l.id AS lead_id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id, v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id = l.id\nWHERE l.status = 'CONFIRMED' AND v.status = 'NEW'\n  AND v.viewing_time BETWEEN now() AND now() + interval '24 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'REMINDER_SENT' AND (e.note IS NULL OR e.note NOT LIKE 'L2 REMINDER:%') AND e.created_at >= COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'), '-infinity'::timestamptz))\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND COALESCE(f.note, '') LIKE 'REMINDER:%' AND f.created_at > now() - interval '6 hours')\nUNION ALL\nSELECT 'FEEDBACK', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id, v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id = l.id\nWHERE l.status = 'VIEWED' AND v.status = 'ATTENDED' AND v.viewing_time < now() - interval '2 hours'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED')\n  AND NOT EXISTS (SELECT 1 FROM feedbacks fb WHERE fb.lead_id=l.id AND fb.submitted_at IS NOT NULL)\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND COALESCE(f.note, '') LIKE 'FEEDBACK:%' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách WARM đã xem nhà, được hỏi cảm nhận hơn 3 ngày: chuyển Mautic nuôi dưỡng tự động (D-10)\nSELECT 'WARM_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id, v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id = l.id\nWHERE l.level = 'WARM' AND l.status = 'VIEWED' AND v.status = 'ATTENDED'\n  AND COALESCE(l.consent_marketing, false) = true\n  AND NOT EXISTS (SELECT 1 FROM feedbacks fb WHERE fb.lead_id = l.id AND fb.submitted_at IS NOT NULL)\n  AND EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'FEEDBACK_ASKED' AND e.created_at < now() - interval '3 days')\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type IN ('WARM_NUDGE_SENT', 'WARM_NURTURE_STARTED'))\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND COALESCE(f.note, '') LIKE 'WARM_NUDGE:%' AND f.created_at > now() - interval '6 hours')\nUNION ALL\n-- khách HOT/WARM đăng ký hơn 3 ngày chưa duyệt: nhắc nhân viên qua Sub-workflow\nSELECT 'STAFF_NUDGE', l.id, l.name, l.email, l.phone, l.needs, l.level,\n       v.property_id, v.viewing_time, l.mautic_contact_id, v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id = l.id\nWHERE l.status = 'NEW' AND l.level IN ('HOT', 'WARM') AND v.status = 'NEW'\n  AND l.created_at < now() - interval '3 days'\n  AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id = l.id AND e.type = 'STAFF_NUDGE_SENT')\n  AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id = l.id AND f.type = 'FOLLOWUP_FAILED' AND COALESCE(f.note, '') LIKE 'STAFF_NUDGE:%' AND f.created_at > now() - interval '6 hours')\n\nUNION ALL\nSELECT 'ATTENDANCE_CHECK',l.id,l.name,l.email,l.phone,l.needs,l.level,v.property_id,v.viewing_time,l.mautic_contact_id,v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id=l.id\nWHERE l.status='CONFIRMED' AND v.status='NEW' AND v.viewing_time < now() - interval '2 hours' AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT' AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'), '-infinity'::timestamptz))\n AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id=l.id AND f.type='FOLLOWUP_FAILED' AND f.note LIKE 'ATTENDANCE_CHECK:%' AND f.created_at > now()-interval '6 hours')\n\nUNION ALL\nSELECT 'ATTENDANCE_ESCALATE',l.id,l.name,l.email,l.phone,l.needs,l.level,v.property_id,v.viewing_time,l.mautic_contact_id,v.id AS viewing_id\nFROM leads l JOIN latest_viewings v ON v.lead_id=l.id\nWHERE l.status='CONFIRMED' AND v.status='NEW' AND EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT' AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'), '-infinity'::timestamptz) AND e.created_at < now()-interval '24 hours' AND ((e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') OR EXISTS (SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time AND e.note='L2 '||t.task_key))) AND NOT EXISTS (SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_ESCALATED' AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_ESCALATE:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'), '-infinity'::timestamptz))\n AND NOT EXISTS (SELECT 1 FROM lead_events f WHERE f.lead_id=l.id AND f.type='FOLLOWUP_FAILED' AND f.note LIKE 'ATTENDANCE_ESCALATE:%' AND f.created_at > now()-interval '6 hours')\n), recoverable AS (\n SELECT t.type,l.id,l.name,l.email,l.phone,l.needs,l.level,v.property_id,t.viewing_time,l.mautic_contact_id,t.viewing_id\n FROM followup_tasks t JOIN leads l ON l.id=t.lead_id JOIN viewings v ON v.id=t.viewing_id\n WHERE t.state='ACTION_DONE' AND t.available_at<=now() AND t.lease_until<=now()\n), selected AS (\n SELECT * FROM (SELECT * FROM candidates UNION SELECT * FROM recoverable) tasks\n WHERE NOT EXISTS (SELECT 1 FROM followup_tasks f WHERE f.lead_id=tasks.lead_id AND f.type=tasks.type\n   AND (f.type NOT IN ('REMINDER','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE') OR (f.viewing_id=tasks.viewing_id AND f.viewing_time=tasks.viewing_time))\n   AND (f.state IN ('COMPLETED','REVIEW') OR f.available_at>now() OR f.lease_until>now()))\n ORDER BY lead_id,type LIMIT 50\n)\nSELECT s.*,NULL::jsonb AS diagnostics FROM selected s\nUNION ALL\nSELECT 'NO_TASKS',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,\n jsonb_build_object('databaseTime',now(),'totalLeads',(SELECT count(*) FROM leads),\n 'warmViewed',(SELECT count(*) FROM leads WHERE level='WARM' AND status='VIEWED'),\n 'warmViewedWithoutConsent',(SELECT count(*) FROM leads WHERE level='WARM' AND status='VIEWED' AND NOT COALESCE(consent_marketing,false)),\n 'reviewTasks',(SELECT count(*) FROM followup_tasks WHERE state='REVIEW'))\nWHERE NOT EXISTS(SELECT 1 FROM selected);\n"
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -480,
-        40
+        -920,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000004",
       "name": "Lấy lead cần follow-up",
-      "alwaysOutputData": true,
+      "alwaysOutputData": false,
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -126,12 +120,11 @@
           },
           "conditions": [
             {
-              "id": "cond-has-data",
-              "leftValue": "={{ $json.type }}",
-              "rightValue": "",
+              "id": "cond-has-real-task",
+              "leftValue": "={{ Number($json.lead_id || 0) > 0 && ['REMINDER','FEEDBACK','WARM_NUDGE','STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE'].includes($json.type) }}",
               "operator": {
-                "type": "string",
-                "operation": "notEmpty",
+                "type": "boolean",
+                "operation": "true",
                 "singleValue": true
               }
             }
@@ -143,21 +136,22 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -280,
-        40
+        -680,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000005",
       "name": "Có dữ liệu?"
     },
     {
       "parameters": {
-        "options": {}
+        "options": {},
+        "batchSize": 1
       },
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -60,
-        20
+        -440,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000006",
       "name": "Loop Over Items"
@@ -165,14 +159,16 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/properties/{{ $json.property_id }}",
-        "options": {}
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/properties/{{ $('Loop Over Items').item.json.property_id }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        160,
-        -100
+        540,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000007",
       "name": "Lấy thông tin nhà",
@@ -183,16 +179,18 @@
     },
     {
       "parameters": {
-        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc. Cuối email có nút \"Gửi cảm nhận\", hãy mời khách bấm nút đó và KHÔNG tự chèn đường link.',\n  WARM_NUDGE: 'Khách WARM đã xem nhà cách đây vài ngày nhưng chưa phản hồi. Viết ĐÚNG 2 câu mở đầu ngắn gọn (dưới 250 ký tự), KHÔNG viết lời chào mở đầu (không \"Chào anh/chị\"), KHÔNG viết lời chào kết thúc, chỉ hỏi thăm nhẹ nhàng về căn nhà đã xem và hỏi thêm nhu cầu (khu vực, giá, số phòng).',\n  STAFF_NUDGE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};"
+        "jsCode": "const lead = $('Loop Over Items').item.json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst p = $json; // kết quả GET /api/properties/:id\nconst purposes = {\n  REMINDER: 'Nhắc khách lịch xem nhà sẽ diễn ra trong 24 giờ tới. Nêu rõ giờ, tên căn, địa chỉ. Dặn khách báo lại nếu cần đổi giờ.',\n  FEEDBACK: 'Khách đã đi xem nhà hôm trước. Cảm ơn, hỏi cảm nhận về căn nhà, gợi ý bước tiếp theo: xem thêm căn khác hoặc trao đổi về đặt cọc. Cuối email có nút \"Gửi cảm nhận\", hãy mời khách bấm nút đó và KHÔNG tự chèn đường link.',\n  WARM_NUDGE: 'Khách WARM đã xem nhà cách đây vài ngày nhưng chưa phản hồi. Viết ĐÚNG 2 câu mở đầu ngắn gọn (dưới 250 ký tự), KHÔNG viết lời chào mở đầu (không \"Chào anh/chị\"), KHÔNG viết lời chào kết thúc, chỉ hỏi thăm nhẹ nhàng về căn nhà đã xem và hỏi thêm nhu cầu (khu vực, giá, số phòng).',\n  STAFF_NUDGE: '',\n  ATTENDANCE_CHECK: '',\n  ATTENDANCE_ESCALATE: '',\n};\nconst eventTypes = { REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT',\n  ATTENDANCE_CHECK: 'ATTENDANCE_CHECK_SENT', ATTENDANCE_ESCALATE: 'ATTENDANCE_ESCALATED' };\nreturn {\n  json: {\n    ...lead,\n    nameHtml: esc(lead.name),\n    needsHtml: esc(lead.needs),\n    phoneHtml: esc(lead.phone),\n    propertyName: p.name,\n    propertyAddress: p.address,\n    viewingTimeText: DateTime.fromISO(new Date(lead.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\"),\n    purpose: purposes[lead.type],\n    eventType: eventTypes[lead.type],\n  },\n};",
+        "mode": "runOnceForEachItem"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        360,
-        -100
+        780,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000008",
-      "name": "Chuẩn bị ngữ cảnh"
+      "name": "Chuẩn bị ngữ cảnh",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -206,7 +204,7 @@
           "conditions": [
             {
               "id": "c-need-ai",
-              "leftValue": "={{ $json.type !== 'STAFF_NUDGE' }}",
+              "leftValue": "={{ !['STAFF_NUDGE', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE'].includes($json.type) }}",
               "operator": {
                 "type": "boolean",
                 "operation": "true",
@@ -221,8 +219,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        560,
-        -100
+        1020,
+        100
       ],
       "id": "7ca7a04b-d6d1-4a5a-ab94-8e4f898d66dc",
       "name": "Cần qua AI?"
@@ -254,8 +252,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        780,
-        -220
+        1260,
+        0
       ],
       "id": "9843ba1f-1dd0-4d26-9217-e987b40577eb",
       "name": "Là cảm nhận?"
@@ -273,13 +271,15 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        980,
-        -220
+        1500,
+        -140
       ],
       "id": "a814243b-8e89-4b94-a1cf-a6bb97971350",
       "name": "Tạo link cảm nhận",
@@ -298,15 +298,15 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        1220,
-        -100
+        1760,
+        0
       ],
       "id": "11111111-1111-4000-8000-000000000009",
       "name": "AI soạn email",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -316,8 +316,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1200,
-        120
+        1680,
+        300
       ],
       "id": "11111111-1111-4000-8000-000000000010",
       "name": "Google Gemini Chat Model",
@@ -335,21 +335,22 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.2,
       "position": [
-        1360,
-        120
+        1920,
+        300
       ],
       "id": "11111111-1111-4000-8000-000000000011",
       "name": "Structured Output Parser"
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst isWarm = ctx.type === 'WARM_NUDGE';\nconst ok = subject.length > 0 && body.length > 0 && body.length <= (isWarm ? 300 : 1200)\n  && (isWarm || body.includes(ctx.name)) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Gợi ý thêm căn nhà phù hợp', 'Chúng tôi muốn hỏi thăm cảm nhận của anh/chị về buổi xem nhà hôm trước và tìm hiểu thêm nhu cầu cụ thể để gợi ý các căn phù hợp hơn.'],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nif (isWarm) {\n  body = body.replace(/^(Chào\\s+[^,\\.\\n]+[,\\.\\n]\\s*)+/i, '').trim();\n  if (body.length > 250) body = body.slice(0, 247) + '...';\n}\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst bodyHtml = esc(body).replace(/\\n+/g, '<br>');\nreturn { json: { ...ctx, subject, body, bodyHtml, usedFallback: !ok } };"
+        "jsCode": "const ctx = $('Chuẩn bị ngữ cảnh').item.json;\nconst out = $json.output ?? {};\nlet subject = String(out.subject ?? '').trim();\nlet body = String(out.body ?? '').trim();\n\nconst isWarm = ctx.type === 'WARM_NUDGE';\nconst ok = subject.length > 0 && body.length > 0 && body.length <= (isWarm ? 300 : 1200)\n  && (isWarm || body.includes(ctx.name)) && !body.includes('{{');\n\nif (!ok) {\n  const fallback = {\n    REMINDER: ['Nhắc lịch xem nhà', `Chào anh/chị ${ctx.name}, chúng tôi xin nhắc lịch xem ${ctx.propertyName} lúc ${ctx.viewingTimeText} tại ${ctx.propertyAddress}. Nếu cần đổi giờ, anh/chị vui lòng trả lời email này.`],\n    FEEDBACK: ['Cảm ơn anh/chị đã đi xem nhà', `Chào anh/chị ${ctx.name}, cảm ơn anh/chị đã xem ${ctx.propertyName}. Anh/chị thấy căn nhà thế nào? Chúng tôi sẵn sàng giới thiệu thêm căn khác hoặc trao đổi về đặt cọc.`],\n    WARM_NUDGE: ['Gợi ý thêm căn nhà phù hợp', 'Chúng tôi muốn hỏi thăm cảm nhận của anh/chị về buổi xem nhà hôm trước và tìm hiểu thêm nhu cầu cụ thể để gợi ý các căn phù hợp hơn.'],\n  }[ctx.type];\n  [subject, body] = fallback;\n}\n\nif (isWarm) {\n  body = body.replace(/^(Chào\\s+[^,\\.\\n]+[,\\.\\n]\\s*)+/i, '').trim();\n  if (body.length > 250) body = body.slice(0, 247) + '...';\n}\n\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst bodyHtml = esc(body).replace(/\\n+/g, '<br>');\nreturn { json: { ...ctx, subject, body, bodyHtml, usedFallback: !ok } };",
+        "mode": "runOnceForEachItem"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
-        -100
+        2020,
+        0
       ],
       "id": "11111111-1111-4000-8000-000000000012",
       "name": "Kiểm tra nội dung AI"
@@ -381,23 +382,19 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1700,
-        -100
+        3900,
+        100
       ],
       "id": "22222222-2222-4000-8000-000000000001",
       "name": "Là WARM nuôi dưỡng?"
     },
     {
       "parameters": {
-        "method": "={{ $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id ? 'PATCH' : 'POST' }}",
-        "url": "={{ $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id ? ($('Cấu hình').first().json.mauticUrl + '/contacts/' + $('Chuẩn bị ngữ cảnh').item.json.mautic_contact_id + '/edit') : ($('Cấu hình').first().json.mauticUrl + '/contacts/new') }}",
+        "method": "={{ $('Chọn contact nuôi dưỡng').item.json.contactId ? 'PATCH' : 'POST' }}",
+        "url": "={{ $('Cấu hình').first().json.mauticUrl + ($('Chọn contact nuôi dưỡng').item.json.contactId ? '/contacts/'+$('Chọn contact nuôi dưỡng').item.json.contactId+'/edit' : '/contacts/new') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ $('Cấu hình').first().json.mauticAuth }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -407,55 +404,30 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({\n  email: $json.email,\n  ai_nudge_text: $json.bodyHtml,\n  tags: ['nuoi-warm', 'WARM']\n}) }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1940,
-        -220
+        4140,
+        -140
       ],
       "id": "22222222-2222-4000-8000-000000000002",
       "name": "Gửi Mautic Nuôi WARM",
-      "retryOnFail": true,
+      "retryOnFail": false,
       "maxTries": 3,
       "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Webhook-Secret",
-              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  type: 'WARM_NURTURE_STARTED',\n  note: 'Bắt đầu chuỗi email nuôi dưỡng Mautic (Đã tạo ai_nudge_text và tag nuoi-warm)'\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2160,
-        -220
-      ],
-      "id": "22222222-2222-4000-8000-000000000003",
-      "name": "Ghi log WARM Started",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "mautic_api_credential",
+          "name": "Mautic API - chọn Local hoặc Server"
+        }
+      }
     },
     {
       "parameters": {
@@ -470,12 +442,12 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1940,
-        -20
+        4140,
+        200
       ],
       "id": "11111111-1111-4000-8000-000000000013",
       "name": "Email khách",
-      "retryOnFail": true,
+      "retryOnFail": false,
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "credentials": {
@@ -488,124 +460,14 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Webhook-Secret",
-              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  type: $('Chuẩn bị ngữ cảnh').item.json.eventType,\n  note: $('Kiểm tra nội dung AI').item.json.subject\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2160,
-        -20
-      ],
-      "id": "11111111-1111-4000-8000-000000000014",
-      "name": "Ghi log",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $('Chuẩn bị ngữ cảnh').item.json.type }}",
-                    "rightValue": "FEEDBACK",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
-      },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [
-        2380,
-        -20
-      ],
-      "id": "11111111-1111-4000-8000-000000000015",
-      "name": "Việc thêm"
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/status",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Webhook-Secret",
-              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  status: 'VIEWED',\n  note: 'Đã hỏi cảm nhận sau buổi xem'\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2600,
-        -100
-      ],
-      "id": "11111111-1111-4000-8000-000000000016",
-      "name": "Chuyển VIEWED",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const lead = $('Chuẩn bị ngữ cảnh').item.json;\nconst cfg = $('Cấu hình').first().json;\n\nreturn [{\n  json: {\n    leadId: lead.lead_id,\n    level: lead.level || 'WARM',\n    title: `[GỌI LẠI] ${lead.name} chưa được duyệt lịch sau 3 ngày`,\n    message: `Khách hàng ${lead.name} (SĐT: ${lead.phone || 'Chưa có'}, Email: ${lead.email}), mức ${lead.level}, đã đăng ký hơn 3 ngày nhưng lịch xem nhà chưa được nhân viên duyệt.\\n- Nhu cầu: ${lead.needs || 'Chưa ghi'}\\n- Căn nhà quan tâm: ${lead.propertyName}`,\n    actions: [\n      { label: 'Xem chi tiết khách', url: `${cfg.publicWebUrl}/admin/leads/${lead.lead_id}` }\n    ]\n  }\n}];"
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Các việc chỉ báo nhân viên/quản lý, không qua AI: nhắc duyệt lịch, nhắc xác nhận buổi xem, báo quản lý quá hạn\nconst lead = $('Chuẩn bị ngữ cảnh').item.json;\nconst cfg = $('Cấu hình').first().json;\nconst info = `Khách hàng ${lead.name} (SĐT: ${lead.phone || 'Chưa có'}, Email: ${lead.email}), mức ${lead.level || 'chưa chấm'}.\\n- Căn nhà: ${lead.propertyName}\\n- Giờ hẹn: ${lead.viewingTimeText}`;\nconst byType = {\n  STAFF_NUDGE: {\n    title: `[GỌI LẠI] ${lead.name} chưa được duyệt lịch sau 3 ngày`,\n    message: `Khách hàng ${lead.name} (SĐT: ${lead.phone || 'Chưa có'}, Email: ${lead.email}), mức ${lead.level}, đã đăng ký hơn 3 ngày nhưng lịch xem nhà chưa được nhân viên duyệt.\\n- Nhu cầu: ${lead.needs || 'Chưa ghi'}\\n- Căn nhà quan tâm: ${lead.propertyName}`,\n    logNote: 'Nhắc nhân viên gọi lại khách chưa được duyệt lịch sau 3 ngày',\n  },\n  ATTENDANCE_CHECK: {\n    title: `[XÁC NHẬN] ${lead.name} có đến xem nhà không?`,\n    message: `${info}\\nĐã quá giờ hẹn hơn 2 tiếng nhưng chưa ai ghi nhận khách có đến hay không. Vào trang khách để bấm \"Khách có đến\" hoặc \"Khách không đến\".`,\n    logNote: 'Nhắc nhân viên xác nhận khách có đến xem nhà',\n  },\n  ATTENDANCE_ESCALATE: {\n    title: `[QUÁ HẠN] Buổi xem của ${lead.name} chưa được xác nhận`,\n    message: `${info}\\nĐã nhắc nhân viên hơn 24 giờ trước nhưng buổi xem vẫn chưa được ghi nhận khách có đến hay không.`,\n    emailTo: cfg.managerEmail,\n    logNote: 'Báo quản lý: buổi xem quá 24 giờ chưa được xác nhận',\n  },\n};\nconst t = byType[lead.type];\n\nreturn {\n  json: {\n    leadId: lead.lead_id,\n    level: lead.level || 'WARM',\n    title: t.title,\n    message: t.message,\n    ...(t.emailTo ? { emailTo: t.emailTo } : {}),\n    actions: [\n      { label: 'Xem chi tiết khách', url: `${cfg.publicWebUrl}/admin/leads/${lead.lead_id}` }\n    ],\n    logNote: t.logNote,\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        780,
-        140
+        1260,
+        560
       ],
       "id": "22222222-2222-4000-8000-000000000005",
       "name": "Chuẩn bị thông báo NV"
@@ -632,57 +494,24 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        980,
-        140
+        3900,
+        560
       ],
       "id": "22222222-2222-4000-8000-000000000006",
       "name": "Thông báo nhân viên",
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị ngữ cảnh').item.json.lead_id }}/events",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Webhook-Secret",
-              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  type: 'STAFF_NUDGE_SENT',\n  note: 'Nhắc nhân viên gọi lại khách chưa được duyệt lịch sau 3 ngày'\n}) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1180,
-        140
-      ],
-      "id": "22222222-2222-4000-8000-000000000004",
-      "name": "Ghi log STAFF_NUDGE",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "const c = $('Chuẩn bị ngữ cảnh').item.json;\nlet usedFallback = false;\ntry { usedFallback = !!$('Kiểm tra nội dung AI').item.json.usedFallback; } catch (e) { /* nhánh nhắc nhân viên không qua AI */ }\nreturn { json: { ...c, usedFallback } };"
+        "jsCode": "const c=$('Loop Over Items').item.json;\nlet usedFallback=false;\ntry{usedFallback=!!$('Kiểm tra nội dung AI').item.json.usedFallback}catch{}\nreturn {json:{...c,usedFallback}};",
+        "mode": "runOnceForEachItem"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2820,
-        -100
+        5440,
+        100
       ],
       "id": "11111111-1111-4000-8000-000000000018",
       "name": "Gom kết quả"
@@ -707,13 +536,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({\n  type: 'FOLLOWUP_FAILED',\n  note: $('Loop Over Items').item.json.type + ': ' + String($json.error?.message ?? $json.error ?? 'Lỗi không rõ').slice(0, 200)\n}) }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2160,
-        220
+        4380,
+        1140
       ],
       "id": "06520be4-b37e-4cfd-a1b2-1f7a8398917c",
       "name": "Ghi lỗi follow-up",
@@ -724,27 +555,27 @@
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const l = $('Loop Over Items').item.json;\nreturn [{ json: { type: 'ERROR', failedType: l.type, lead_id: l.lead_id } }];"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead=$('Loop Over Items').item.json;\nreturn {json:{type:'ERROR',failedType:lead.type,lead_id:lead.lead_id,needsReview:$json.state==='REVIEW'}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2380,
-        220
+        4620,
+        980
       ],
       "id": "5a95a37b-6576-4c7f-9944-ed31992f5bcd",
       "name": "Gom lỗi"
     },
     {
       "parameters": {
-        "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.type === 'ERROR').length;\nconst ok = rows.filter(r => r.type !== 'ERROR');\nconst count = t => ok.filter(r => r.type === t).length;\nreturn [{\n  json: {\n    total: ok.length,\n    failed,\n    reminder: count('REMINDER'),\n    feedback: count('FEEDBACK'),\n    warmNudge: count('WARM_NUDGE'),\n    staffNudge: count('STAFF_NUDGE'),\n    fallback: ok.filter(r => r.usedFallback).length,\n  },\n}];"
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.type === 'ERROR').length;\nconst skipped=rows.filter(r=>r.type==='SKIPPED').length;\nconst ok = rows.filter(r => !['ERROR','SKIPPED'].includes(r.type));\nconst count = t => ok.filter(r => r.type === t).length;\nreturn [{\n  json: {\n    total: ok.length,\n    skipped,\n    failed,\n    review: rows.filter(r=>r.needsReview).length,\n    reminder: count('REMINDER'),\n    feedback: count('FEEDBACK'),\n    warmNudge: count('WARM_NUDGE'),\n    staffNudge: count('STAFF_NUDGE'),\n    attendanceCheck: count('ATTENDANCE_CHECK'),\n    attendanceEscalate: count('ATTENDANCE_ESCALATE'),\n    fallback: ok.filter(r => r.usedFallback).length,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        340
+        540,
+        1500
       ],
       "id": "11111111-1111-4000-8000-000000000019",
       "name": "Tổng hợp"
@@ -761,7 +592,7 @@
           "conditions": [
             {
               "id": "cond-has-total",
-              "leftValue": "={{ $json.total + $json.failed }}",
+              "leftValue": "={{ $json.total + $json.failed + $json.review }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -776,8 +607,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        380,
-        340
+        780,
+        1500
       ],
       "id": "11111111-1111-4000-8000-000000000020",
       "name": "Có gửi email?"
@@ -787,7 +618,7 @@
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
         "subject": "=[BÁO CÁO] Follow-up tự động: {{ $json.total }} việc xong, {{ $json.failed }} lỗi",
-        "html": "=<p>Báo cáo tự động từ hệ thống RealEstate AI:</p><ul><li>Tổng số việc follow-up đã xử lý: <b>{{ $json.total }}</b></li><li>Nhắc lịch xem nhà (REMINDER): <b>{{ $json.reminder }}</b></li><li>Hỏi cảm nhận (FEEDBACK): <b>{{ $json.feedback }}</b></li><li>Chuyển nuôi dưỡng WARM qua Mautic (WARM_NUDGE): <b>{{ $json.warmNudge }}</b></li><li>Nhắc nhân viên qua Sub-workflow (STAFF_NUDGE): <b>{{ $json.staffNudge }}</b></li><li>Số lần dùng mẫu dự phòng: <b>{{ $json.fallback }}</b></li><li>Khách bị lỗi (sẽ thử lại sau 6 giờ): <b>{{ $json.failed }}</b></li></ul>",
+        "html": "=<p>Báo cáo tự động từ hệ thống RealEstate AI:</p><ul><li>Tổng số việc follow-up đã xử lý: <b>{{ $json.total }}</b></li><li>Nhắc lịch xem nhà (REMINDER): <b>{{ $json.reminder }}</b></li><li>Hỏi cảm nhận (FEEDBACK): <b>{{ $json.feedback }}</b></li><li>Chuyển nuôi dưỡng WARM qua Mautic (WARM_NUDGE): <b>{{ $json.warmNudge }}</b></li><li>Nhắc nhân viên qua Sub-workflow (STAFF_NUDGE): <b>{{ $json.staffNudge }}</b></li><li>Số lần dùng mẫu dự phòng: <b>{{ $json.fallback }}</b></li><li>Tác vụ lỗi (kiểm tra FAILED / ACTION_DONE / REVIEW trong backend): <b>{{ $json.failed }}</b></li><li>Nhắc xác nhận buổi xem: <b>{{ $json.attendanceCheck }}</b></li><li>Báo quản lý buổi xem chưa xác nhận: <b>{{ $json.attendanceEscalate }}</b></li></ul><p>Cần kiểm tra kết quả gửi thủ công (REVIEW): <b>{{ $json.review }}</b>. Không tự gửi lại khi chưa xác nhận.</p>",
         "options": {
           "appendAttribution": false
         }
@@ -795,8 +626,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        600,
-        340
+        1020,
+        1500
       ],
       "id": "11111111-1111-4000-8000-000000000021",
       "name": "Email báo cáo quản lý",
@@ -807,6 +638,604 @@
         "smtp": {
           "id": "hfJ9bBGUGsjH8qDP",
           "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "id": "l2-no-due-tasks",
+      "name": "Không có tác vụ đến hạn",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        780
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const diagnostics = $input.first().json.diagnostics ?? {};\nreturn [{json:{status:'NO_TASKS',message:'Không có khách đủ điều kiện follow-up tại thời điểm này. Đây không phải lỗi workflow.',diagnostics,nextStep:'Kiểm tra trạng thái, giờ xem và lịch sử tác vụ; không bỏ bộ lọc để ép gửi email.'}}];"
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/claim",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {leadId:$json.lead_id,viewingId:$json.viewing_id,viewingTime:$json.viewing_time,type:$json.type,owner:String($execution.id)} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        100
+      ],
+      "id": "l2-Giữ tác vụ",
+      "name": "Giữ tác vụ",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Đã giữ tác vụ?",
+      "id": "l2-Đã giữ tác vụ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        40,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Đã giữ tác vụ?",
+              "leftValue": "={{ $json.claimed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Chỉ hoàn tất dữ liệu?",
+      "id": "l2-Chỉ hoàn tất dữ liệu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        280,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Chỉ hoàn tất dữ liệu?",
+              "leftValue": "={{ $json.resume === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3000,
+        100
+      ],
+      "id": "l2-Bắt đầu gửi",
+      "name": "Bắt đầu gửi",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Được phép gửi?",
+      "id": "l2-Được phép gửi?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3220,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Được phép gửi?",
+              "leftValue": "={{ $json.allowed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Khôi phục nội dung",
+      "id": "l2-Khôi phục nội dung",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        100
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const ctx=$('Chuẩn bị ngữ cảnh').item.json;\nif(['STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE'].includes(ctx.type)) return {json:$('Chuẩn bị thông báo NV').item.json};\nreturn {json:$('Kiểm tra nội dung AI').item.json};"
+      }
+    },
+    {
+      "name": "Là thông báo sale?",
+      "id": "l2-Là thông báo sale?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3660,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Là thông báo sale?",
+              "leftValue": "={{ ['STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE'].includes($('Loop Over Items').item.json.type) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Cần tìm contact?",
+      "id": "l2-Cần tìm contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2260,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Cần tìm contact?",
+              "leftValue": "={{ $('Loop Over Items').item.json.type === 'WARM_NUDGE' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Chọn contact nuôi dưỡng",
+      "id": "l2-Chọn contact nuôi dưỡng",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2740,
+        -180
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const email=$('Chuẩn bị ngữ cảnh').item.json.email.trim().toLowerCase();\nif(!$json.contacts || typeof $json.contacts!=='object') throw new Error('Mautic không trả danh sách contact');\nconst matches=Object.values($json.contacts).filter(c=>String(c.fields?.all?.email??c.fields?.core?.email?.value??c.email??'').trim().toLowerCase()===email);\nif(matches.length>1) throw new Error('Nhiều contact trùng email');\nconst id=matches.length?Number(matches[0].id):null;\nif(matches.length&&(!Number.isSafeInteger(id)||id<=0))throw new Error('Contact ID không hợp lệ');\nreturn {json:{contactId:id}};"
+      }
+    },
+    {
+      "name": "Kiểm tra contact đã lưu",
+      "id": "l2-Kiểm tra contact đã lưu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4380,
+        -140
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const id=Number($json.contact?.id??$json.id);\nif(!Number.isSafeInteger(id)||id<=0)throw new Error('Mautic không trả contact ID hợp lệ');\nreturn {json:{contactId:id}};"
+      }
+    },
+    {
+      "name": "Kiểm tra gửi sale",
+      "id": "l2-Kiểm tra gửi sale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4140,
+        560
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "if($json.emailSent!==true && $json.telegramSent!==true)throw new Error('Không kênh thông báo nào xác nhận thành công');\nreturn {json:$json};"
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/action-done",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4380,
+        200
+      ],
+      "id": "l2-Đã gửi email",
+      "name": "Đã gửi email",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/action-done",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4380,
+        560
+      ],
+      "id": "l2-Đã gửi sale",
+      "name": "Đã gửi sale",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/action-done",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token,mauticContactId:$json.contactId} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4620,
+        -140
+      ],
+      "id": "l2-Đã chuyển Mautic",
+      "name": "Đã chuyển Mautic",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5200,
+        100
+      ],
+      "id": "l2-Hoàn tất tác vụ",
+      "name": "Hoàn tất tác vụ",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/followups/{{ $('Giữ tác vụ').item.json.taskId }}/fail",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token: $('Giữ tác vụ').item.json.token,error:String($json.error?.message??$json.error??'Lỗi tác vụ').slice(0,500)} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4380,
+        900
+      ],
+      "id": "l2-Ghi lỗi tác vụ",
+      "name": "Ghi lỗi tác vụ",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Có mã tác vụ?",
+      "id": "l2-Có mã tác vụ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4140,
+        980
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Có mã tác vụ?",
+              "leftValue": "={{ (()=>{try{return Number($('Giữ tác vụ').item.json.taskId)>0}catch{return false}})() }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Gom bỏ qua",
+      "id": "l2-Gom bỏ qua",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        780
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{type:'SKIPPED',needsReview:$json.reason==='REVIEW',reason:$json.reason??'Execution khác đã nhận hoặc tác vụ chưa đến hạn'}};"
+      }
+    },
+    {
+      "name": "Không xác nhận bắt đầu",
+      "id": "l2-Không xác nhận bắt đầu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        760
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "throw new Error('Không được phép gửi; giữ lại tác vụ để kiểm tra, không tự gửi lại');"
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "=email:{{ $('Chuẩn bị ngữ cảnh').item.json.email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2500,
+        -180
+      ],
+      "id": "l2-find-mautic-contact",
+      "name": "Tìm contact nuôi dưỡng",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "mautic_api_credential",
+          "name": "Mautic API - chọn Local hoặc Server"
         }
       }
     }
@@ -865,6 +1294,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Không có tác vụ đến hạn",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -879,7 +1315,7 @@
         ],
         [
           {
-            "node": "Lấy thông tin nhà",
+            "node": "Giữ tác vụ",
             "type": "main",
             "index": 0
           }
@@ -897,7 +1333,7 @@
         ],
         [
           {
-            "node": "Ghi lỗi follow-up",
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -909,6 +1345,13 @@
         [
           {
             "node": "Cần qua AI?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -937,7 +1380,14 @@
       "main": [
         [
           {
-            "node": "Thông báo nhân viên",
+            "node": "Bắt đầu gửi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -948,32 +1398,14 @@
       "main": [
         [
           {
-            "node": "Ghi log STAFF_NUDGE",
+            "node": "Kiểm tra gửi sale",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Ghi lỗi follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log STAFF_NUDGE": {
-      "main": [
-        [
-          {
-            "node": "Gom kết quả",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Ghi lỗi follow-up",
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -1009,7 +1441,7 @@
         ],
         [
           {
-            "node": "Ghi lỗi follow-up",
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -1046,13 +1478,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Ghi lỗi follow-up",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1060,7 +1485,14 @@
       "main": [
         [
           {
-            "node": "Là WARM nuôi dưỡng?",
+            "node": "Cần tìm contact?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -1089,32 +1521,14 @@
       "main": [
         [
           {
-            "node": "Ghi log WARM Started",
+            "node": "Kiểm tra contact đã lưu",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Ghi lỗi follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log WARM Started": {
-      "main": [
-        [
-          {
-            "node": "Gom kết quả",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Ghi lỗi follow-up",
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -1125,61 +1539,14 @@
       "main": [
         [
           {
-            "node": "Ghi log",
+            "node": "Đã gửi email",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Ghi lỗi follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log": {
-      "main": [
-        [
-          {
-            "node": "Việc thêm",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Ghi lỗi follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Việc thêm": {
-      "main": [
-        [
-          {
-            "node": "Chuyển VIEWED",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Gom kết quả",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chuyển VIEWED": {
-      "main": [
-        [
-          {
-            "node": "Gom kết quả",
+            "node": "Có mã tác vụ?",
             "type": "main",
             "index": 0
           }
@@ -1235,6 +1602,353 @@
         [
           {
             "node": "Email báo cáo quản lý",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ tác vụ": {
+      "main": [
+        [
+          {
+            "node": "Đã giữ tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã giữ tác vụ?": {
+      "main": [
+        [
+          {
+            "node": "Chỉ hoàn tất dữ liệu?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gom bỏ qua",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chỉ hoàn tất dữ liệu?": {
+      "main": [
+        [
+          {
+            "node": "Hoàn tất tác vụ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lấy thông tin nhà",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cần tìm contact?": {
+      "main": [
+        [
+          {
+            "node": "Tìm contact nuôi dưỡng",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bắt đầu gửi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tìm contact nuôi dưỡng": {
+      "main": [
+        [
+          {
+            "node": "Chọn contact nuôi dưỡng",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chọn contact nuôi dưỡng": {
+      "main": [
+        [
+          {
+            "node": "Bắt đầu gửi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bắt đầu gửi": {
+      "main": [
+        [
+          {
+            "node": "Được phép gửi?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Được phép gửi?": {
+      "main": [
+        [
+          {
+            "node": "Khôi phục nội dung",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Không xác nhận bắt đầu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Không xác nhận bắt đầu": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Khôi phục nội dung": {
+      "main": [
+        [
+          {
+            "node": "Là thông báo sale?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Là thông báo sale?": {
+      "main": [
+        [
+          {
+            "node": "Thông báo nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Là WARM nuôi dưỡng?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra contact đã lưu": {
+      "main": [
+        [
+          {
+            "node": "Đã chuyển Mautic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra gửi sale": {
+      "main": [
+        [
+          {
+            "node": "Đã gửi sale",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã gửi email": {
+      "main": [
+        [
+          {
+            "node": "Hoàn tất tác vụ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã gửi sale": {
+      "main": [
+        [
+          {
+            "node": "Hoàn tất tác vụ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã chuyển Mautic": {
+      "main": [
+        [
+          {
+            "node": "Hoàn tất tác vụ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hoàn tất tác vụ": {
+      "main": [
+        [
+          {
+            "node": "Gom kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Có mã tác vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có mã tác vụ?": {
+      "main": [
+        [
+          {
+            "node": "Ghi lỗi tác vụ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ghi lỗi follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi lỗi tác vụ": {
+      "main": [
+        [
+          {
+            "node": "Gom lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gom lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gom bỏ qua": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }

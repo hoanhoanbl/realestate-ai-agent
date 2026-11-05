@@ -11,7 +11,7 @@ export default function NewsletterSignup() {
         src={NEWSLETTER_FORM_URL}
         title="Form đăng ký nhận bản tin bất động sản"
         referrerPolicy="no-referrer"
-        className="min-h-[640px] w-full border-0 sm:min-h-[560px]"
+        className="h-[440px] w-full border-0 sm:h-[360px]"
       />
       <p className="border-t border-slate-100 px-6 py-4 text-sm text-slate-600">
         Không thấy biểu mẫu?{" "}

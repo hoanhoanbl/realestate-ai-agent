@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PropertyCard, { PropertyCardSkeleton } from "@/components/PropertyCard";
-import { Alert, Button, EmptyState, INPUT } from "@/components/ui";
+import { Alert, Button, EmptyState, Icon, INPUT } from "@/components/ui";
 import { getProperties, type Property } from "@/lib/api";
 import {
   CITY_OPTIONS,
@@ -18,6 +18,9 @@ import {
 import { TELEGRAM_BOT_URL } from "@/lib/site";
 
 const SELECT = INPUT.replace("w-full", "w-auto");
+
+// Ảnh nền khung đầu trang (Unsplash, dùng miễn phí)
+const HERO_IMAGE = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1800&q=70";
 
 export default function HomePage() {
   const [properties, setProperties] = useState<Property[] | null>(null);
@@ -73,20 +76,27 @@ export default function HomePage() {
 
   return (
     <section>
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 via-brand-600 to-indigo-600 px-6 py-10 text-white sm:px-10 sm:py-14">
-        {/* Hai vòng tròn mờ trang trí */}
-        <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10" />
-        <div aria-hidden className="absolute -bottom-24 right-32 h-56 w-56 rounded-full bg-white/5" />
+      {/* Khung đầu trang kiểu Marketplace (skill ui-ux-pro-max): ảnh nhà thật, thanh tìm kiếm là nút chính */}
+      <div className="relative isolate overflow-hidden rounded-3xl bg-slate-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element -- ảnh nền Unsplash, không cần tối ưu qua next/image */}
+        <img src={HERO_IMAGE} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+        <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-950/80 via-slate-900/70 to-slate-900/75 sm:bg-gradient-to-r sm:from-slate-950/85 sm:via-slate-900/60 sm:to-slate-900/20" />
 
-        <div className="relative">
-          <h1 className="text-3xl font-bold sm:text-4xl">Tìm căn nhà phù hợp với bạn</h1>
-          <p className="mt-2 max-w-2xl text-blue-100">
-            Chọn một căn, đăng ký giờ xem. Nhân viên xác nhận lịch qua email, bạn không cần chờ điện thoại.
+        <div className="animate-fade-up px-5 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur sm:text-sm">
+            <Icon name="sparkles" className="h-4 w-4" />
+            Đặt lịch xem nhà trực tuyến, xác nhận qua email
+          </p>
+          <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            Tìm căn nhà phù hợp với bạn
+          </h1>
+          <p className="mt-3 max-w-xl text-base text-slate-200 sm:text-lg">
+            Xem ảnh, xem 360° và vị trí từng căn. Chọn giờ rảnh để đăng ký xem, bạn không cần chờ điện thoại.
           </p>
 
           <form
             role="search"
-            className="mt-6 flex max-w-2xl gap-2 rounded-xl bg-white p-1.5 shadow-lg"
+            className="mt-8 flex max-w-2xl items-center gap-2 rounded-2xl bg-white p-2 shadow-2xl"
             onSubmit={(e) => {
               e.preventDefault();
               document.getElementById("ket-qua")?.scrollIntoView({ block: "start" });
@@ -95,25 +105,61 @@ export default function HomePage() {
             <label htmlFor="q" className="sr-only">
               Tìm theo tên dự án hoặc khu vực
             </label>
+            <Icon name="search" className="ml-2 h-5 w-5 shrink-0 text-slate-500" />
             <input
               id="q"
               type="search"
               placeholder="Tên dự án, quận, thành phố..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg px-3 py-2 text-slate-900 outline-none placeholder:text-slate-400"
+              className="min-h-11 min-w-0 flex-1 rounded-lg px-1 text-base text-slate-900 outline-none placeholder:text-slate-500"
             />
-            <Button type="submit">Tìm</Button>
+            <Button type="submit" size="lg" className="shrink-0 rounded-xl">
+              Tìm
+            </Button>
           </form>
 
+          {/* Chọn nhanh loại nhà: dùng chung bộ lọc "Loại nhà" bên dưới */}
+          <div className="mt-4 flex flex-wrap gap-2" aria-label="Chọn nhanh loại nhà">
+            {Object.entries(TYPE_LABELS).map(([value, label]) => {
+              const on = type === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    setType(on ? "ALL" : value);
+                    document.getElementById("ket-qua")?.scrollIntoView({ block: "start", behavior: "smooth" });
+                  }}
+                  className={`min-h-11 rounded-full px-4 text-sm font-medium backdrop-blur transition-colors sm:min-h-9 ${
+                    on ? "bg-white text-slate-900" : "bg-white/15 text-white hover:bg-white/25"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
           {properties && (
-            <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-blue-100">
-              <span>{available.length} căn đang bán</span>
-              <span>·</span>
-              <span>{cityCount} khu vực</span>
-              <span>·</span>
-              <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-white underline-offset-2 hover:underline">
-                Hỏi trợ lý AI qua Telegram →
+            <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-200">
+              <span>
+                <b className="text-white">{available.length}</b> căn đang bán
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                <b className="text-white">{cityCount}</b> khu vực
+              </span>
+              <span aria-hidden>·</span>
+              <a
+                href={TELEGRAM_BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-1 font-medium text-white underline-offset-2 hover:underline sm:min-h-0"
+              >
+                Hỏi trợ lý AI qua Telegram
+                <Icon name="arrowRight" className="h-4 w-4" />
               </a>
             </p>
           )}

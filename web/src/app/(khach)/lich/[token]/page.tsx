@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Icon } from "@/components/ui";
 import {
   ApiError,
   cancelBooking,
@@ -94,7 +95,7 @@ function ManageBookingContent() {
               ? "Cảm ơn anh/chị đã báo trước. Khi cần, anh/chị có thể đặt lịch mới bất cứ lúc nào."
               : "Nhân viên sẽ liên hệ để hẹn giờ mới. Lịch cũ vẫn giữ cho tới khi nhân viên đổi."}
           </p>
-          <Link href="/" className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700">
+          <Link href="/" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700">
             Xem các căn khác
           </Link>
         </div>
@@ -105,21 +106,48 @@ function ManageBookingContent() {
   return (
     <section className={box}>
       <h1 className="text-2xl font-bold text-slate-900">Lịch xem nhà của anh/chị</h1>
-      <div className="mt-4 space-y-1 rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-800">
-        <p>
-          Khách hàng: <b>{info.leadName}</b>
-        </p>
-        {info.propertyName && (
-          <p>
-            Căn nhà: <b>{info.propertyName}</b>
-          </p>
-        )}
-        {info.propertyAddress && <p>Địa chỉ: {info.propertyAddress}</p>}
+      <p className="mt-1 text-slate-600">
+        Chào <b className="text-slate-900">{info.leadName}</b>, đây là lịch xem nhà đã đặt.
+      </p>
+      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
         {info.viewingTime && (
-          <p>
-            Thời gian: <b>{formatDateTime(info.viewingTime)}</b>
-          </p>
+          <div className="flex items-center gap-3 bg-brand-600 px-5 py-4 text-white">
+            <Icon name="calendar" className="h-6 w-6 shrink-0" />
+            <div>
+              <p className="text-xs uppercase tracking-wide text-brand-100">Giờ xem nhà</p>
+              <p className="text-lg font-bold">{formatDateTime(info.viewingTime)}</p>
+            </div>
+          </div>
         )}
+        <div className="space-y-3 p-5 text-sm text-slate-800">
+          {info.propertyName && (
+            <p className="flex items-start gap-3">
+              <Icon name="home" className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+              <span>
+                <span className="block text-xs text-slate-500">Căn nhà</span>
+                <b className="text-base">{info.propertyName}</b>
+              </span>
+            </p>
+          )}
+          {info.propertyAddress && (
+            <div className="flex items-start gap-3">
+              <Icon name="pin" className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs text-slate-500">Địa chỉ</span>
+                {info.propertyAddress}
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(info.propertyAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex min-h-11 w-fit items-center gap-1 font-medium text-brand-600 hover:underline sm:min-h-0"
+                >
+                  Chỉ đường bằng Google Maps
+                  <Icon name="externalLink" className="h-4 w-4" />
+                </a>
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {!info.canChange ? (
@@ -140,21 +168,21 @@ function ManageBookingContent() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Ví dụ: chiều thứ 7 hoặc sáng chủ nhật"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
           />
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={busy}
               onClick={() => run(() => requestReschedule(token, note), "requested")}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="min-h-11 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {busy ? "Đang gửi..." : "Gửi yêu cầu đổi lịch"}
             </button>
             <button
               type="button"
               onClick={() => setMode("idle")}
-              className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+              className="min-h-11 rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
             >
               Quay lại
             </button>
@@ -166,7 +194,7 @@ function ManageBookingContent() {
             type="button"
             disabled={busy}
             onClick={() => setMode("reschedule")}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="min-h-11 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
             Xin đổi lịch
           </button>
@@ -177,7 +205,7 @@ function ManageBookingContent() {
               if (!window.confirm("Anh/chị chắc chắn muốn huỷ lịch xem nhà này?")) return;
               run(() => cancelBooking(token), "cancelled");
             }}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
+            className="min-h-11 rounded-lg bg-white px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
           >
             {busy ? "Đang huỷ..." : "Huỷ lịch"}
           </button>

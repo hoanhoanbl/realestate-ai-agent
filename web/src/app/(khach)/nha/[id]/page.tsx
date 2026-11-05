@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import BookingForm from "@/components/BookingForm";
 import PropertyMedia from "@/components/PropertyMedia";
 import { BasicInfoSection, LocationSection, TagListSection } from "@/components/PropertySections";
-import { Alert, CARD, Skeleton } from "@/components/ui";
+import { BackLink, Alert, CARD, Skeleton } from "@/components/ui";
 import { ApiError, formatVnd, getProperty, type Property } from "@/lib/api";
 import { bedroomsLabel, cityOf, formatBillion, formatNumber } from "@/lib/property";
 import { TELEGRAM_BOT_URL } from "@/lib/site";
@@ -53,9 +52,7 @@ function PropertyDetail() {
   }, [id, invalidId]);
 
   const back = (
-    <Link href="/" className="text-sm text-brand-600 hover:underline">
-      ← Danh sách nhà
-    </Link>
+    <BackLink href="/">Danh sách nhà</BackLink>
   );
 
   if (invalidId || notFound) {

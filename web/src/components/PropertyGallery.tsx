@@ -24,7 +24,7 @@ function thumbUrl(url: string): string {
 }
 
 const NAV_BTN =
-  "absolute top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow transition hover:bg-white";
+  "absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow transition hover:bg-white";
 
 // Vuốt ngang trên điện thoại để chuyển ảnh
 function useSwipe(onPrev: () => void, onNext: () => void) {

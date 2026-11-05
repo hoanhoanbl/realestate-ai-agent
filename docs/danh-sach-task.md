@@ -58,7 +58,7 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 | FE-23 | `feature/FE-23-l4-nguon-chien-dich` | Luồng 4 thêm số liệu theo nguồn khách và chiến dịch | Hậu | Chưa làm |
 | FE-24 | `feature/FE-24-bo-20-lead` | Bộ 20 lead có nhãn và cách chạy đo (kế hoạch 1.5) | Hoàng | Chưa làm |
 | FE-25 | `feature/FE-25-langfuse-l1` | Langfuse cho luồng 1, đo trên bộ 20 lead (kế hoạch 3.5). Việc đầu tiên bị cắt nếu tuần 4 quá tải (mức "nên có") | Hoàng | Chưa làm |
-| FE-26 | `feature/FE-26-web-dien-thoai` | Kiểm tra web admin trên điện thoại, sửa chỗ vỡ, nhất là danh sách lead (kế hoạch 1.3). Menu trượt đã làm ở FE-16 | Hoàng | Làm một phần |
+| FE-26 | `feature/FE-26-web-dien-thoai` | Web khách và admin trên điện thoại (kế hoạch 1.3), theo checklist skill ui-ux-pro-max: hết tràn ngang ở 375px, vùng bấm 44px, ô nhập 16px, thay emoji làm icon bằng SVG, font Be Vietnam Pro tự lưu, tắt hiệu ứng khi giảm chuyển động; trang chủ có ảnh nền và chip chọn loại nhà; trang lịch của khách có nút chỉ đường; Quản lý nhà và Phân quyền có dạng thẻ trên điện thoại; ma trận quyền sửa theo mục 3 của `vai-tro-va-trang-thai.md`. Quy ước: `docs/giao-dien-web.md`. Tạo từ nhánh FE-31 | Hoàng | Xong code, chờ PR |
 
 Từ 4/11 Hoàng viết toàn bộ tài liệu (DC-03, DC-07, DC-09); Hậu duyệt phần nói về luồng của Hậu. Các mã DC-04, DC-08, DC-10, DC-11, DC-12 cấp ngày 4/11 đã gộp vào ba task trên, không dùng lại: DC-04 vào DC-03 và DC-09, DC-08 và DC-10 và DC-12 vào DC-03, DC-11 vào DC-07.
 

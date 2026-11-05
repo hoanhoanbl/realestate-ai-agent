@@ -30,7 +30,7 @@ export default function PropertyMedia({ property }: { property: Property }) {
             type="button"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`rounded-md px-4 py-1.5 font-medium transition ${
+            className={`min-h-11 rounded-md px-4 py-1.5 font-medium transition sm:min-h-0 ${
               tab === value ? "bg-white text-slate-900 shadow-card" : "text-slate-600 hover:text-slate-900"
             }`}
           >

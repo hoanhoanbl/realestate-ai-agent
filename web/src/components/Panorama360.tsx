@@ -35,7 +35,8 @@ export default function Panorama360({ rooms, className = "" }: { rooms: Panorama
         default: {
           firstScene: sceneId(0),
           autoLoad: true,
-          autoRotate: -2,
+          // Không tự xoay khi người dùng bật "giảm chuyển động" trong hệ điều hành
+          autoRotate: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : -2,
           sceneFadeDuration: 600,
           compass: false,
           strings: {

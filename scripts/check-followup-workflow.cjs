@@ -40,12 +40,12 @@ assert.equal(merged[0].json.skipped, 1);
 assert.equal(workflow.nodes.find(n => n.name === 'Email khách').retryOnFail, false);
 assert(workflow.nodes.find(n => n.name === 'Hoàn tất tác vụ'));
 assert(!names.has('Chuyển VIEWED'));
-for (const type of ['STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE']) {
+for (const type of ['STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE','HOT_NUDGE','EXPIRE_LEAD']) {
   const lead = { type,lead_id:20,name:'Demo',email:'demo@example.invalid',level:'HOT' };
   const get = name => ({item:{json:lead},first:()=>({json:{managerEmail:'manager@example.invalid',publicWebUrl:'http://localhost:3000'}})});
   const output = new Function('$', code('Chuẩn bị thông báo NV'))(get);
   assert(output.json.title && output.json.message, `Missing notification for ${type}`);
-  if (type==='ATTENDANCE_ESCALATE') assert.equal(output.json.emailTo,'manager@example.invalid');
+  if (['ATTENDANCE_ESCALATE','EXPIRE_LEAD'].includes(type)) assert.equal(output.json.emailTo,'manager@example.invalid');
   const restore = new Function('$', code('Khôi phục nội dung'))(name=>({item:{json:name==='Chuẩn bị ngữ cảnh'?lead:output.json}}));
   assert.equal(restore.json.title,output.json.title);
   for (const name of ['Có dữ liệu?','Là thông báo sale?','Cần qua AI?']) {
@@ -53,4 +53,28 @@ for (const type of ['STAFF_NUDGE','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE']) {
     assert.equal(new Function('$','$json',`return (${expr});`)(get,lead),name!=='Cần qua AI?',`Wrong ${name} route for ${type}`);
   }
 }
+const expression = name => workflow.nodes.find(n => n.name === name).parameters.conditions.conditions[0].leftValue.slice(3,-2);
+for (const type of ['WARM_NUDGE','COLD_NURTURE']) {
+  const lead={type,lead_id:20,email:'demo@example.invalid'};
+  const get=name=>({item:{json:lead}});
+  for (const name of ['Có dữ liệu?','Cần tìm contact?','Là chuyển Mautic?']) {
+    assert.equal(new Function('$','$json',`return (${expression(name)});`)(get,lead),true,`${type}: ${name}`);
+  }
+  const expr=workflow.nodes.find(n=>n.name==='Gửi Mautic nuôi dưỡng').parameters.jsonBody.slice(3,-2);
+  const payload=JSON.parse(new Function('$json',`return (${expr});`)({...lead,bodyHtml:'AI text'}));
+  assert.deepEqual(payload.tags,type==='COLD_NURTURE'?['ban-tin-hang-thang']:['nuoi-warm','WARM']);
+  assert.equal('ai_nudge_text' in payload,type==='WARM_NUDGE');
+}
+const saleCheck=code('Kiểm tra gửi sale');
+const getHot=()=>({item:{json:{type:'HOT_NUDGE'}}});
+assert.throws(()=>new Function('$','$json',saleCheck)(getHot,{emailSent:true,telegramSent:false}),/Telegram/);
+assert.doesNotThrow(()=>new Function('$','$json',saleCheck)(getHot,{telegramSent:true}));
+const getExpired=()=>({item:{json:{type:'EXPIRE_LEAD'}}});
+assert.throws(()=>new Function('$','$json',saleCheck)(getExpired,{telegramSent:true,emailSent:false}),/email quản lý/);
+assert.doesNotThrow(()=>new Function('$','$json',saleCheck)(getExpired,{emailSent:true}));
+const coldCtx={type:'COLD_NURTURE',lead_id:20};
+const coldOutput=new Function('$',code('Chuẩn bị bản tin COLD'))(()=>({item:{json:coldCtx}}));
+const coldRestore=new Function('$',code('Khôi phục nội dung'))(name=>({item:{json:name==='Chuẩn bị ngữ cảnh'?coldCtx:coldOutput.json}}));
+assert.equal(coldRestore.json.type,'COLD_NURTURE');
+assert.equal(workflow.connections['Chuẩn bị bản tin COLD'].main[0][0].node,'Cần tìm contact?');
 console.log('PASS: L2 node references, error branches, selector, fallback and summary.');

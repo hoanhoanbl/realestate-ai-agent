@@ -2,6 +2,7 @@ import { FollowupsService } from './followups.service';
 import { FollowupTask } from './followup-task.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { LeadEvent } from '../leads/entities/lead-event.entity';
+import { Viewing } from '../viewings/entities/viewing.entity';
 import { isFollowupDue, type FollowupSnapshot } from './followup-policy';
 
 const now = new Date('2026-11-03T08:00:00Z');
@@ -33,9 +34,28 @@ describe('Follow-up eligibility', () => {
     for (const change of [{ viewing_status: 'NEW' }, { consent_marketing: false }, { has_feedback: true }, { nurture_started: true }, { level: 'HOT' }, { status: 'SIGNED' }, { cooling_down: true }, { feedback_asked_at: now }])
       expect(isFollowupDue({ ...s, ...change }, 'WARM_NUDGE', now)).toBe(false);
   });
-  it('nudges sale only for old NEW HOT/WARM leads', () => {
-    expect(isFollowupDue(snapshot({ status: 'NEW' }), 'STAFF_NUDGE', now)).toBe(true);
-    expect(isFollowupDue(snapshot({ status: 'NEW', level: 'COLD' }), 'STAFF_NUDGE', now)).toBe(false);
+  it.each(['HOT', 'WARM', 'COLD'])('nudges old NEW %s leads only before the appointment', level => {
+    const s = snapshot({ status: 'NEW', level });
+    expect(isFollowupDue(s, 'STAFF_NUDGE', now)).toBe(true);
+    expect(isFollowupDue({ ...s, viewing_time: new Date(now.getTime() - 1) }, 'STAFF_NUDGE', now)).toBe(false);
+    expect(isFollowupDue({ ...s, created_at: new Date(now.getTime() - 72 * 3600000) }, 'STAFF_NUDGE', now)).toBe(false);
+    expect(isFollowupDue({ ...s, staff_nudged: true }, 'STAFF_NUDGE', now)).toBe(false);
+  });
+  it.each([['HOT_NUDGE', 'HOT'], ['COLD_NURTURE', 'COLD']] as const)('routes silent %s with consent and no feedback', (type, level) => {
+    const s = snapshot({ status: 'VIEWED', viewing_status: 'ATTENDED', level, feedback_asked_at: new Date(now.getTime() - 73 * 3600000) });
+    expect(isFollowupDue(s, type, now)).toBe(true);
+    for (const change of [{ consent_marketing: false }, { has_feedback: true }, { status: 'DEPOSIT' }, { viewing_status: 'NEW' }, { feedback_asked_at: new Date(now.getTime() - 72 * 3600000) }, { hot_nudged: true, cold_nurture_started: true }])
+      expect(isFollowupDue({ ...s, ...change }, type, now)).toBe(false);
+    expect(isFollowupDue({ ...s, level: 'WARM' }, type, now)).toBe(false);
+  });
+  it('expires only NEW appointments in the past, or resumes its own expiry notice', () => {
+    const s = snapshot({ status: 'NEW', viewing_time: new Date(now.getTime() - 1) });
+    expect(isFollowupDue(s, 'EXPIRE_LEAD', now)).toBe(true);
+    for (const change of [{ status: 'CONFIRMED' }, { status: 'DEPOSIT' }, { viewing_status: 'CANCELLED' }, { viewing_time: now }, { viewing_time: null }, { viewing_time: 'invalid' }])
+      expect(isFollowupDue({ ...s, ...change } as FollowupSnapshot, 'EXPIRE_LEAD', now)).toBe(false);
+    const closed = { ...s, status: 'LOST', lost_reason: 'EXPIRED', viewing_status: 'CANCELLED' };
+    expect(isFollowupDue(closed, 'EXPIRE_LEAD', now)).toBe(false);
+    expect(isFollowupDue({ ...closed, expired_for_schedule: true }, 'EXPIRE_LEAD', now)).toBe(true);
   });
   it('asks staff to confirm attendance instead of treating elapsed time as attendance', () => {
     const s = snapshot({ viewing_time: new Date(now.getTime() - 25 * 3600000) });
@@ -75,14 +95,21 @@ describe('Follow-up task lifecycle', () => {
     const manager = {
       query: async (sql: string) => sql.startsWith('SELECT id FROM leads') ? [{ id: 22 }] : [current],
       getRepository: (entity: any) => entity === FollowupTask ? repo : entity === LeadEvent ? {
-        save: async (event: Partial<LeadEvent>) => { events.push(event); return event; },
+        save: async (event: Partial<LeadEvent>) => {
+          events.push(event);
+          if (event.type === 'LEAD_EXPIRED') current.expired_for_schedule = true;
+          return event;
+        },
       } : entity === Lead ? {
         update: async (where: any, values: any) => {
           if (typeof where === 'object' && where.status !== leadStatus) return { affected: 0 };
-          if (values.status) leadStatus = values.status;
+          if (values.status) { leadStatus = values.status; current.status = values.status; }
+          if (values.lostReason) current.lost_reason = values.lostReason;
           if (values.mauticContactId) contactId = values.mauticContactId;
           return { affected: 1 };
         },
+      } : entity === Viewing ? {
+        update: async (_where: any, values: any) => { current.viewing_status = values.status; return { affected: 1 }; },
       } : null,
     };
     notify = jest.fn().mockResolvedValue(undefined);
@@ -96,6 +123,48 @@ describe('Follow-up task lifecycle', () => {
     expect(b).toEqual(a);
     expect((await service.claim({ ...dto, owner: 'execution-2' })).claimed).toBe(false);
     expect(tasks).toHaveLength(1);
+  });
+  it('closes an expired lead atomically at claim, then sends only one manager notice', async () => {
+    leadStatus = 'NEW';
+    current = { ...current, status: 'NEW', viewing_time: new Date(now.getTime() - 3600000) };
+    const request = { ...dto, type: 'EXPIRE_LEAD' as const, viewingTime: new Date(current.viewing_time).toISOString() };
+    const a = await service.claim(request);
+    expect(a.claimed).toBe(true);
+    expect(leadStatus).toBe('LOST');
+    expect(current.lost_reason).toBe('EXPIRED');
+    expect(current.viewing_status).toBe('CANCELLED');
+    expect(events.filter(e => e.type === 'LEAD_EXPIRED')).toHaveLength(1);
+    expect(notify).toHaveBeenCalledWith(22);
+    // Lỗi trước gửi vẫn không mở lại lead; nhận lại tác vụ chỉ để báo quản lý.
+    await service.fail(a.taskId!, { token: a.token!, error: 'Property service unavailable' });
+    jest.setSystemTime(new Date(now.getTime() + 7 * 3600000));
+    const b = await service.claim({ ...request, owner: 'retry' });
+    expect(b.claimed).toBe(true);
+    expect((await service.start(b.taskId!, b.token!)).allowed).toBe(true);
+    await service.actionDone(b.taskId!, { token: b.token! });
+    await service.complete(b.taskId!, b.token!);
+    await service.complete(b.taskId!, b.token!);
+    expect(events.filter(e => e.type === 'LEAD_EXPIRED')).toHaveLength(1);
+    expect(events.filter(e => e.type === 'LEAD_EXPIRED_NOTIFIED')).toHaveLength(1);
+    expect(notify).toHaveBeenCalledTimes(1);
+  });
+  it('does not expire a lead approved or rescheduled before claim', async () => {
+    expect((await service.claim({ ...dto, type: 'EXPIRE_LEAD' })).claimed).toBe(false);
+    current.status = 'NEW'; current.viewing_time = new Date(now.getTime() + 3600000);
+    expect((await service.claim({ ...dto, type: 'EXPIRE_LEAD' })).claimed).toBe(false);
+    expect(events).toHaveLength(0);
+  });
+  it.each(['HOT_NUDGE', 'COLD_NURTURE'] as const)('rechecks consent before %s and requires a Mautic ID for COLD', async type => {
+    current = { ...current, status: 'VIEWED', viewing_status: 'ATTENDED', level: type === 'HOT_NUDGE' ? 'HOT' : 'COLD', feedback_asked_at: new Date(now.getTime() - 4 * 86400000) };
+    const a = await service.claim({ ...dto, type });
+    current.consent_marketing = false;
+    expect((await service.start(a.taskId!, a.token!)).allowed).toBe(false);
+    current.consent_marketing = true;
+    await service.start(a.taskId!, a.token!);
+    if (type === 'COLD_NURTURE') await expect(service.actionDone(a.taskId!, { token: a.token! })).rejects.toThrow('contactId');
+    await service.actionDone(a.taskId!, { token: a.token!, ...(type === 'COLD_NURTURE' ? { mauticContactId: 8 } : {}) });
+    await service.complete(a.taskId!, a.token!);
+    expect(events[0].type).toBe(type === 'HOT_NUDGE' ? 'HOT_NUDGE_SENT' : 'COLD_NURTURE_STARTED');
   });
   it('rechecks consent immediately before a nurture action', async () => {
     current = { ...current, status: 'VIEWED', viewing_status: 'ATTENDED', feedback_asked_at: new Date(now.getTime() - 4 * 86400000) };

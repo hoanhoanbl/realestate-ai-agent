@@ -1,18 +1,20 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { FollowupTask, SCHEDULED_FOLLOWUPS, type FollowupType } from './followup-task.entity';
+import { FollowupTask, MAUTIC_FOLLOWUPS, SCHEDULED_FOLLOWUPS, type FollowupType } from './followup-task.entity';
 import { ActionDoneDto, ClaimFollowupDto, FailFollowupDto, ResolveFollowupDto } from './followup.dto';
 import { isFollowupDue, type FollowupSnapshot } from './followup-policy';
 import { Lead } from '../leads/entities/lead.entity';
 import { LeadEvent } from '../leads/entities/lead-event.entity';
 import { LeadsService } from '../leads/leads.service';
+import { Viewing } from '../viewings/entities/viewing.entity';
 
 const LEASE_MS = 30 * 60_000;
 const RETRY_MS = 6 * 3_600_000;
 const EVENTS: Record<FollowupType, string> = {
   REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT',
   ATTENDANCE_CHECK: 'ATTENDANCE_CHECK_SENT', ATTENDANCE_ESCALATE: 'ATTENDANCE_ESCALATED',
+  HOT_NUDGE: 'HOT_NUDGE_SENT', COLD_NURTURE: 'COLD_NURTURE_STARTED', EXPIRE_LEAD: 'LEAD_EXPIRED_NOTIFIED',
 };
 
 @Injectable()
@@ -21,7 +23,11 @@ export class FollowupsService {
   constructor(private readonly db: DataSource, private readonly leads: LeadsService) {}
 
   private async snapshot(m: EntityManager, leadId: number, type: FollowupType): Promise<(FollowupSnapshot & { viewing_id: number }) | undefined> {
-    const rows = await m.query(`SELECT l.status,l.level,l.consent_marketing,l.created_at,v.id AS viewing_id,v.viewing_time,v.status AS viewing_status,
+    const rows = await m.query(`SELECT l.status,l.level,l.consent_marketing,l.created_at,v.id AS viewing_id,v.viewing_time,v.status AS viewing_status,l.lost_reason,
+      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='HOT_NUDGE_SENT') AS hot_nudged,
+      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='COLD_NURTURE_STARTED') AS cold_nurture_started,
+      EXISTS(SELECT 1 FROM followup_tasks t JOIN lead_events e ON e.lead_id=t.lead_id AND e.type='LEAD_EXPIRED' AND e.note='L2 '||t.task_key
+        WHERE t.lead_id=l.id AND t.type='EXPIRE_LEAD' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time) AS expired_for_schedule,
       (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='REMINDER_SENT'
         AND (e.note IS NULL OR e.note NOT LIKE 'L2 REMINDER:%')
         AND e.created_at >= COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
@@ -47,9 +53,10 @@ export class FollowupsService {
   }
 
   async claim(dto: ClaimFollowupDto) {
-    return this.db.transaction(async m => {
+    const result = await this.db.transaction(async m => {
       // Every operation locks the lead before the task: two executions cannot acquire the same work.
       await m.query('SELECT id FROM leads WHERE id=$1 FOR UPDATE', [dto.leadId]);
+      if (dto.type === 'EXPIRE_LEAD') await m.query('SELECT id FROM viewings WHERE id=$1 FOR UPDATE', [dto.viewingId]);
       const s = await this.snapshot(m, dto.leadId, dto.type);
       const now = new Date();
       const key = SCHEDULED_FOLLOWUPS.includes(dto.type)
@@ -70,6 +77,19 @@ export class FollowupsService {
         return { claimed: false, reason: 'Lịch đã thay đổi hoặc không tồn tại' };
       // ACTION_DONE resumes only database finalization, even if the lead has progressed meanwhile.
       if (task?.state !== 'ACTION_DONE' && (!s || !isFollowupDue(s, dto.type, now))) return { claimed: false, reason: 'Không còn đủ điều kiện' };
+      let statusChanged = false;
+      if (dto.type === 'EXPIRE_LEAD' && s?.status === 'NEW' && task?.state !== 'ACTION_DONE') {
+        // Đóng lịch và ghi bằng chứng trong cùng transaction nhận việc; lỗi gửi thông báo không giữ lead NEW quá hạn.
+        const changed = await m.getRepository(Lead).update({ id: dto.leadId, status: 'NEW' }, {
+          status: 'LOST', lostReason: 'EXPIRED', approvalUrl: null,
+        });
+        if (changed.affected !== 1) return { claimed: false, reason: 'Lead đã được xử lý' };
+        const viewing = await m.getRepository(Viewing).update({ id: dto.viewingId, status: 'NEW', viewingTime: new Date(dto.viewingTime) }, { status: 'CANCELLED' });
+        if (viewing.affected !== 1) throw new ConflictException('Lịch đã thay đổi, không đóng lịch cũ');
+        await m.getRepository(LeadEvent).save({ leadId: dto.leadId, type: 'LEAD_EXPIRED', note: `L2 ${key}` });
+        await m.getRepository(LeadEvent).save({ leadId: dto.leadId, type: 'STATUS_CHANGED', note: 'NEW -> LOST: EXPIRED - Quá hạn không xử lý' });
+        statusChanged = true;
+      }
       task ??= repo.create({ taskKey: key, leadId: dto.leadId, viewingId: dto.viewingId,
         viewingTime: new Date(dto.viewingTime), type: dto.type, result: {} });
       if (task.owner !== dto.owner || task.state === 'FAILED' || !task.token) task.token = randomUUID();
@@ -77,8 +97,10 @@ export class FollowupsService {
       if (task.state !== 'ACTION_DONE') task.state = 'CLAIMED';
       task.leaseUntil = new Date(now.getTime() + LEASE_MS); task.availableAt = now; task.error = null;
       await repo.save(task);
-      return { claimed: true, taskId: task.id, token: task.token, resume: task.state === 'ACTION_DONE' };
+      return { claimed: true, taskId: task.id, token: task.token, resume: task.state === 'ACTION_DONE', statusChanged };
     });
+    if (result.statusChanged) this.leads.notifyFollowupStatusChanged(dto.leadId).catch(err => this.logger.warn(String(err)));
+    return result;
   }
 
   private async locked(m: EntityManager, id: number, token: string): Promise<FollowupTask> {
@@ -110,7 +132,7 @@ export class FollowupsService {
       const task = await this.locked(m, id, dto.token);
       if (task.state === 'ACTION_DONE' || task.state === 'COMPLETED') return { ok: true };
       if (task.state !== 'ACTION_STARTED') throw new ConflictException('Tác vụ chưa bắt đầu gửi');
-      if (task.type === 'WARM_NUDGE' && !dto.mauticContactId) throw new ConflictException('Thiếu contactId Mautic');
+      if (MAUTIC_FOLLOWUPS.includes(task.type) && !dto.mauticContactId) throw new ConflictException('Thiếu contactId Mautic');
       task.result = dto.mauticContactId ? { mauticContactId: dto.mauticContactId } : {};
       task.state = 'ACTION_DONE';
       await m.getRepository(FollowupTask).save(task);
@@ -155,7 +177,7 @@ export class FollowupsService {
       const task = await this.locked(m, id, dto.token);
       if (task.state !== 'REVIEW') throw new ConflictException('Chỉ xử lý thủ công tác vụ REVIEW');
       if (dto.resolution === 'delivered') {
-        if (task.type === 'WARM_NUDGE' && !dto.mauticContactId) throw new ConflictException('Cần contactId đã kiểm tra trên Mautic');
+        if (MAUTIC_FOLLOWUPS.includes(task.type) && !dto.mauticContactId) throw new ConflictException('Cần contactId đã kiểm tra trên Mautic');
         task.result = dto.mauticContactId ? { mauticContactId: dto.mauticContactId } : {};
         task.state = 'ACTION_DONE'; task.availableAt = new Date(0);
       } else {

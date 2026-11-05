@@ -1,0 +1,7 @@
+# FE-21: them -f docker-compose.newsletter.yml SAU file compose local/production.
+# Khong tu bat neu chua tao va kiem thu form tren dung Mautic cua moi truong.
+services:
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_MAUTIC_NEWSLETTER_FORM_ID: ${NEXT_PUBLIC_MAUTIC_NEWSLETTER_FORM_ID:-}

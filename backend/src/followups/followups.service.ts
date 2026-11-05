@@ -27,11 +27,11 @@ export class FollowupsService {
       EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='HOT_NUDGE_SENT') AS hot_nudged,
       EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='COLD_NURTURE_STARTED') AS cold_nurture_started,
       EXISTS(SELECT 1 FROM followup_tasks t JOIN lead_events e ON e.lead_id=t.lead_id AND e.type='LEAD_EXPIRED' AND e.note='L2 '||t.task_key
-        WHERE t.lead_id=l.id AND t.type='EXPIRE_LEAD' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time) AS expired_for_schedule,
+        WHERE t.lead_id=l.id AND t.type='EXPIRE_LEAD' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time)) AS expired_for_schedule,
       (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='REMINDER_SENT'
         AND (e.note IS NULL OR e.note NOT LIKE 'L2 REMINDER:%')
         AND e.created_at >= COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='REMINDER' AND t.state='COMPLETED' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time)) AS reminder_sent,
+        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='REMINDER' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS reminder_sent,
       EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='FEEDBACK_ASKED') AS feedback_asked,
       (SELECT max(e.created_at) FROM lead_events e WHERE e.lead_id=l.id AND e.type='FEEDBACK_ASKED') AS feedback_asked_at,
       EXISTS(SELECT 1 FROM feedbacks f WHERE f.lead_id=l.id AND f.submitted_at IS NOT NULL) AS has_feedback,
@@ -39,13 +39,13 @@ export class FollowupsService {
       EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='STAFF_NUDGE_SENT') AS staff_nudged,
       (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT'
         AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time)) AS attendance_check_sent,
+        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS attendance_check_sent,
       (SELECT max(e.created_at) FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT'
         AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz)
-        AND ((e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time AND e.note='L2 '||t.task_key))) AS attendance_check_at,
+        AND ((e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time) AND e.note='L2 '||t.task_key))) AS attendance_check_at,
       (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_ESCALATED'
         AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_ESCALATE:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_ESCALATE' AND t.state='COMPLETED' AND t.viewing_id=v.id AND t.viewing_time=v.viewing_time)) AS attendance_escalated,
+        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_ESCALATE' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS attendance_escalated,
       EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='FOLLOWUP_FAILED' AND e.note LIKE $2 AND e.created_at>now()-interval '6 hours') AS cooling_down
       FROM leads l JOIN LATERAL (SELECT * FROM viewings WHERE lead_id=l.id ORDER BY id DESC LIMIT 1) v ON true
       WHERE l.id=$1`, [leadId, `${type}:%`]);
@@ -84,7 +84,8 @@ export class FollowupsService {
           status: 'LOST', lostReason: 'EXPIRED', approvalUrl: null,
         });
         if (changed.affected !== 1) return { claimed: false, reason: 'Lead đã được xử lý' };
-        const viewing = await m.getRepository(Viewing).update({ id: dto.viewingId, status: 'NEW', viewingTime: new Date(dto.viewingTime) }, { status: 'CANCELLED' });
+        // Dòng viewing đã khóa trước snapshot; không so timestamp bằng Date vì Postgres còn microsecond.
+        const viewing = await m.getRepository(Viewing).update({ id: dto.viewingId, status: 'NEW' }, { status: 'CANCELLED' });
         if (viewing.affected !== 1) throw new ConflictException('Lịch đã thay đổi, không đóng lịch cũ');
         await m.getRepository(LeadEvent).save({ leadId: dto.leadId, type: 'LEAD_EXPIRED', note: `L2 ${key}` });
         await m.getRepository(LeadEvent).save({ leadId: dto.leadId, type: 'STATUS_CHANGED', note: 'NEW -> LOST: EXPIRED - Quá hạn không xử lý' });

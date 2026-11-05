@@ -22,8 +22,9 @@ export default function PropertyCard({ property: p, priority = false }: { proper
           </span>
         )}
         {panoramaCount > 0 && (
-          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
-            ⟳ 360°
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+            <Icon name="rotate360" className="h-3.5 w-3.5" />
+            360°
           </span>
         )}
         {photoCount > 1 && (

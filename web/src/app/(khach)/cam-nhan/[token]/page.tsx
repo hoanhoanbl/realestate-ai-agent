@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Icon } from "@/components/ui";
 import {
   ApiError,
   formatDateTime,
@@ -102,7 +103,7 @@ function FeedbackContent() {
             {done ? "Cảm ơn anh/chị đã chia sẻ" : "Anh/chị đã gửi cảm nhận rồi"}
           </h1>
           <p className="mt-2 text-emerald-900">Nhân viên sẽ xem và liên hệ lại với anh/chị nếu cần.</p>
-          <Link href="/" className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700">
+          <Link href="/" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700">
             Xem các căn khác
           </Link>
         </div>
@@ -136,9 +137,9 @@ function FeedbackContent() {
                 aria-checked={rating === n}
                 aria-label={`${n} sao`}
                 onClick={() => setRating(n)}
-                className={`text-3xl leading-none ${n <= rating ? "text-amber-400" : "text-slate-300"} hover:text-amber-400`}
+                className={`flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-amber-50 hover:text-amber-400 ${n <= rating ? "text-amber-400" : "text-slate-300"}`}
               >
-                ★
+                <Icon name="star" filled={n <= rating} className="h-8 w-8" />
               </button>
             ))}
           </div>

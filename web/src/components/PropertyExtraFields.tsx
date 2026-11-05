@@ -2,7 +2,7 @@
 
 import { useState, type KeyboardEvent } from "react";
 import { isHttpUrl } from "@/components/PanoramaRoomsEditor";
-import { Button, Field, INPUT } from "@/components/ui";
+import { Button, Field, Icon, INPUT } from "@/components/ui";
 import type { NearbyPlace, Property, PropertyInput } from "@/lib/api";
 import {
   DIRECTION_LABELS,
@@ -200,11 +200,11 @@ function TagPicker({ id, label, value, suggestions, onChange }: { id: string; la
               type="button"
               aria-pressed={on}
               onClick={() => toggle(item)}
-              className={`rounded-full px-3 py-1 text-sm ring-1 transition ${
+              className={`inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm ring-1 transition sm:min-h-8 ${
                 on ? "bg-brand-600 text-white ring-brand-600" : "bg-white text-slate-600 ring-slate-300 hover:ring-brand-400"
               }`}
             >
-              {on ? "✓ " : "+ "}
+              <Icon name={on ? "check" : "plus"} className="h-3.5 w-3.5" />
               {item}
             </button>
           );
@@ -253,7 +253,7 @@ function ImagesEditor({ value, onChange }: { value: string[]; onChange: (v: stri
               onChange={(e) => update(i, e.target.value)}
             />
             <Button variant="ghost" size="sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Đưa ảnh ${i + 1} lên`}>
-              ↑
+              <Icon name="arrowUp" className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={() => onChange(value.filter((_, j) => j !== i))}>
               Xoá

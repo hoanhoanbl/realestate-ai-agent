@@ -75,13 +75,13 @@ function SignContent() {
         {text && <p className="mt-2 text-slate-700">{text}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           {showCopy && (
-            <Link href={`/hop-dong/${encodeURIComponent(token)}`} className="inline-block rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">
+            <Link href={`/hop-dong/${encodeURIComponent(token)}`} className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">
               Xem và in bản hợp đồng
             </Link>
           )}
           <Link
             href="/"
-            className={`inline-block rounded-lg px-4 py-2 font-medium ${
+            className={`inline-flex min-h-11 items-center rounded-lg px-4 py-2 font-medium ${
               showCopy ? "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50" : "bg-brand-600 text-white hover:bg-brand-700"
             }`}
           >
@@ -131,14 +131,14 @@ function SignContent() {
             value={signerName}
             onChange={(e) => setSignerName(e.target.value)}
             autoComplete="name"
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
 
         <div>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-sm font-medium">Chữ ký</span>
-            <button type="button" onClick={() => padRef.current?.clear()} className="text-xs text-blue-600 hover:underline">
+            <button type="button" onClick={() => padRef.current?.clear()} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-brand-600 hover:bg-brand-50 sm:min-h-9">
               Xoá, ký lại
             </button>
           </div>

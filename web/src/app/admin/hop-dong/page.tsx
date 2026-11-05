@@ -96,7 +96,7 @@ export default function ContractsPage() {
               type="button"
               aria-pressed={active}
               onClick={() => setFilter(f.value)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition ${
+              className={`min-h-11 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition sm:min-h-0 ${
                 active ? "bg-brand-600 text-white ring-brand-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
               }`}
             >
@@ -121,22 +121,26 @@ export default function ContractsPage() {
       {visible.length > 0 && (
         <ul className={`mt-4 divide-y divide-slate-100 ${CARD}`}>
           {visible.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 transition hover:bg-slate-50">
+            <li key={r.id} className="relative flex flex-wrap items-center gap-x-6 gap-y-2 p-4 transition hover:bg-slate-50">
               <div className="w-28 shrink-0">
-                <Link href={`/admin/hop-dong/${r.id}`} className="font-mono text-sm font-semibold text-brand-700 hover:underline">
+                {/* after:inset-0: cả hàng bấm được để mở hợp đồng */}
+                <Link
+                  href={`/admin/hop-dong/${r.id}`}
+                  className="font-mono text-sm font-semibold text-brand-700 after:absolute after:inset-0 hover:underline"
+                >
                   {contractCode(r.id)}
                 </Link>
-                <p className="text-xs text-slate-400">{formatDateTime(r.createdAt)}</p>
+                <p className="text-xs text-slate-500">{formatDateTime(r.createdAt)}</p>
               </div>
               <div className="min-w-[180px] flex-1">
-                <Link href={`/admin/leads/${r.leadId}`} className="font-medium text-slate-900 hover:text-brand-700">
+                <Link href={`/admin/leads/${r.leadId}`} className="relative z-10 inline-flex min-h-11 items-center font-medium text-slate-900 hover:text-brand-700 sm:min-h-0">
                   {r.leadName}
                 </Link>
                 <p className="text-sm text-slate-500">{r.propertyName}</p>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-slate-900">{formatVnd(r.depositAmount)}</p>
-                <p className="text-xs text-slate-400">{r.signedAt ? `Ký ${formatDateTime(r.signedAt)}` : "Tiền cọc"}</p>
+                <p className="text-xs text-slate-500">{r.signedAt ? `Ký ${formatDateTime(r.signedAt)}` : "Tiền cọc"}</p>
               </div>
               <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
                 <ContractStatusBadge status={r.status} />
@@ -145,7 +149,7 @@ export default function ContractsPage() {
                     href={`/admin/hop-dong/${r.id}/in`}
                     target="_blank"
                     title="In / Lưu PDF"
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-white hover:text-slate-900"
+                    className="relative z-10 inline-flex min-h-11 items-center gap-1 rounded-md px-3 py-1 text-sm text-slate-600 ring-1 ring-slate-200 hover:bg-white hover:text-slate-900 sm:min-h-0"
                   >
                     <Icon name="printer" className="h-4 w-4" /> In
                   </Link>

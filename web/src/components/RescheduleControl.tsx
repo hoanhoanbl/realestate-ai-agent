@@ -50,7 +50,7 @@ export default function RescheduleControl({
           setValue(toLocalInput(currentTime));
           setOpen(true);
         }}
-        className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+        className="min-h-11 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 sm:min-h-0 ring-1 ring-slate-300 hover:bg-slate-50"
       >
         Đổi giờ
       </button>
@@ -63,7 +63,7 @@ export default function RescheduleControl({
         type="datetime-local"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+        className="rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
       />
       {confirmed && <p className="text-xs text-slate-500">Khách sẽ nhận email báo giờ mới.</p>}
       {error && <p className="text-xs text-rose-600">{error}</p>}

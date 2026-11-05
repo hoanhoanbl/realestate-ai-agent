@@ -254,7 +254,7 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
 
 Gồm phần n8n của FE-29 (luồng 2, 7, 8 bản mới) và FE-22 (cấu hình Mautic trên server). **Hạn 8/11.** Hoàng chạy, Hậu kiểm tra các bước này trước.
 
-**Điều kiện:** `v0.3.0` đã chạy ổn; Hậu đã xong FE-22 trên Mautic server: custom field `ai_nudge_text`, segment "Nuôi WARM" nhận tag `nuoi-warm` (segment này đã có từ 29/10), segment "Bản tin hằng tháng", campaign gửi thư nuôi WARM. Trạng thái Mautic server ngày 4/11: có segment "Nuôi WARM", webhook id 1 "n8n Luong 8"; chưa có field `ai_nudge_text`, campaign, form.
+**Điều kiện:** `v0.3.0` đã chạy ổn; Hậu đã cấu hình Mautic server: custom field `ai_nudge_text` (id 44), segment "Nuôi WARM" nhận tag `nuoi-warm` (id 1), 3 email mẫu (id 1, 2, 3), campaign id 1 (Inactive), segment "Bản tin hằng tháng" (id 2). Trạng thái Mautic server ngày 05/11: đã có đủ field, segment, email và campaign. Cần xử lý biến `DOCKER_MAUTIC_ROLE` trước khi kích hoạt worker/cron.
 
 1. **Token cho luồng 8.** Tạo chuỗi ngẫu nhiên và thêm vào `.env`:
 

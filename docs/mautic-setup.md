@@ -158,7 +158,7 @@ Server `realestate-vm` có 8 GB RAM:
 |---|---|---|---|
 | Custom Field | `AI Nudge Text` (`ai_nudge_text`), kiểu Text: Paragraph | Field ID `44` | Đã tạo, sẵn sàng |
 | Segment WARM | `Nuôi WARM (Lead Tiềm Năng)`, alias `nuoi-warm` | Segment ID `1` | Đã tạo, bộ lọc chuẩn |
-| Segment COLD | `Bản tin hằng tháng`, alias `ban-tin-hang-thang` | Segment ID `2` | Đã tạo, lọc tag `ban-tin-hang-thang` |
+| Segment bản tin | `Bản tin hằng tháng`, alias `ban-tin-hang-thang` | Chưa tạo trên server (local: ID `2`) | Chưa tạo trên server. Sẽ tạo với lọc tag `ban-tin-hang-thang` |
 | Email 01 | `FE-22 \| Nuôi WARM \| 01 Hỏi thăm` (Triggered email) | Email ID `1` | Đã tạo HTML + text, token hợp lệ |
 | Email 02A | `FE-22 \| Nuôi WARM \| 02A Đã mở` (Triggered email) | Email ID `2` | Đã tạo HTML + text |
 | Email 02B | `FE-22 \| Nuôi WARM \| 02B Chưa mở` (Triggered email) | Email ID `3` | Đã tạo HTML + text |
@@ -194,17 +194,37 @@ Nguồn Contact: Segment "Nuôi WARM" (Segment ID 1)
 - **Allow contacts to restart the campaign**: `No`.
 - **Trạng thái**: `Inactive` (chỉ kích hoạt Active khi triển khai bản phát hành `v0.3.1`).
 
-### 8.4. Điều kiện kích hoạt Luồng 2 trên Server
+### 8.4. Quy trình triển khai và lưu ý kỹ thuật (v0.3.1)
 
 Các bước chi tiết triển khai n8n và kích hoạt Luồng 2 được tập trung quản lý duy nhất tại **Mục 9 của tài liệu triển khai**:  
 👉 [docs/trien-khai.md#9-bản-v031](trien-khai.md#9-bản-v031)
 
-**Tóm tắt điều kiện tiên quyết trước khi bật:**
-1. Backend server từ bản `v0.3.0` đã có đầy đủ 6 API `/api/followups/*` và bảng `followup_tasks`.
-2. Sửa file compose bổ sung `DOCKER_MAUTIC_ROLE` cho container `mautic_worker` và `mautic_cron` để tiến trình hàng đợi và cron chạy đúng vai trò.
-3. Kiểm tra hàng đợi `messenger_messages` trong CSDL Mautic trước khi khởi động worker để tránh gửi nhầm các thư thử nghiệm cũ.
-4. Kích hoạt Campaign ID 1 trên Mautic sang **Active**.
-5. Import và Publish Luồng 2 trên n8n server.
+**Lưu ý quan trọng về hàng đợi và vai trò container:**
+1. **Trước khi merge release dev → main**:
+   - Sao lưu CSDL Mautic trước: `/root/realestate-backup.sh`.
+   - Kiểm tra và đếm tin chờ trong bảng `messenger_messages`:
+     ```sql
+     SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;
+     ```
+   - Xử lý / dọn dẹp các tin nhắn thử nghiệm cũ tồn đọng trước khi merge, tránh việc worker tự động gửi email hàng loạt ngay khi container khởi động lại. (Thao tác này do Hoàng thực hiện trên server).
+2. **Khi merge release vào main**:
+   - CI tự động deploy lại toàn bộ stack container với các file compose cấu hình chuẩn (`docker-compose.yml`, `docker-compose.prod.yml`, `docker-compose.server.yml`, `docker-compose.mautic.yml`). Không tự chạy lệnh `docker compose` tay riêng lẻ trên server để tránh sai tham số `-p realestate-ai-agent`.
+3. **Sau khi deploy**:
+   - Kiểm tra vai trò tiến trình trong container:
+     - `docker top realestate-mautic-worker` $\rightarrow$ phải thấy tiến trình `messenger:consume` (không còn `apache2`).
+     - `docker top realestate-mautic-cron` $\rightarrow$ phải thấy tiến trình `cron`.
+
+### 8.5. Danh sách ca kiểm thử nghiệm thu (Hạn 8/11)
+
+Các ca cần kiểm thử end-to-end trước khi chuyển Campaign sang **Active** và kích hoạt Luồng 2:
+
+1. **Gửi thử email nội bộ**: Tạo contact test với email nội bộ (`nhadn2457+test<ngày>@gmail.com`), kích hoạt gửi Email 01.
+2. **Thay thế token động**: Kiểm tra email nhận được phải hiển thị đúng tên `{contactfield=firstname|bạn}` và đoạn AI `{contactfield=ai_nudge_text}` (không còn sót lại mã `{...}`).
+3. **Rẽ nhánh hành vi**:
+   - Nhánh Đã mở: Mở email 01, sau 3 ngày hệ thống tự động gửi Email 02A.
+   - Nhánh Chưa mở: Không mở email 01, sau 3 ngày hệ thống tự động gửi Email 02B.
+4. **Loại trừ trạng thái chuyển đổi**: Khách hàng đã chuyển trạng thái sang `DEPOSIT` (đặt cọc), `SIGNED` (đã ký) hoặc `LOST` (không mua) phải được loại khỏi chiến dịch nuôi, không nhận tiếp các email marketing sau.
+5. **Hủy nhận thư (Unsubscribe)**: Khách hàng bấm link `{unsubscribe_text}` phải được Mautic ghi nhận DNC (Do Not Contact) và ngừng gửi email marketing vĩnh viễn.
 
 ---
 

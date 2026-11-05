@@ -254,7 +254,25 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
 
 Gồm phần n8n của FE-29 (luồng 2, 7, 8 bản mới) và FE-22 (cấu hình Mautic trên server). **Hạn 8/11.** Hoàng chạy, Hậu kiểm tra các bước này trước.
 
-**Điều kiện:** `v0.3.0` đã chạy ổn; Hậu đã cấu hình Mautic server: custom field `ai_nudge_text` (id 44), segment "Nuôi WARM" nhận tag `nuoi-warm` (id 1), 3 email mẫu (id 1, 2, 3), campaign id 1 (Inactive), segment "Bản tin hằng tháng" (id 2). Trạng thái Mautic server ngày 05/11: đã có đủ field, segment, email và campaign. Cần xử lý biến `DOCKER_MAUTIC_ROLE` trước khi kích hoạt worker/cron.
+**Điều kiện:** `v0.3.0` đã chạy ổn; Hậu đã cấu hình Mautic server: custom field `ai_nudge_text` (id 44), segment "Nuôi WARM" nhận tag `nuoi-warm` (id 1), 3 email mẫu (id 1, 2, 3), campaign id 1 (Inactive). Segment "Bản tin hằng tháng" (alias `ban-tin-hang-thang`, lọc tag `ban-tin-hang-thang`) chưa tạo trên server (local: id 2).
+
+**Trước khi merge release dev → main:**
+
+1. Chạy sao lưu DB hệ thống và CSDL Mautic: `/root/realestate-backup.sh`.
+2. Kiểm tra hàng đợi `messenger_messages` trong DB Mautic (do các bản trước worker chạy apache2 nên có tin tồn đọng):
+   ```bash
+   docker exec realestate-mautic-db mysql -u root -p"$MAUTIC_DB_ROOT_PASSWORD" mautic -e \
+     "SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;"
+   ```
+   Hoàng kiểm tra và dọn dẹp các tin nhắn thử nghiệm cũ trong bảng `messenger_messages` trước khi merge, tránh việc worker tự động gửi email hàng loạt ngay khi container khởi động lại.
+
+**Sau khi CI deploy xong:**
+
+CI tự động deploy và tạo lại các container với `DOCKER_MAUTIC_ROLE` mới. Kiểm tra vai trò container:
+```bash
+docker top realestate-mautic-worker   # phải thấy messenger:consume, không còn apache2
+docker top realestate-mautic-cron     # phải thấy cron
+```
 
 1. **Token cho luồng 8.** Tạo chuỗi ngẫu nhiên và thêm vào `.env`:
 

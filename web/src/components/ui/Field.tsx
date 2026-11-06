@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-// Class chung cho input, select, textarea
+// Class chung cho input, select, textarea. Điện thoại: chữ 16px để iPhone không tự phóng to khi chạm vào ô, cao 44px
 export const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50";
+  "w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 outline-none transition placeholder:text-slate-500 sm:min-h-10 sm:text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50";
 
 interface FieldProps {
   id: string;

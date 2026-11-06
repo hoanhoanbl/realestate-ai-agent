@@ -32,6 +32,7 @@ const ROWS: { key: string; label: string }[] = [
   { key: "deposits", label: "Tạo hợp đồng cọc" },
   { key: "signed", label: "Đã ký" },
   { key: "lost", label: "Không mua" },
+  { key: "expired", label: "Quá hạn không xử lý" },
 ];
 
 const FUNNEL: { key: string; label: string }[] = [
@@ -129,6 +130,7 @@ function ReportsContent() {
     | { cur: Record<string, unknown>; prev: Record<string, unknown>; delta: Record<string, number>; funnel: Record<string, number | null>; period: string }
     | undefined;
   const analysis = detail?.analysis as { headline: string; insights: string[]; recommendations: string[]; aiUsed: boolean } | undefined;
+  const reportRows = ROWS.filter(r => r.key !== "expired" || metrics?.cur?.expired != null);
 
   return (
     <section>
@@ -213,7 +215,7 @@ function ReportsContent() {
                 <div className={`p-5 ${CARD}`}>
                   <h3 className="font-semibold text-slate-900">So sánh với tuần trước</h3>
                   <div className="mt-3">
-                    <CompareBars rows={ROWS.map((r) => ({ label: r.label, current: num(metrics.cur[r.key]), previous: num(metrics.prev[r.key]) }))} />
+                    <CompareBars rows={reportRows.map((r) => ({ label: r.label, current: num(metrics.cur[r.key]), previous: num(metrics.prev[r.key]) }))} />
                   </div>
                 </div>
                 <div className={`overflow-x-auto ${CARD}`}>
@@ -227,7 +229,7 @@ function ReportsContent() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {ROWS.map((r) => {
+                      {reportRows.map((r) => {
                         const d = metrics.delta[r.key] ?? 0;
                         return (
                           <tr key={r.key}>

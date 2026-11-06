@@ -170,7 +170,7 @@ Chung cho moi callback:
 | GET | `/api/leads/by-mautic/{contactId}` | n8n tra cuu lead theo Mautic contact (muc 2.6, can `X-Webhook-Secret`) |
 | PUT | `/api/leads/{id}/ai-result` | n8n cap nhat ket qua AI (muc 2.1) |
 | PUT | `/api/leads/{id}/automation-status` | n8n bao loi (muc 2.2) |
-| GET | `/api/properties` | Danh sach bat dong san |
+| GET | `/api/properties` | Danh sach bat dong san (ban gon: khong co `images`, `panoramas`, thay bang `imageCount`, `panoramaCount`) |
 | GET | `/api/stats` | Dem lead theo muc, tra `{ "total": 0, "hot": 0, "warm": 0, "cold": 0 }` |
 | GET | `/api/viewings` | Danh sach lich xem nha |
 | GET | `/api/properties/{id}` | Mot bat dong san (tuan 2). Khong co: `404` |
@@ -183,7 +183,7 @@ Chung cho moi callback:
 
 | Bang | Truong chinh |
 |---|---|
-| `properties` | id, name, address, price, area, type, status |
+| `properties` | id, name, address, price, area, type, status, imageUrl, description; chi tiet (FE-31): bedrooms, bathrooms, floors, landArea, floorArea, roadWidth, direction, legalStatus, furnishing, occupancy (ma trong `backend/src/properties/property-options.ts`); mang: images (link), features, furniture, nearby (`{ category, name, distance }`), panoramas (`{ title, url }`). Mang `null` = chua nhap, `[]` = da xoa het |
 | `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl |
 | `viewings` | id, propertyId, leadId, viewingTime, status |
 | `lead_events` | id, leadId, type, note, createdAt |

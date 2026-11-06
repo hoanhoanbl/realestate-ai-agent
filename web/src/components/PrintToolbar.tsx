@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Button, Icon } from "@/components/ui";
+import { BackLink, Button, Icon } from "@/components/ui";
 
 // Thanh trên cùng của trang in: tự ẩn khi in. "Lưu PDF" = chọn máy in "Lưu dưới dạng PDF" trong hộp thoại của trình duyệt
 export default function PrintToolbar({ backHref, backLabel, title }: { backHref?: string; backLabel?: string; title: string }) {
@@ -10,9 +9,7 @@ export default function PrintToolbar({ backHref, backLabel, title }: { backHref?
       <div className="mx-auto flex max-w-[210mm] flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           {backHref && (
-            <Link href={backHref} className="text-sm text-brand-600 hover:underline">
-              ← {backLabel ?? "Quay lại"}
-            </Link>
+            <BackLink href={backHref}>{backLabel ?? "Quay lại"}</BackLink>
           )}
           <p className="truncate font-semibold text-slate-900">{title}</p>
         </div>

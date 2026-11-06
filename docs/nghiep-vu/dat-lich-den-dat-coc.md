@@ -85,8 +85,8 @@ Nếu dữ liệu không hợp lệ hoặc bước AI lỗi, luồng 1 báo về
 | Khi nào | Hệ thống làm |
 |---|---|
 | 24 giờ sau khi đặt | Gửi email cảnh báo cho quản lý, ghi "Quá 24 giờ chưa duyệt". Lead vẫn "Mới" |
-| 3 ngày sau khi đặt, lead HOT hoặc WARM vẫn "Mới" | Nhắc sale duyệt qua email, Telegram, ... *(từ FE-30 nhắc cả lead COLD)* |
-| Giờ hẹn đã qua mà lead vẫn "Mới" | Chuyển "Không mua" với lý do "Quá hạn không xử lý" (`EXPIRED`) và báo quản lý. Báo cáo tuần đếm số lead này *(có từ FE-30)* |
+| Hơn 3 ngày sau khi đặt, lead HOT/WARM/COLD vẫn "Mới", giờ hẹn chưa qua | Nhắc sale duyệt qua sub-workflow thông báo nhân viên |
+| Giờ hẹn đã qua mà lead vẫn "Mới", buổi xem còn "Chờ xem" | Chuyển "Không mua" với lý do "Quá hạn không xử lý" (`EXPIRED`), hủy buổi xem và vô hiệu link duyệt cũ; báo quản lý. Báo cáo tuần đếm theo thời điểm đóng. Không coi đây là khách không đến. |
 
 ## 3. Trước và trong buổi xem
 

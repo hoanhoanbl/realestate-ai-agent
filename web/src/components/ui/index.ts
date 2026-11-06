@@ -1,5 +1,6 @@
 // Bộ component giao diện dùng chung. Trang mới nên dùng các component này thay vì chép class
 export { default as Alert } from "./Alert";
+export { default as BackLink } from "./BackLink";
 export { default as Badge } from "./Badge";
 export { default as Button, buttonClass } from "./Button";
 export { default as Card, CARD } from "./Card";

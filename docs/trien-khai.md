@@ -386,6 +386,17 @@ Chưa gắn bản phát hành. Gồm code backend (bảng `chat_logs`, API `POST
 
 Mỗi tin cần AI giờ gọi Gemini thêm 2 lần (kiểm tra an toàn, phân loại ý định), trả lời chậm hơn khoảng 1–2 giây. Guardrails lỗi (ví dụ Gemini quá tải) thì cho tin đi tiếp, không chặn khách.
 
+## 9c. Tô màu nhóm node (CH-07)
+
+Chỉ đổi vị trí node và thêm sticky note màu trong 12 file JSON; logic, tham số, cách nối giữ nguyên. Không có bước backend, SQL hay `.env`.
+
+**Import file nào thì cũng import luôn logic hiện tại của file đó trên `main`.** Vì vậy chỉ import theo đúng bản phát hành:
+
+- Luồng 1, 1b, 3, 5, 6, 6b, Error workflow, Thông báo nhân viên: import lại được ngay sau khi release lên `main` (dùng `import_wf` ở mục 5; luồng nào đang bật thì publish, rồi restart n8n).
+- Luồng 2, 7, 8 (và luồng 4 bản có `EXPIRED` của FE-30): chỉ import khi chạy các bước của `v0.3.1` ở mục 9, vì file đã có logic mới cần token, credential Mautic và kiểm tra trước. Luồng 2 import nhưng chưa bật cho tới bước 6 của mục 9.
+
+Kiểm tra: mở từng luồng trong n8n, thấy các khung màu và sticky "Chú thích màu"; Executions của lần chạy kế tiếp vẫn thành công như trước.
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

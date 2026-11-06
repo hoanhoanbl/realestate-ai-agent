@@ -73,7 +73,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
+        660,
         300
       ],
       "id": "80010001-0000-4000-8000-000000000003",
@@ -114,7 +114,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        660,
+        1120,
         300
       ],
       "id": "80010001-0000-4000-8000-000000000004",
@@ -153,8 +153,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        880,
-        240
+        1340,
+        300
       ],
       "id": "80010001-0000-4000-8000-000000000005",
       "name": "Tìm Lead Backend",
@@ -190,8 +190,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1100,
-        240
+        1560,
+        300
       ],
       "id": "80010001-0000-4000-8000-000000000006",
       "name": "Lead tồn tại?"
@@ -223,7 +223,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1320,
+        2020,
         200
       ],
       "id": "80010001-0000-4000-8000-000000000007",
@@ -260,8 +260,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
-        200
+        2240,
+        300
       ],
       "id": "80010001-0000-4000-8000-000000000008",
       "name": "Ghi nhận Event Backend",
@@ -305,8 +305,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1760,
-        200
+        2480,
+        300
       ],
       "id": "80010001-0000-4000-8000-000000000009",
       "name": "Cần báo nhân viên?"
@@ -319,8 +319,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1980,
-        140
+        2700,
+        200
       ],
       "id": "80010001-0000-4000-8000-000000000010",
       "name": "Chuẩn bị thông báo"
@@ -347,8 +347,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2200,
-        140
+        2920,
+        200
       ],
       "id": "80010001-0000-4000-8000-000000000011",
       "name": "Thông báo nhân viên",
@@ -381,8 +381,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1540,
-        440
+        220,
+        850
       ],
       "id": "80010001-0000-4000-8000-000000000012",
       "name": "Báo lỗi Backend",
@@ -399,8 +399,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2460,
-        200
+        2920,
+        420
       ],
       "id": "80010001-0000-4000-8000-000000000013",
       "name": "Phản hồi Thành công"
@@ -413,8 +413,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
-        480
+        1560,
+        500
       ],
       "id": "80010001-0000-4000-8000-000000000014",
       "name": "Bỏ qua & Phản hồi Webhook"
@@ -445,8 +445,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1220,
-        40
+        1780,
+        300
       ],
       "id": "l8-valid-points",
       "name": "Có điểm hợp lệ?"
@@ -477,8 +477,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1260,
-        760
+        0,
+        850
       ],
       "id": "l8-error-known-lead",
       "name": "Biết lead khi lỗi?"
@@ -491,8 +491,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1880,
-        760
+        440,
+        850
       ],
       "id": "l8-error-response",
       "name": "Phản hồi Lỗi"
@@ -503,8 +503,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        660,
-        40
+        900,
+        300
       ],
       "parameters": {
         "batchSize": 1,
@@ -517,8 +517,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        300,
-        0
+        440,
+        300
       ],
       "parameters": {
         "conditions": {
@@ -550,8 +550,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2440,
-        0
+        3140,
+        200
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
@@ -565,8 +565,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        -320
+        3380,
+        300
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
@@ -579,8 +579,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1180,
-        -320
+        3600,
+        300
       ],
       "parameters": {
         "respondWith": "json",
@@ -596,8 +596,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        560,
-        -160
+        660,
+        500
       ],
       "parameters": {
         "respondWith": "json",
@@ -613,8 +613,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1460,
-        -320
+        3820,
+        300
       ],
       "parameters": {
         "conditions": {
@@ -646,12 +646,124 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1700,
-        -320
+        660,
+        850
       ],
       "parameters": {
         "errorMessage": "L8 có sự kiện xử lý thất bại; kiểm tra execution"
       }
+    },
+    {
+      "parameters": {
+        "content": "## 1. Nhận và xác thực webhook Mautic",
+        "height": 600,
+        "width": 840,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        70
+      ],
+      "name": "Nhóm 1. Nhận và xác thực webhook Mautic",
+      "id": "11f13ba3-32f9-5028-9547-89a3a5973929"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Từng sự kiện: tìm lead",
+        "height": 600,
+        "width": 1060,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        70
+      ],
+      "name": "Nhóm 2. Từng sự kiện: tìm lead",
+      "id": "afea8deb-ad5f-5f93-81f1-f61901711867"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Cập nhật điểm và ghi event",
+        "height": 600,
+        "width": 400,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        70
+      ],
+      "name": "Nhóm 3. Cập nhật điểm và ghi event",
+      "id": "703a85a1-b350-5911-9d04-022bc3be1a65"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Báo nhân viên khi vượt ngưỡng",
+        "height": 600,
+        "width": 840,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        70
+      ],
+      "name": "Nhóm 4. Báo nhân viên khi vượt ngưỡng",
+      "id": "0233055e-6b1f-52f6-9cfb-945f8c4bed35"
+    },
+    {
+      "parameters": {
+        "content": "## 5. Tổng kết lô",
+        "height": 600,
+        "width": 620,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3340,
+        70
+      ],
+      "name": "Nhóm 5. Tổng kết lô",
+      "id": "1703bfb4-a2c3-5734-abbb-9d912447aa76"
+    },
+    {
+      "parameters": {
+        "content": "## Xử lý lỗi\nNhánh lỗi: báo backend / phản hồi lỗi / dừng để Error workflow báo quản lý",
+        "height": 300,
+        "width": 840,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        720
+      ],
+      "name": "Nhóm lỗi",
+      "id": "43061b32-cdd2-598b-a700-05ea4f594764"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -130
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "connections": {

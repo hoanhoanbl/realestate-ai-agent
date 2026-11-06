@@ -238,14 +238,20 @@ export class ViewingsService {
     noShowNote?: string,
   ): Promise<Viewing> {
     const { date } = parseViewingTime(rawTime);
-    const oldTime = viewing.viewingTime;
+    let oldTime = viewing.viewingTime;
 
     const saved = await this.viewingRepository.manager.transaction(async (em) => {
       await lockProperty(em, viewing.propertyId);
+      const currentLead = await em.getRepository(Lead).findOne({ where: { id: lead.id }, lock: { mode: 'pessimistic_write' } });
+      const currentViewing = await em.getRepository(Viewing).findOne({ where: { id: viewing.id }, lock: { mode: 'pessimistic_write' } });
+      if (!currentLead || !['NEW', 'CONFIRMED'].includes(currentLead.status) || !currentViewing || currentViewing.status !== 'NEW') {
+        throw new BadRequestException('Khách hoặc lịch đã được xử lý, hãy tải lại trước khi đổi giờ.');
+      }
       await assertNoBookingConflict(em, viewing.propertyId, date, viewing.id);
-      viewing.viewingTime = date;
-      viewing.status = 'NEW';
-      return em.save(viewing);
+      oldTime = currentViewing.viewingTime;
+      lead.status = currentLead.status;
+      currentViewing.viewingTime = date;
+      return em.save(currentViewing);
     });
 
     if (noShowNote) {

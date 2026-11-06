@@ -24,11 +24,12 @@ export const VIEWING_STATUS_LABELS: Record<ViewingStatus, string> = {
 };
 
 // Lý do mất khách (leads.lost_reason)
-export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "OTHER";
+export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "EXPIRED" | "OTHER";
 export const LOST_REASON_LABELS: Record<LostReason, string> = {
   NO_SHOW: "Khách không đến xem",
   NOT_INTERESTED: "Không còn nhu cầu",
   CUSTOMER_CANCELLED: "Khách tự huỷ lịch",
+  EXPIRED: "Quá hạn không xử lý",
   OTHER: "Lý do khác",
 };
 
@@ -152,6 +153,10 @@ export const EVENT_LABELS: Record<string, string> = {
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
   WARM_NURTURE_STARTED: "Bắt đầu nuôi khách WARM (Mautic)",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
+  HOT_NUDGE_SENT: "Đã nhắc sale gọi khách HOT",
+  COLD_NURTURE_STARTED: "Đã đưa khách COLD vào bản tin",
+  LEAD_EXPIRED: "Lịch chưa duyệt đã quá hạn",
+  LEAD_EXPIRED_NOTIFIED: "Đã báo quản lý lịch quá hạn",
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
   FEEDBACK_ANALYZED: "AI phân tích cảm nhận",

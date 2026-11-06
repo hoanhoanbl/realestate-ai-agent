@@ -63,7 +63,7 @@ Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự đ�
 | **3. Hợp đồng đặt cọc** | Document signing | Webhook | Khách muốn cọc → AI soạn hợp đồng → quản lý duyệt → khách ký online → xác nhận | 2 lần Wait (quản lý duyệt, khách ký qua `/ky/[token]`) | **Hoàng** |
 | **4. Báo cáo kinh doanh** | Sales analytics | Schedule (thứ Hai) | Gom số liệu tuần → tính phễu chuyển đổi → AI phân tích, đề xuất → email quản lý | **AI Agent có tool** (truy vấn DB), Merge, cảnh báo | **Hậu** |
 | **5. Phân tích cảm nhận** | Lead follow-up | Webhook | Nhận đánh giá của khách qua `/cam-nhan/[token]` → AI phân tích sentiment, tóm tắt và gợi ý | AI Chain, cập nhật feedback, ghi event | **Hậu** |
-| **6. Telegram Agent cho khách** | Visits & Q&A | Telegram Trigger | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch | AI Agent + Postgres Memory, Tool calling, RAG | **Hoàng** |
+| **6. Telegram Agent cho khách** | Visits & Q&A | Telegram Trigger | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch; muốn gặp người hoặc bot không trả lời được thì báo sale | AI Agent + Postgres Memory, Tool calling (5 tool, có Think), RAG, Guardrails, phân loại ý định, log hội thoại | **Hoàng** |
 | **7. Đồng bộ sang Mautic** | Marketing Auto | Webhook (`lead-changed`) | Nhận thay đổi từ lead → tạo/cập nhật Contact kèm Tag (thành phố, level, source, status) | Mautic REST API, data mapping | **Hậu** |
 | **8. Mautic báo về n8n** | Marketing Auto | Webhook (Mautic) | Khách mở email, bấm link, tăng điểm → n8n ghi nhận và báo sale khi vượt ngưỡng | Webhook receiver, scoring sync | **Hậu** |
 | **Error workflow (dùng chung)** | Monitoring | Error Trigger | Luồng nào lỗi thì gửi email cảnh báo quản lý | Giám sát | **Hoàng** |

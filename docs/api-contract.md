@@ -217,6 +217,16 @@ Tat ca endpoint sau can `X-Webhook-Secret`. Chi deploy workflow L2 moi sau khi b
 
 Chi tiet cau hinh va cach kiem tra: `docs/luong/luong-2-follow-up.md`.
 
+## 7. L6: ghi log hoi thoai bot Telegram
+
+Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `synchronize`).
+
+| Method | Duong dan | Noi dung |
+|---|---|---|
+| POST | `/api/chat-logs` | `{chatId, route, question, reply, channel?, usedFallback?, escalated?, staffNotified?, executionId?}`; tra `{id}` |
+
+`route`: `COMMAND` (lenh /start, tin khong phai chu), `BLOCKED` (Guardrails chan), `AGENT` (AI Agent tra loi), `STAFF` (khach muon gap nhan vien), `OUT_OF_SCOPE` (ngoai pham vi). Backend che email va day so bat dau bang 0 hoac +84 dai 9-12 chu so (so dien thoai, CCCD) trong `question`, `reply` truoc khi luu.
+
 ## Lich su thay doi
 
 | Ngay | Ai sua | Noi dung |
@@ -224,3 +234,4 @@ Chi tiet cau hinh va cach kiem tra: `docs/luong/luong-2-follow-up.md`.
 | 09/10/2026 | Ca nhom | Dong bo code tren `main` |
 | 12/10/2026 | Hoang (Hau duyet) | Tuan 2: them `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `lead_events` |
 | 21/10/2026 | Hau | Them cot `source`, `mautic_contact_id`, `mautic_points`, endpoint `PUT /api/leads/{id}/mautic`, webhook `lead-changed` |
+| 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |

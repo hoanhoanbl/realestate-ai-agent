@@ -150,8 +150,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        880,
-        460
+        0,
+        910
       ],
       "id": "b30d3892-380d-d044-9570-718dcb7333bc",
       "name": "Lỗi dữ liệu"
@@ -199,7 +199,7 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        1320,
+        1360,
         200
       ],
       "id": "2456bce6-2ee0-49ba-8172-7e2a98df99b7",
@@ -217,7 +217,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1300,
+        1340,
         420
       ],
       "id": "aa1bc18e-f45f-437e-a071-4b03900f9afb",
@@ -236,7 +236,7 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        1480,
+        1520,
         420
       ],
       "id": "0ae377df-8f70-4223-a95e-579f99b8c105",
@@ -328,7 +328,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1540,
+        1740,
         200
       ],
       "id": "6898445e-5d07-556c-f724-937fa61ec68c",
@@ -347,7 +347,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1760,
+        1980,
         20
       ],
       "id": "64dad82a-f3ac-b553-1fc6-685a6332721f",
@@ -376,7 +376,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1760,
+        1980,
         200
       ],
       "id": "206fc544-9fd0-ee8f-54e9-83baeb9c416f",
@@ -405,7 +405,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1760,
+        1980,
         380
       ],
       "id": "02b4f8a0-f7ce-834a-1612-59c8ef666d61",
@@ -428,7 +428,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1900,
+        2220,
         200
       ],
       "id": "c2a7d001-0000-4000-8000-000000000000",
@@ -456,7 +456,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2060,
+        2380,
         200
       ],
       "id": "c2a7d002-0000-4000-8000-000000000000",
@@ -477,7 +477,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2860,
+        3200,
         200
       ],
       "id": "c801e0de-d265-ea9a-e465-03e3649fdd43",
@@ -498,8 +498,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        3080,
-        420
+        440,
+        910
       ],
       "id": "20748b55-d231-43ca-8be2-0ac8a6781c96",
       "name": "Callback failed"
@@ -518,7 +518,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3080,
+        3420,
         200
       ],
       "id": "2fedf074-d5dd-821e-9926-37817d9854a6",
@@ -547,7 +547,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        3300,
+        3660,
         200
       ],
       "id": "104b5506-6c34-cb62-ea94-3edc48e8b379",
@@ -618,7 +618,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        3740,
+        4100,
         200
       ],
       "id": "70c2fc47-5216-f69a-38db-07e917337b03",
@@ -642,7 +642,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        4180,
+        4580,
         20
       ],
       "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
@@ -666,7 +666,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        4180,
+        4580,
         200
       ],
       "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
@@ -685,7 +685,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        4400,
+        4800,
         20
       ],
       "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
@@ -713,7 +713,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        4400,
+        4800,
         200
       ],
       "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
@@ -741,7 +741,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        4180,
+        4580,
         420
       ],
       "id": "351610fb-49f7-6934-0fca-bda8fab90001",
@@ -770,7 +770,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4620,
+        5020,
         20
       ],
       "id": "e9522c19-4b97-77be-b497-01f4b3554260",
@@ -799,7 +799,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4840,
+        5240,
         20
       ],
       "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
@@ -828,7 +828,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4620,
+        5020,
         200
       ],
       "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
@@ -857,7 +857,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4400,
+        4800,
         420
       ],
       "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
@@ -886,8 +886,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1980,
-        640
+        220,
+        910
       ],
       "id": "01669830-4898-48a4-a620-a243ea54cd8f",
       "name": "Report FAILED",
@@ -911,7 +911,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        2200,
+        2520,
         200
       ],
       "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a01",
@@ -955,7 +955,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2420,
+        2740,
         200
       ],
       "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a02",
@@ -973,7 +973,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2640,
+        2960,
         120
       ],
       "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a03",
@@ -991,7 +991,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5060,
+        5460,
         220
       ],
       "id": "c2a7d003-0000-4000-8000-000000000000",
@@ -1019,7 +1019,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        5280,
+        5680,
         220
       ],
       "id": "c2a7d004-0000-4000-8000-000000000000",
@@ -1037,7 +1037,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3520,
+        3880,
         200
       ],
       "id": "458a630d-9bdb-42e9-bd08-01b387971148",
@@ -1088,7 +1088,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3960,
+        4340,
         20
       ],
       "id": "2e9d3217-b4cf-4ae7-87db-280a24aef2d6",
@@ -1112,7 +1112,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        4180,
+        4580,
         -160
       ],
       "id": "774751f4-c36a-48d9-853a-15136098e3c4",
@@ -1156,7 +1156,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3960,
+        4340,
         200
       ],
       "id": "573322f3-357b-487e-a36f-3ef1d85630ee",
@@ -1200,7 +1200,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3960,
+        4340,
         380
       ],
       "id": "ac43eead-779b-471e-b41e-128e92e4af2c",
@@ -1211,11 +1211,187 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        4180,
+        4580,
         560
       ],
       "id": "c2c56ca1-ba21-4947-a5a7-c43bd83bf42e",
       "name": "Bỏ qua cảnh báo (lịch đã xử lý)"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Tiếp nhận yêu cầu đặt lịch",
+        "height": 1020,
+        "width": 1280,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -290
+      ],
+      "name": "Nhóm 1. Tiếp nhận yêu cầu đặt lịch",
+      "id": "86cfacf1-ab96-5140-9cf1-c73b3398a853"
+    },
+    {
+      "parameters": {
+        "content": "## 2. AI chấm điểm",
+        "height": 1020,
+        "width": 340,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        -290
+      ],
+      "name": "Nhóm 2. AI chấm điểm",
+      "id": "ec3198ad-80fa-5761-93bf-0eb852f0490f"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Rẽ nhánh theo mức",
+        "height": 1020,
+        "width": 180,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        -290
+      ],
+      "name": "Nhóm 3. Rẽ nhánh theo mức",
+      "id": "efcd254f-ef33-599c-a5ee-a7c1dc029d01"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Email khách theo mức",
+        "height": 1020,
+        "width": 180,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1940,
+        -290
+      ],
+      "name": "Nhóm 4. Email khách theo mức",
+      "id": "8170fc54-68ec-5cd3-a573-cc856b0b0f26"
+    },
+    {
+      "parameters": {
+        "content": "## 5. Báo nhân viên",
+        "height": 1020,
+        "width": 920,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2180,
+        -290
+      ],
+      "name": "Nhóm 5. Báo nhân viên",
+      "id": "80753f19-3e54-52cb-8ddd-51e1a5191f16"
+    },
+    {
+      "parameters": {
+        "content": "## 6. Lưu kết quả AI",
+        "height": 1020,
+        "width": 400,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        -290
+      ],
+      "name": "Nhóm 6. Lưu kết quả AI",
+      "id": "ec6f1d1f-bb62-50d2-a500-cb453b80356c"
+    },
+    {
+      "parameters": {
+        "content": "## 7. Chờ sale duyệt (human-in-the-loop)",
+        "height": 1020,
+        "width": 620,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3620,
+        -290
+      ],
+      "name": "Nhóm 7. Chờ sale duyệt (human-in-the-loop)",
+      "id": "b0f6e287-daa7-5be8-abd7-f81052c87aba"
+    },
+    {
+      "parameters": {
+        "content": "## 8. Lịch còn chờ?",
+        "height": 1020,
+        "width": 180,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4300,
+        -290
+      ],
+      "name": "Nhóm 8. Lịch còn chờ?",
+      "id": "6c019b6b-bd01-5de2-9b57-343cd8733b29"
+    },
+    {
+      "parameters": {
+        "content": "## 9. Chốt lịch, đổi giờ, cảnh báo quá hạn",
+        "height": 1020,
+        "width": 1280,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4540,
+        -290
+      ],
+      "name": "Nhóm 9. Chốt lịch, đổi giờ, cảnh báo quá hạn",
+      "id": "57760e5a-0ac5-5d2f-8387-a779f1aa2dfb"
+    },
+    {
+      "parameters": {
+        "content": "## Xử lý lỗi\nNhánh lỗi: báo backend / phản hồi lỗi / dừng để Error workflow báo quản lý",
+        "height": 300,
+        "width": 620,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        780
+      ],
+      "name": "Nhóm lỗi",
+      "id": "43061b32-cdd2-598b-a700-05ea4f594764"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -490
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "pinData": {},

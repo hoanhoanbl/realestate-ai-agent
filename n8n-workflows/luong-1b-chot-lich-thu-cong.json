@@ -121,7 +121,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        880,
+        900,
         200
       ],
       "id": "9b5ba736-3594-4f51-8549-4199b2bac9d1",
@@ -134,8 +134,8 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1100,
-        380
+        0,
+        830
       ],
       "id": "e5670df4-8f20-4cc5-9275-83f5e704ef32",
       "name": "Không tìm thấy khách"
@@ -148,7 +148,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
+        1120,
         200
       ],
       "id": "58a3ea74-bb6e-49c9-bbca-a7ecd3c40879",
@@ -181,7 +181,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1320,
+        1340,
         200
       ],
       "id": "d455b6a6-9780-4f3e-8e7d-a28ff3502abb",
@@ -200,7 +200,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1760,
+        1800,
         80
       ],
       "id": "1deb7951-77df-4af4-8c87-99ce63c5f363",
@@ -229,7 +229,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1980,
+        2020,
         80
       ],
       "id": "32fd5357-3a76-479e-837f-20da21dc9aba",
@@ -258,7 +258,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2200,
+        2240,
         80
       ],
       "id": "7fb2ed31-8ede-4f03-9ac3-5731d045aed5",
@@ -286,7 +286,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1760,
+        1800,
         320
       ],
       "id": "c148d005-dd76-47f3-83a9-7c751f2dc291",
@@ -339,7 +339,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1540,
+        1560,
         80
       ],
       "id": "597277c1-23df-48c5-b1c4-cfe378c13289",
@@ -350,11 +350,91 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1760,
-        260
+        1800,
+        480
       ],
       "id": "1e2774f5-fd99-4fa4-b356-a1f4b56d3f49",
       "name": "Bỏ qua (lịch đã huỷ hoặc đã xử lý)"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Tiếp nhận hành động duyệt",
+        "height": 700,
+        "width": 840,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -50
+      ],
+      "name": "Nhóm 1. Tiếp nhận hành động duyệt",
+      "id": "0c882dc3-ead8-53cd-b1e8-09616fa02fc5"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Kiểm tra lịch",
+        "height": 700,
+        "width": 840,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        -50
+      ],
+      "name": "Nhóm 2. Kiểm tra lịch",
+      "id": "97380f5e-2df9-51ff-b4f4-c4d1585130c8"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Chốt lịch hoặc báo giờ mới",
+        "height": 700,
+        "width": 620,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -50
+      ],
+      "name": "Nhóm 3. Chốt lịch hoặc báo giờ mới",
+      "id": "7a193b0d-080f-54a2-a003-6c72783bf547"
+    },
+    {
+      "parameters": {
+        "content": "## Xử lý lỗi\nNhánh lỗi: báo backend / phản hồi lỗi / dừng để Error workflow báo quản lý",
+        "height": 300,
+        "width": 180,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        700
+      ],
+      "name": "Nhóm lỗi",
+      "id": "43061b32-cdd2-598b-a700-05ea4f594764"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -250
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "pinData": {},

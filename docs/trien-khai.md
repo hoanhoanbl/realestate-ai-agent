@@ -192,7 +192,18 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
 
 **Đã làm trước (4/11):** kiểm tra mỗi căn có tối đa một hợp đồng còn hiệu lực (đạt); thống nhất giữ lead #4 làm lead test.
 
-**Đã chạy 5/11** (CI deploy `66c5fad`, sao lưu tay `/root/backups/realestate/20261105-2306`, bản luồng cũ trước khi import ở `/root/n8n-backup/20261105-2307`): bước 1–5 đạt. Bước 1 có dòng `Marked 1 properties ... as RESERVED`; bước 2 có 10 tài liệu; bước 4 có nguồn `kb` và `property` trong `rag_chunks`; bước 5 chạy trên server ra `400 400 400 400 400 429`, giữ `TRUST_PROXY_HOPS=1`. Còn bước 6 (kiểm tra trên trình duyệt và Telegram) và bước 7 (tag).
+**Đã chạy 5/11** (CI deploy `66c5fad`, sao lưu tay `/root/backups/realestate/20261105-2306`, bản luồng cũ trước khi import ở `/root/n8n-backup/20261105-2307`): bước 1–5 đạt. Bước 1 có dòng `Marked 1 properties ... as RESERVED`; bước 2 có 10 tài liệu; bước 4 có nguồn `kb` và `property` trong `rag_chunks`; bước 5 chạy trên server ra `400 400 400 400 400 429`, giữ `TRUST_PROXY_HOPS=1`.
+
+**Bước 6 và 7, chạy 6/11:**
+
+- Mục 7 trên server: `.deployed-commit` là `66c5fad`, 8 container chạy, log backend 24 giờ không có error hay warn, 11 luồng bật (luồng 2 tắt đúng kế hoạch).
+- Trang khách và trang chi tiết nhà mở được.
+- Đặt lịch test lead #5 (`nhadn2457+test0611@gmail.com`, căn 10, giờ xem 10/11 10:00, không tick nhận tin). Luồng 1 chấm COLD 20 điểm, `automation_status = COMPLETED`, `staff_notified = true`, luồng 7 đồng bộ sang Mautic contact #174. Nhóm Telegram của sale nhận được thông báo.
+- Bấm Duyệt trong thông báo nhân viên: lead sang `CONFIRMED`, n8n báo đã gửi email chốt lịch. Trang admin hiện đúng lead #5.
+- Link `/lich/<mã>` mở được, có nút "Xin đổi lịch" và "Huỷ lịch".
+- Bot Telegram trả lời câu "đặt cọc cần giấy tờ gì" theo tài liệu tri thức (CCCD, giấy tờ của các bên đồng mua, giấy uỷ quyền, giấy tờ vay vốn).
+- BF-06 chưa kiểm tra được trên server vì không có lead nào đang `DEPOSIT`; đã có test `leads.service.spec.ts`.
+- Bước 7: tag `v0.3.0` đã có trên GitHub, trỏ `66c5fad`.
 
 **Trước khi merge:** không có biến `.env` mới bắt buộc. Chạy `/root/realestate-backup.sh`.
 

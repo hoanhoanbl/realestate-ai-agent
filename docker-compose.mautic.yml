@@ -36,6 +36,7 @@ services:
     ports:
       - "${MAUTIC_PORT:-8082}:80"
     environment:
+      DOCKER_MAUTIC_ROLE: mautic_web
       MAUTIC_DB_HOST: mautic_db
       MAUTIC_DB_PORT: 3306
       MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}
@@ -57,6 +58,7 @@ services:
       - mautic_db
       - mautic_web
     environment:
+      DOCKER_MAUTIC_ROLE: mautic_worker
       MAUTIC_DB_HOST: mautic_db
       MAUTIC_DB_PORT: 3306
       MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}
@@ -78,6 +80,7 @@ services:
       - mautic_db
       - mautic_web
     environment:
+      DOCKER_MAUTIC_ROLE: mautic_cron
       MAUTIC_DB_HOST: mautic_db
       MAUTIC_DB_PORT: 3306
       MAUTIC_DB_DATABASE: ${MAUTIC_DB_NAME:-mautic}

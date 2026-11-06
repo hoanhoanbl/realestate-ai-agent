@@ -2,7 +2,7 @@
 
 File này ghi mọi thứ cần để đưa code lên server và kiểm tra sau khi đưa lên: server ở đâu, CI tự làm gì, phần nào phải làm tay, và các bước riêng của từng bản phát hành. Quy trình nhánh và PR xem [quy-trinh-git.md](quy-trinh-git.md); lịch phát hành xem mục "Mốc phát hành" trong [danh-sach-task.md](danh-sach-task.md).
 
-Trạng thái server ghi trong file này là ngày **4/11/2026** (đang chạy `v0.2.1`, commit `b37eb1a`). Mỗi lần phát hành, người chạy cập nhật lại mục 4 và mục 8.
+Trạng thái server ghi trong file này là ngày **5/11/2026** (đang chạy `v0.3.0`, commit `66c5fad`). Mỗi lần phát hành, người chạy cập nhật lại mục 4 và mục 8.
 
 ## 1. Server
 
@@ -85,7 +85,7 @@ Phiên bản 2.45.5. Workflow và credential dùng **id cố định** giống t
 
 **Credential**
 
-| Id | Loại | Tên | Dùng ở | Trên server (4/11) |
+| Id | Loại | Tên | Dùng ở | Trên server (5/11) |
 |---|---|---|---|---|
 | `hfJ9bBGUGsjH8qDP` | SMTP | SMTP account | Gửi email (đăng nhập `nhadn2457@gmail.com`) | Có |
 | `wU5LeG7gXaoUdMXQ` | Gemini | Google Gemini(PaLM) Api account | AI chấm điểm, soạn thư, embedding RAG | Có |
@@ -96,18 +96,18 @@ Phiên bản 2.45.5. Workflow và credential dùng **id cố định** giống t
 
 **Workflow**
 
-| File | Id | Kích hoạt bằng | Trên server (4/11) |
+| File | Id | Kích hoạt bằng | Trên server (5/11) |
 |---|---|---|---|
 | `error-workflow.json` | `errorWfRealestat` | Luồng khác lỗi | Bật |
 | `thong-bao-nhan-vien.json` | `thongBaoNhanVien` | Luồng khác gọi | Bật |
-| `luong-1-dat-lich.json` | `prt5invo7qugQx74` | Webhook `viewing-requested` | Bật, bản cũ |
-| `luong-1b-chot-lich-thu-cong.json` | `luong1bRealestat` | Webhook `viewing-admin-action` | Bật, bản cũ |
+| `luong-1-dat-lich.json` | `prt5invo7qugQx74` | Webhook `viewing-requested` | Bật |
+| `luong-1b-chot-lich-thu-cong.json` | `luong1bRealestat` | Webhook `viewing-admin-action` | Bật |
 | `luong-2-follow-up.json` | `luong2Realestat0` | Mỗi giờ | **Tắt**, bản cũ |
 | `luong-3-hop-dong.json` | `luong3Realestat0` | Webhook `contract-requested` | Bật |
-| `luong-4-bao-cao.json` | `luong4Realestat0` | 8 giờ sáng thứ Hai, webhook `report-requested` | Bật, bản cũ |
+| `luong-4-bao-cao.json` | `luong4Realestat0` | 8 giờ sáng thứ Hai, webhook `report-requested` | Bật |
 | `luong-5-cam-nhan.json` | `luong5Realestat0` | Webhook `feedback-submitted` | Bật |
-| `luong-6-telegram-agent.json` | `luong6Realestat0` | Webhook `telegram-khach` | Bật, bản cũ |
-| `luong-6b-nap-tri-thuc.json` | `luong6bRagNap001` | 2 giờ sáng mỗi ngày | **Chưa có** |
+| `luong-6-telegram-agent.json` | `luong6Realestat0` | Webhook `telegram-khach` | Bật |
+| `luong-6b-nap-tri-thuc.json` | `luong6bRagNap001` | 2 giờ sáng mỗi ngày | Bật |
 | `luong-7-dong-bo-mautic.json` | `luong7Realestat0` | Webhook `lead-changed` | Bật, bản cũ |
 | `luong-8-mautic-bao-ve.json` | `luong8Realestat0` | Webhook `mautic-event` | Bật, bản cũ |
 
@@ -145,6 +145,7 @@ docker exec realestate-n8n n8n list:workflow --active=true
 
 Những điều đã gặp:
 
+- Chạy tay một luồng bằng dòng lệnh (không mở giao diện n8n) phải đổi cổng task broker, vì n8n đang chạy đã giữ cổng 5679: `docker exec -e N8N_RUNNERS_BROKER_PORT=5699 realestate-n8n n8n execute --id=<id>`. Kết quả in ra rất dài, dòng cuối có `"status": "success"` là chạy được. Cảnh báo "Python 3 is missing" không ảnh hưởng.
 - Import xong workflow bị **tắt**, phải `publish:workflow`. Publish xong vẫn phải **restart n8n** thì webhook và lịch chạy mới nhận bản mới.
 - Muốn để một luồng tắt (ví dụ luồng 2 trước `v0.3.1`) thì import mà không publish.
 - Trong container n8n, ghi file vào `/home/node/`, không dùng `/tmp/`: file cũ do root tạo trong `/tmp` không ghi đè được, lệnh export báo lỗi nhưng `docker cp` vẫn chép file cũ.
@@ -191,6 +192,8 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
 
 **Đã làm trước (4/11):** kiểm tra mỗi căn có tối đa một hợp đồng còn hiệu lực (đạt); thống nhất giữ lead #4 làm lead test.
 
+**Đã chạy 5/11** (CI deploy `66c5fad`, sao lưu tay `/root/backups/realestate/20261105-2306`, bản luồng cũ trước khi import ở `/root/n8n-backup/20261105-2307`): bước 1–5 đạt. Bước 1 có dòng `Marked 1 properties ... as RESERVED`; bước 2 có 10 tài liệu; bước 4 có nguồn `kb` và `property` trong `rag_chunks`; bước 5 chạy trên server ra `400 400 400 400 400 429`, giữ `TRUST_PROXY_HOPS=1`. Còn bước 6 (kiểm tra trên trình duyệt và Telegram) và bước 7 (tag).
+
 **Trước khi merge:** không có biến `.env` mới bắt buộc. Chạy `/root/realestate-backup.sh`.
 
 **Sau khi CI deploy xong:**
@@ -226,7 +229,7 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
    docker restart realestate-n8n
    ```
 
-4. Chạy luồng 6b một lần để có dữ liệu RAG ngay, không chờ 2 giờ sáng: mở n8n, vào "Luồng 6b: Nạp tri thức RAG", bấm **Execute workflow**. Kiểm tra:
+4. Chạy luồng 6b một lần để có dữ liệu RAG ngay, không chờ 2 giờ sáng: mở n8n, vào "Luồng 6b: Nạp tri thức RAG", bấm **Execute workflow** (hoặc chạy bằng dòng lệnh theo mục 5 với id `luong6bRagNap001`). Kiểm tra:
 
    ```bash
    docker exec realestate-db psql -U realestate -d realestate -Atc \
@@ -241,7 +244,7 @@ Gồm FE-18 (RAG), FE-19 (vá lỗ hổng từ đặt lịch đến đặt cọc
    for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w '%{http_code} ' -X POST -H 'Content-Type: application/json' -d '{}' https://hoanhoan.hiennguyen.io.vn/api/viewings; done; echo
    ```
 
-   Đúng là `400 400 400 400 400 429`. Sau đó chạy đúng lệnh đó **trên server**: lần đầu phải là `400`. Nếu trên server cũng ra `429` ngay thì backend đang đếm theo IP của proxy (mọi khách chung một giới hạn): thử `TRUST_PROXY_HOPS=2` trong `.env`, rồi `DC up -d backend` và kiểm tra lại. Máy mình bị chặn đặt lịch 10 phút sau bước này.
+   Đúng là `400 400 400 400 400 429`. Máy có cả IPv4 và IPv6 thì curl gửi luân phiên, backend đếm thành hai IP nên có thể không thấy `429`; khi đó thêm `-4` sau `curl` rồi chạy lại. Sau đó chạy đúng lệnh đó **trên server**: lần đầu phải là `400`. Nếu trên server cũng ra `429` ngay thì backend đang đếm theo IP của proxy (mọi khách chung một giới hạn): thử `TRUST_PROXY_HOPS=2` trong `.env`, rồi `DC up -d backend` và kiểm tra lại. Máy mình bị chặn đặt lịch 10 phút sau bước này.
 
 6. Kiểm tra sau deploy theo mục 7, thêm:
    - Bot Telegram tư vấn khách: hỏi một câu về quy trình (ví dụ "đặt cọc cần giấy tờ gì?"), bot trả lời theo tài liệu tri thức.

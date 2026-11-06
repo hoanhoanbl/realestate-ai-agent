@@ -3,9 +3,10 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Luồng 6: Telegram Agent cho khách\n\nKhách chat → kiểm tra hợp lệ → **Kiểm tra an toàn** (Guardrails: chặn tin lừa bot bỏ quy tắc; lỗi kiểm tra thì cho qua) → **Phân loại ý định** (tư vấn → Agent; muốn gặp người / phàn nàn → báo nhân viên; ngoài phạm vi → trả lời mẫu) → AI Agent (Gemini) nhớ hội thoại theo chat_id, 5 công cụ: Tìm nhà, Đặt lịch (source = telegram, đi tiếp luồng 1), Tra lịch (Postgres chỉ đọc, cần email + SĐT), Hỏi đáp tri thức (RAG pgvector), Suy nghĩ (Think) → kiểm tra câu trả lời → bot không trả lời được thì **báo nhân viên** (sub-workflow Thông báo nhân viên) → gửi khách → **ghi log** (POST /api/chat-logs, che email/SĐT).\n\nCài đặt: bot riêng với bot sale. Biến môi trường TELEGRAM_KHACH_BOT_TOKEN, TELEGRAM_KHACH_WEBHOOK_SECRET, WEBHOOK_SECRET. Đăng ký: setWebhook url=<n8n>/webhook/telegram-khach, secret_token=<secret>, allowed_updates=[\"message\"].",
-        "height": 360,
-        "width": 640
+        "content": "## Luồng 6: Telegram Agent cho khách\n\nKhách chat → kiểm tra hợp lệ → **Kiểm tra an toàn** (Guardrails: chặn tin lừa bot bỏ quy tắc; lỗi kiểm tra thì cho qua) → **Phân loại ý định** (tư vấn → Agent; muốn gặp người / phàn nàn → báo nhân viên; ngoài phạm vi → trả lời mẫu) → AI Agent (Gemini) nhớ hội thoại theo chat_id, 5 công cụ: Tìm nhà, Đặt lịch (source = telegram, đi tiếp luồng 1), Tra lịch (Postgres chỉ đọc, cần email + SĐT), Hỏi đáp tri thức (RAG pgvector), Suy nghĩ (Think) → kiểm tra câu trả lời → bot không trả lời được thì **báo nhân viên** (sub-workflow Thông báo nhân viên) → gửi khách → **ghi log** (POST /api/chat-logs, che email/SĐT).\n\nCài đặt: bot riêng với bot sale. Biến môi trường TELEGRAM_KHACH_BOT_TOKEN, TELEGRAM_KHACH_WEBHOOK_SECRET, WEBHOOK_SECRET. Đăng ký: setWebhook url=<n8n>/webhook/telegram-khach, secret_token=<secret>, allowed_updates=[\"message\"].\n\n**Màu nhóm:** xanh dương = tiếp nhận · tím = Guardrails và phân loại · xanh lá = AI Agent · cam = chuyển nhân viên (human-in-the-loop) · vàng = trả lời và log · đỏ = xử lý lỗi",
+        "height": 420,
+        "width": 760,
+        "color": 7
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -26,7 +27,7 @@
       "typeVersion": 2.2,
       "position": [
         0,
-        320
+        300
       ],
       "name": "Telegram Webhook",
       "webhookId": "6a6e0001-7e1e-4a6b-9c1a-7e1e9a3a0001",
@@ -67,8 +68,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        220,
-        320
+        200,
+        300
       ],
       "name": "Cấu hình",
       "id": "6a6e0002-0000-4000-8000-000000000000"
@@ -80,8 +81,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        320
+        400,
+        300
       ],
       "name": "Chuẩn hoá tin nhắn",
       "id": "6a6e0003-0000-4000-8000-000000000000"
@@ -114,8 +115,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        660,
-        320
+        600,
+        300
       ],
       "name": "Hợp lệ?",
       "id": "6a6e0004-0000-4000-8000-000000000000"
@@ -125,8 +126,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        880,
-        520
+        600,
+        500
       ],
       "name": "Bỏ qua",
       "id": "6a6e0005-0000-4000-8000-000000000000"
@@ -159,8 +160,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        880,
-        320
+        800,
+        300
       ],
       "name": "Cần AI?",
       "id": "6a6e0006-0000-4000-8000-000000000000"
@@ -179,7 +180,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1760,
+        1980,
         200
       ],
       "id": "6a6e0007-0000-4000-8000-000000000000",
@@ -198,7 +199,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1980,
+        2200,
         200
       ],
       "name": "AI Agent tư vấn",
@@ -218,8 +219,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1840,
-        440
+        2040,
+        460
       ],
       "name": "Google Gemini Chat Model",
       "credentials": {
@@ -240,8 +241,8 @@
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.4,
       "position": [
-        1960,
-        440
+        2160,
+        460
       ],
       "name": "Nhớ hội thoại",
       "credentials": {
@@ -292,8 +293,8 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.2,
       "position": [
-        2080,
-        440
+        2280,
+        460
       ],
       "name": "Tìm nhà",
       "id": "6a6e0011-0000-4000-8000-000000000000"
@@ -328,8 +329,8 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.2,
       "position": [
-        2200,
-        440
+        2400,
+        460
       ],
       "name": "Đặt lịch xem nhà",
       "id": "6a6e0012-0000-4000-8000-000000000000"
@@ -347,8 +348,8 @@
       "type": "n8n-nodes-base.postgresTool",
       "typeVersion": 2.5,
       "position": [
-        2320,
-        440
+        2520,
+        460
       ],
       "name": "Tra cứu lịch đã đặt",
       "credentials": {
@@ -366,8 +367,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2320,
-        180
+        3020,
+        200
       ],
       "name": "Kiểm tra câu trả lời",
       "id": "6a6e0014-0000-4000-8000-000000000000"
@@ -386,7 +387,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3440,
+        4160,
         300
       ],
       "id": "6a6e0015-0000-4000-8000-000000000000",
@@ -409,8 +410,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2320,
-        -40
+        2420,
+        -180
       ],
       "id": "6a6e0016-0000-4000-8000-000000000000",
       "name": "Tin xin lỗi",
@@ -426,8 +427,8 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        2560,
-        -40
+        2640,
+        -180
       ],
       "name": "Báo lỗi quản lý",
       "id": "6a6e0017-0000-4000-8000-000000000000"
@@ -445,8 +446,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        2440,
-        440
+        2640,
+        460
       ],
       "credentials": {
         "postgres": {
@@ -464,7 +465,7 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
       "typeVersion": 1,
       "position": [
-        2440,
+        2640,
         640
       ],
       "credentials": {
@@ -489,7 +490,7 @@
       "type": "@n8n/n8n-nodes-langchain.guardrails",
       "typeVersion": 1,
       "position": [
-        1100,
+        1060,
         300
       ],
       "id": "6a6e0020-0000-4000-8000-000000000000",
@@ -506,8 +507,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1100,
-        520
+        1060,
+        500
       ],
       "name": "Gemini kiểm duyệt",
       "credentials": {
@@ -546,8 +547,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1320,
-        460
+        1280,
+        500
       ],
       "id": "6a6e0022-0000-4000-8000-000000000000",
       "name": "Lỗi kiểm tra?"
@@ -559,8 +560,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1540,
-        640
+        1500,
+        660
       ],
       "id": "6a6e0023-0000-4000-8000-000000000000",
       "name": "Soạn tin từ chối"
@@ -591,7 +592,7 @@
       "type": "@n8n/n8n-nodes-langchain.textClassifier",
       "typeVersion": 1.1,
       "position": [
-        1540,
+        1500,
         300
       ],
       "id": "6a6e0024-0000-4000-8000-000000000000",
@@ -610,8 +611,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1540,
-        520
+        1500,
+        500
       ],
       "name": "Gemini phân loại",
       "credentials": {
@@ -629,8 +630,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1980,
-        760
+        3020,
+        440
       ],
       "id": "6a6e0026-0000-4000-8000-000000000000",
       "name": "Soạn tin chuyển nhân viên"
@@ -642,8 +643,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1980,
-        940
+        1720,
+        660
       ],
       "id": "6a6e0027-0000-4000-8000-000000000000",
       "name": "Soạn tin ngoài phạm vi"
@@ -676,8 +677,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2560,
-        180
+        3240,
+        300
       ],
       "id": "6a6e0028-0000-4000-8000-000000000000",
       "name": "Cần báo nhân viên?"
@@ -689,8 +690,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2780,
-        60
+        3460,
+        160
       ],
       "id": "6a6e0029-0000-4000-8000-000000000000",
       "name": "Soạn báo nhân viên"
@@ -717,8 +718,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        3000,
-        60
+        3680,
+        160
       ],
       "id": "6a6e0030-0000-4000-8000-000000000000",
       "name": "Báo nhân viên",
@@ -731,7 +732,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3220,
+        3940,
         300
       ],
       "id": "6a6e0031-0000-4000-8000-000000000000",
@@ -760,7 +761,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3660,
+        4380,
         300
       ],
       "id": "6a6e0032-0000-4000-8000-000000000000",
@@ -777,11 +778,107 @@
       "type": "@n8n/n8n-nodes-langchain.toolThink",
       "typeVersion": 1.1,
       "position": [
-        2560,
-        440
+        2760,
+        460
       ],
       "id": "6a6e0033-0000-4000-8000-000000000000",
       "name": "Suy nghĩ"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Tiếp nhận và kiểm tra\nNhận tin Telegram, kiểm tra secret, chỉ nhận chat riêng; lệnh /start trả lời ngay không cần AI",
+        "height": 480,
+        "width": 1000,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        160
+      ],
+      "name": "Nhóm 1: Tiếp nhận",
+      "id": "6a6e0034-0000-4000-8000-000000000000"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Guardrails và phân loại ý định\nChặn tin lừa bot (jailbreak); chia tư vấn / gặp nhân viên / ngoài phạm vi",
+        "height": 640,
+        "width": 880,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        160
+      ],
+      "name": "Nhóm 2: An toàn và phân loại",
+      "id": "6a6e0035-0000-4000-8000-000000000000"
+    },
+    {
+      "parameters": {
+        "content": "## 3. AI Agent và công cụ\nGemini + bộ nhớ hội thoại; tool: Tìm nhà, Đặt lịch, Tra lịch, Hỏi đáp tri thức (RAG), Suy nghĩ (Think)",
+        "height": 720,
+        "width": 960,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1940,
+        60
+      ],
+      "name": "Nhóm 3: AI Agent",
+      "id": "6a6e0036-0000-4000-8000-000000000000"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Kiểm tra đầu ra và chuyển nhân viên\nHuman-in-the-loop: khách muốn gặp người hoặc bot không trả lời được thì báo sale",
+        "height": 560,
+        "width": 840,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2980,
+        40
+      ],
+      "name": "Nhóm 4: Chuyển nhân viên",
+      "id": "6a6e0037-0000-4000-8000-000000000000"
+    },
+    {
+      "parameters": {
+        "content": "## 5. Trả lời khách và ghi log\nGửi Telegram, ghi chat_logs (che email/SĐT)",
+        "height": 300,
+        "width": 640,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3880,
+        160
+      ],
+      "name": "Nhóm 5: Trả lời và log",
+      "id": "6a6e0038-0000-4000-8000-000000000000"
+    },
+    {
+      "parameters": {
+        "content": "## Xử lý lỗi\nAgent lỗi: xin lỗi khách, Error workflow báo quản lý",
+        "height": 280,
+        "width": 500,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        -320
+      ],
+      "name": "Nhóm lỗi",
+      "id": "6a6e0039-0000-4000-8000-000000000000"
     }
   ],
   "pinData": {},

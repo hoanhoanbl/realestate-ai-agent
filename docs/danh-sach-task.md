@@ -59,6 +59,7 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 | FE-24 | `feature/FE-24-bo-20-lead` | Bộ 20 lead có nhãn và cách chạy đo (kế hoạch 1.5) | Hoàng | Chưa làm |
 | FE-25 | `feature/FE-25-langfuse-l1` | Langfuse cho luồng 1, đo trên bộ 20 lead (kế hoạch 3.5). Việc đầu tiên bị cắt nếu tuần 4 quá tải (mức "nên có") | Hoàng | Chưa làm |
 | FE-32 | `feature/FE-32-l6-guardrails` | Luồng 6 đủ 12 bước theo bài Agentic AI: Guardrails chặn jailbreak, phân loại ý định (gặp nhân viên → báo sale, ngoài phạm vi → trả lời mẫu), tool Think cho Agent, bot không trả lời được thì báo sale, ghi log hội thoại (`POST /api/chat-logs`, bảng `chat_logs`, che email/SĐT). Đường chạy chính 14 bước, đã thử 5 nhánh trên n8n local 6/11 | Hoàng | Xong code, chưa PR, chưa lên server |
+| CH-07 | `chore/CH-07-to-mau-node` | Tô màu nhóm node cho cả 12 workflow n8n bằng sticky note theo quy ước chung (mục 6 của `tong-quan-du-an.md`); sắp lại vị trí node luồng 1b, 2, 8 cho gọn. Không đổi logic, tham số hay cách nối node | Hoàng | Xong code, chưa PR |
 
 Từ 4/11 Hoàng viết toàn bộ tài liệu (DC-03, DC-07, DC-09); Hậu duyệt phần nói về luồng của Hậu. Các mã DC-04, DC-08, DC-10, DC-11, DC-12 cấp ngày 4/11 đã gộp vào ba task trên, không dùng lại: DC-04 vào DC-03 và DC-09, DC-08 và DC-10 và DC-12 vào DC-03, DC-11 vào DC-07.
 

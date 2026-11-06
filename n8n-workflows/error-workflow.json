@@ -66,7 +66,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        440,
+        460,
         0
       ],
       "id": "777e648b-90be-cbbb-81b4-cc1f71a437f5",
@@ -80,6 +80,54 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "content": "## 1. Bắt lỗi",
+        "height": 300,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -130
+      ],
+      "name": "Nhóm 1. Bắt lỗi",
+      "id": "ca8048b4-3605-59be-af2b-839a9047616a"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Báo quản lý",
+        "height": 300,
+        "width": 180,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        420,
+        -130
+      ],
+      "name": "Nhóm 2. Báo quản lý",
+      "id": "39d06c8c-998c-5b92-971b-deffdc22496c"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -330
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "pinData": {},

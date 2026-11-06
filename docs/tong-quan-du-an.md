@@ -74,6 +74,20 @@ Mỗi luồng tối thiểu 12 bước và có:
 - Xử lý lỗi: luồng nhận **một lead mới** (luồng 1) thì nhánh lỗi báo `FAILED` cho lead đó. Các luồng chạy theo lịch hoặc không gắn với một lead mới (luồng 2, 4) thì để Error workflow gửi email cho quản lý.
 - Ghi log: việc làm trên một lead thì ghi vào `lead_events`. Luồng 4 lưu kết quả vào bảng `reports`.
 
+
+**Quy ước màu trong n8n** (CH-07). n8n không tô màu từng node được, nên mỗi luồng đặt sticky note có màu phía sau từng nhóm node, theo các bước kiến trúc của môn (Trigger → Xử lý → AI → Quyết định → Hành động → Người duyệt → Log). Mọi luồng dùng chung:
+
+| Màu sticky | Số màu trong JSON | Nhóm |
+|---|---|---|
+| Xanh dương | 5 | Tiếp nhận: trigger, cấu hình, chuẩn hoá, đọc dữ liệu |
+| Tím | 6 | Kiểm tra, quyết định: điều kiện, Guardrails, phân loại |
+| Xanh lá | 4 | AI: LLM, AI Agent và node con (model, tool, bộ nhớ) |
+| Cam | 2 | Con người: chờ duyệt, báo nhân viên (human-in-the-loop) |
+| Vàng | 1 | Hành động: gửi email, gọi API, lưu, ghi log, phản hồi |
+| Đỏ | 3 | Xử lý lỗi |
+| Trắng | 7 | Ghi chú, chú thích màu (màu 7 hiện gần như trắng, không dùng cho nhóm) |
+
+Thêm node mới thì đặt trong khung đúng nhóm; khung không đủ chỗ thì kéo rộng sticky. Mỗi luồng có sticky "Chú thích màu" ở góc trên (luồng 6 ghi chú thích trong sticky "Ghi chú").
 ## 7. Kiến trúc hệ thống
 
 ```

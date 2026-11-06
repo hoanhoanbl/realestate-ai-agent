@@ -166,7 +166,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
+        1140,
         300
       ],
       "id": "a44da9f5-057b-46d8-94b7-f1a553233f77",
@@ -185,7 +185,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1360,
+        1440,
         300
       ],
       "id": "f05669de-612e-4ac4-9898-d5a2d175159e",
@@ -203,7 +203,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        1300,
+        1380,
         560
       ],
       "id": "39274625-7d8c-441e-a2e6-0fc8284b3c22",
@@ -226,7 +226,7 @@
       "type": "n8n-nodes-base.postgresTool",
       "typeVersion": 2.5,
       "position": [
-        1500,
+        1580,
         560
       ],
       "id": "89e654de-a5bc-4b29-bf5f-64f3581c82be",
@@ -245,7 +245,7 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        1700,
+        1780,
         560
       ],
       "id": "efa48ce5-873c-4cbb-ade3-15443c81edb2",
@@ -259,7 +259,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1620,
+        1700,
         300
       ],
       "id": "2055565b-1490-495b-9cd1-240209100026",
@@ -279,7 +279,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1840,
+        2000,
         300
       ],
       "id": "510cc115-64f1-4367-ae65-2edd2d682574",
@@ -302,7 +302,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2060,
+        2220,
         300
       ],
       "id": "e85d251b-c894-4643-8344-e0c9bcc85de1",
@@ -321,7 +321,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        2280,
+        2440,
         300
       ],
       "id": "df52691b-860a-4618-be5c-9d0728057ce4",
@@ -363,7 +363,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2500,
+        2660,
         300
       ],
       "id": "1cf9c819-3a11-4929-9fb0-294ea33e37ac",
@@ -382,7 +382,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        2720,
+        2880,
         220
       ],
       "id": "1c0ec55a-8e9f-46cd-8615-8afa4942d183",
@@ -396,6 +396,86 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "content": "## 1. Kích hoạt và lấy số liệu",
+        "height": 740,
+        "width": 1080,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -30
+      ],
+      "name": "Nhóm 1. Kích hoạt và lấy số liệu",
+      "id": "b3cb0b4b-964f-5876-a98b-4d0816e90e9f"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Tính phễu và cảnh báo",
+        "height": 740,
+        "width": 180,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -30
+      ],
+      "name": "Nhóm 2. Tính phễu và cảnh báo",
+      "id": "c9960f11-5d73-5286-b07c-9f79e6549046"
+    },
+    {
+      "parameters": {
+        "content": "## 3. AI Agent phân tích (tool truy vấn DB)",
+        "height": 740,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        -30
+      ],
+      "name": "Nhóm 3. AI Agent phân tích (tool truy vấn DB)",
+      "id": "1741a495-0432-56f7-aaea-da7cac053b2d"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Lưu và gửi báo cáo",
+        "height": 740,
+        "width": 1060,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1960,
+        -30
+      ],
+      "name": "Nhóm 4. Lưu và gửi báo cáo",
+      "id": "74eb74ba-714d-551d-a380-822c7d70a218"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -230
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "pinData": {},

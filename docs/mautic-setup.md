@@ -202,13 +202,13 @@ Các bước chi tiết triển khai n8n và kích hoạt Luồng 2 được t�
 **Lưu ý quan trọng về hàng đợi và vai trò container:**
 1. **Trước khi merge release dev → main**:
    - Sao lưu CSDL Mautic trước: `/root/realestate-backup.sh`.
-   - Kiểm tra và đếm tin chờ trong bảng `messenger_messages`:
-     ```sql
-     SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;
+   - Kiểm tra và đếm tin chờ trong bảng `messenger_messages` (chi tiết lệnh ở [docs/trien-khai.md#9-bản-v031](trien-khai.md#9-bản-v031)):
+     ```bash
+     docker exec realestate-mautic-db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;"'
      ```
    - Xử lý / dọn dẹp các tin nhắn thử nghiệm cũ tồn đọng trước khi merge, tránh việc worker tự động gửi email hàng loạt ngay khi container khởi động lại. (Thao tác này do Hoàng thực hiện trên server).
 2. **Khi merge release vào main**:
-   - CI tự động deploy lại toàn bộ stack container với các file compose cấu hình chuẩn (`docker-compose.yml`, `docker-compose.prod.yml`, `docker-compose.server.yml`, `docker-compose.mautic.yml`). Không tự chạy lệnh `docker compose` tay riêng lẻ trên server để tránh sai tham số `-p realestate-ai-agent`.
+   - CI tự động deploy lại toàn bộ stack container với các file compose cấu hình chuẩn (`docker-compose.prod.yml`, `docker-compose.mautic.yml`, `docker-compose.server.yml`). Không tự chạy lệnh `docker compose` tay riêng lẻ trên server để tránh sai tham số `-p realestate-ai-agent`.
 3. **Sau khi deploy**:
    - Kiểm tra vai trò tiến trình trong container:
      - `docker top realestate-mautic-worker` $\rightarrow$ phải thấy tiến trình `messenger:consume` (không còn `apache2`).

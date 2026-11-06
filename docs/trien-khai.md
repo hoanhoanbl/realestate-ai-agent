@@ -261,8 +261,7 @@ Gồm phần n8n của FE-29 (luồng 2, 7, 8 bản mới) và FE-22 (cấu hìn
 1. Chạy sao lưu DB hệ thống và CSDL Mautic: `/root/realestate-backup.sh`.
 2. Kiểm tra hàng đợi `messenger_messages` trong DB Mautic (do các bản trước worker chạy apache2 nên có tin tồn đọng):
    ```bash
-   docker exec realestate-mautic-db mysql -u root -p"$MAUTIC_DB_ROOT_PASSWORD" mautic -e \
-     "SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;"
+   docker exec realestate-mautic-db sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT queue_name, count(*) FROM messenger_messages GROUP BY queue_name;"'
    ```
    Hoàng kiểm tra và dọn dẹp các tin nhắn thử nghiệm cũ trong bảng `messenger_messages` trước khi merge, tránh việc worker tự động gửi email hàng loạt ngay khi container khởi động lại.
 

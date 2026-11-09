@@ -28,7 +28,7 @@ const EMPTY_FORM: FormState = {
 };
 
 const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+  "w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 function validate(form: FormState): string | null {
   if (!form.name.trim()) return "Vui lòng nhập họ tên.";

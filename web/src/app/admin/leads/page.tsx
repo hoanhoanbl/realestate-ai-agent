@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
-import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton } from "@/components/ui";
+import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
 import {
   formatDateTime,
   formatVnd,
@@ -25,13 +25,13 @@ type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
 // Ngưỡng điểm Mautic coi là tương tác cao
 const ENGAGED_POINTS = 20;
 
-const FILTERS: { value: Filter; label: string; dot?: string }[] = [
+const FILTERS: { value: Filter; label: string; dot?: string; icon?: IconName }[] = [
   { value: "ALL", label: "Tất cả" },
   { value: "HOT", label: "HOT", dot: "bg-red-500" },
   { value: "WARM", label: "WARM", dot: "bg-amber-400" },
   { value: "COLD", label: "COLD", dot: "bg-sky-400" },
-  { value: "HIGH_ENGAGEMENT", label: `🔥 Tương tác cao (Mautic ≥ ${ENGAGED_POINTS})` },
-  { value: "VIP_HOT", label: "🚀 Ưu tiên chốt cọc" },
+  { value: "HIGH_ENGAGEMENT", label: `Tương tác cao (Mautic ≥ ${ENGAGED_POINTS})`, icon: "flame" },
+  { value: "VIP_HOT", label: "Ưu tiên chốt cọc", icon: "rocket" },
 ];
 
 function isEngaged(lead: Lead): boolean {
@@ -53,14 +53,17 @@ function MauticPoints({ lead }: { lead: Lead }) {
     <div className="flex flex-wrap items-center gap-1">
       <span
         title="Điểm tương tác Mautic (mở mail, bấm link, xem trang)"
-        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
           engaged ? "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-300" : pts > 0 ? "bg-slate-100 text-slate-700" : "text-slate-400"
         }`}
       >
-        {engaged ? "🔥 " : ""}+{pts} pts
+        {engaged && <Icon name="flame" className="h-3.5 w-3.5" />}+{pts} pts
       </span>
       {isHotLead(lead) && engaged && (
-        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">🚀 Ưu tiên</span>
+        <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-700">
+          <Icon name="rocket" className="h-3.5 w-3.5" />
+          Ưu tiên
+        </span>
       )}
     </div>
   );
@@ -88,7 +91,7 @@ function Flags({ lead }: { lead: Lead }) {
   const flag = (value: boolean | null, label: string) => (
     <span
       title={`${label}: ${value === null ? "chưa rõ" : value ? "có" : "chưa"}`}
-      className={`inline-flex h-6 items-center rounded-md px-1.5 text-[11px] font-medium ring-1 ${
+      className={`inline-flex h-6 items-center rounded-md px-1.5 text-xs font-medium ring-1 ${
         value ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-slate-50 text-slate-400 ring-slate-200"
       }`}
     >
@@ -229,11 +232,12 @@ function LeadsContent() {
                 type="button"
                 aria-pressed={active}
                 onClick={() => setFilter(f.value)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition ${
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition sm:min-h-0 ${
                   active ? "bg-brand-600 text-white ring-brand-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
                 }`}
               >
                 {f.dot && <span className={`h-2 w-2 rounded-full ${f.dot}`} />}
+                {f.icon && <Icon name={f.icon} className="h-4 w-4" />}
                 {f.label}
                 <span className={active ? "text-blue-100" : "text-slate-400"}>{counts[f.value]}</span>
               </button>
@@ -286,7 +290,7 @@ function LeadsContent() {
                       <div className="text-xs text-slate-500">{lead.phone}</div>
                       <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
                         <span>{formatDateTime(lead.createdAt)}</span>
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">{sourceLabel(lead.source)}</span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{sourceLabel(lead.source)}</span>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">{formatVnd(lead.budget)}</td>

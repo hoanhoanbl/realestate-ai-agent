@@ -90,7 +90,7 @@ function TaskGroup({ title, count, href, empty, children }: {
         <h3 className="text-sm font-semibold text-slate-900">
           {title} <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{count}</span>
         </h3>
-        <Link href={href} className="text-xs font-medium text-brand-600 hover:underline">
+        <Link href={href} className="inline-flex min-h-11 items-center text-xs font-medium text-brand-600 hover:underline sm:min-h-0">
           Xem tất cả
         </Link>
       </div>
@@ -172,10 +172,11 @@ function buildMatrix(leads: Lead[]): Matrix {
   return m;
 }
 
-const MATRIX_CELLS: { key: keyof Matrix; title: string; rule: string; text: string; href: string; style: string; badge: string }[] = [
+const MATRIX_CELLS: { key: keyof Matrix; title: string; icon: IconName; rule: string; text: string; href: string; style: string; badge: string }[] = [
   {
     key: "vipHot",
-    title: "🚀 Ưu tiên số 1",
+    title: "Ưu tiên số 1",
+    icon: "rocket",
     rule: `HOT + Mautic ≥ ${ENGAGED_POINTS} pts`,
     text: "Ngân sách cao và tương tác sôi nổi. Nên gọi chốt cọc ngay!",
     href: "/admin/leads?filter=VIP_HOT",
@@ -184,7 +185,8 @@ const MATRIX_CELLS: { key: keyof Matrix; title: string; rule: string; text: stri
   },
   {
     key: "coolingHot",
-    title: "⏳ Tiềm năng đang nguội",
+    title: "Tiềm năng đang nguội",
+    icon: "clock",
     rule: `HOT + Mautic < ${ENGAGED_POINTS} pts`,
     text: "Hồ sơ tốt nhưng ít mở mail. Đề xuất sale gọi thăm dò lại.",
     href: "/admin/leads?level=HOT",
@@ -193,7 +195,8 @@ const MATRIX_CELLS: { key: keyof Matrix; title: string; rule: string; text: stri
   },
   {
     key: "breakthrough",
-    title: "🔥 Tương tác bứt phá",
+    title: "Tương tác bứt phá",
+    icon: "flame",
     rule: `WARM/COLD + Mautic ≥ ${ENGAGED_POINTS} pts`,
     text: "Xem lại nhà nhiều lần. Cơ hội nâng cấp lead lên HOT!",
     href: "/admin/leads?filter=HIGH_ENGAGEMENT",
@@ -202,7 +205,8 @@ const MATRIX_CELLS: { key: keyof Matrix; title: string; rule: string; text: stri
   },
   {
     key: "nurturing",
-    title: "📨 Nuôi dưỡng tự động",
+    title: "Nuôi dưỡng tự động",
+    icon: "mail",
     rule: `WARM/COLD + Mautic < ${ENGAGED_POINTS} pts`,
     text: "Đang trong chuỗi email Mautic. Tiếp tục theo dõi tự động.",
     href: "/admin/leads",
@@ -283,7 +287,7 @@ export default function OverviewPage() {
       {funnel && (
         <>
           {/* lg: lưới 6 cột (2 ô đầu rộng 3, 3 ô sau rộng 2), xl: 5 ô một hàng */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 xl:grid-cols-5">
+          <div className="animate-fade-up mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 xl:grid-cols-5">
             <Kpi wide label="Tổng số khách" value={funnel.total} icon="users" href="/admin/leads" />
             <Kpi
               wide
@@ -306,16 +310,16 @@ export default function OverviewPage() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className={`p-5 lg:col-span-2 ${CARD}`}>
+            <div className={`min-w-0 p-4 sm:p-5 lg:col-span-2 ${CARD}`}>
               <h2 className="font-semibold text-slate-900">Việc cần làm</h2>
               {!tasks ? (
                 <Skeleton className="mt-4 h-40" />
               ) : (
-                <div className="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="mt-4 grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 [&>*]:min-w-0">
                   <TaskGroup title="Khách chờ duyệt lịch" count={tasks.pendingLeads.length} href="/admin/leads?status=NEW" empty="Không còn khách nào chờ duyệt.">
                     {tasks.pendingLeads.slice(0, 5).map((l) => (
                       <li key={l.id}>
-                        <Link href={`/admin/leads/${l.id}`} className="flex items-center justify-between gap-3 py-2 hover:text-brand-700">
+                        <Link href={`/admin/leads/${l.id}`} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:text-brand-700">
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-medium">{l.name}</span>
                             <span className="block text-xs text-slate-500">Ngân sách {formatVnd(l.budget)}</span>
@@ -333,7 +337,7 @@ export default function OverviewPage() {
                     <TaskGroup title="Lịch xem hôm nay" count={tasks.todayViewings.length} href="/admin/lich-xem" empty="Hôm nay không có lịch xem.">
                       {tasks.todayViewings.slice(0, 4).map((v) => (
                         <li key={v.id}>
-                          <Link href={`/admin/leads/${v.leadId}`} className="flex items-center gap-3 py-2 hover:text-brand-700">
+                          <Link href={`/admin/leads/${v.leadId}`} className="flex min-h-11 items-center gap-3 py-2 hover:text-brand-700">
                             <span className="w-12 shrink-0 text-sm font-bold text-brand-700">{formatTime(v.viewingTime)}</span>
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-medium">{v.leadName}</span>
@@ -379,7 +383,7 @@ export default function OverviewPage() {
             </div>
 
             <div className="space-y-4">
-              <div className={`p-5 ${CARD}`}>
+              <div className={`min-w-0 p-4 sm:p-5 ${CARD}`}>
                 <h2 className="font-semibold text-slate-900">Phễu bán hàng</h2>
                 <ul className="mt-4 space-y-3">
                   {FUNNEL_ORDER.map((s) => (
@@ -402,7 +406,7 @@ export default function OverviewPage() {
                 </p>
               </div>
 
-              <div className={`p-5 ${CARD}`}>
+              <div className={`min-w-0 p-4 sm:p-5 ${CARD}`}>
                 <h2 className="font-semibold text-slate-900">Mức tiềm năng (AI chấm)</h2>
                 {stats && (
                   <>
@@ -449,15 +453,18 @@ export default function OverviewPage() {
                     Đối chiếu độ tiềm năng AI chấm ban đầu với mức tương tác thực tế từ Mautic Marketing Automation.
                   </p>
                 </div>
-                <Link href="/admin/leads?filter=VIP_HOT" className="text-sm font-medium text-brand-600 hover:underline">
-                  Xem khách ưu tiên chốt cọc →
+                <Link href="/admin/leads?filter=VIP_HOT" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:min-h-0">
+                  Xem khách ưu tiên chốt cọc <Icon name="arrowRight" className="h-4 w-4" />
                 </Link>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {MATRIX_CELLS.map((c) => (
                   <Link key={c.key} href={c.href} className={`rounded-lg border p-4 transition hover:shadow-card ${c.style}`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold">{c.title}</span>
+                      <span className="flex items-center gap-1.5 text-sm font-bold">
+                        <Icon name={c.icon} className="h-4 w-4 shrink-0" />
+                        {c.title}
+                      </span>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.badge}`}>{tasks.matrix[c.key]}</span>
                     </div>
                     <p className="mt-2 text-xs font-medium text-slate-800">{c.rule}</p>

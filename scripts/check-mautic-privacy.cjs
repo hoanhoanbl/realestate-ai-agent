@@ -30,6 +30,7 @@ function loadComponent(file, state) {
       if (name === 'next/script') return { default: 'Script' };
       if (name === '@/lib/mautic') return { ...scoring, MAUTIC_PUBLIC_URL: state.mauticUrl };
       if (name === '@/components/LevelBadge') return { default: 'LevelBadge' };
+      if (name === '@/components/ui') return { Icon: 'Icon' };
       throw new Error(`Unexpected import: ${name}`);
     },
   }, { filename: file });

@@ -16,6 +16,10 @@ export const LEAD_EVENT_TYPES = [
   'FEEDBACK_ASKED',
   'WARM_NUDGE_SENT',
   'WARM_NURTURE_STARTED',
+  'HOT_NUDGE_SENT',
+  'COLD_NURTURE_STARTED',
+  'LEAD_EXPIRED',
+  'LEAD_EXPIRED_NOTIFIED',
   'STAFF_NUDGE_SENT',
   'FOLLOWUP_FAILED',
   'VIEWING_RESCHEDULED',
@@ -41,4 +45,4 @@ export const LEAD_EVENT_TYPES = [
 ];
 
 // Lý do mất khách: không đến xem, không còn nhu cầu, khách tự huỷ lịch, khác
-export const LOST_REASONS = ['NO_SHOW', 'NOT_INTERESTED', 'CUSTOMER_CANCELLED', 'OTHER'];
+export const LOST_REASONS = ['NO_SHOW', 'NOT_INTERESTED', 'CUSTOMER_CANCELLED', 'EXPIRED', 'OTHER'];

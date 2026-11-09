@@ -7,12 +7,15 @@ import {
   getAdminProperties,
   PROPERTY_STATUS_LABELS,
   updateProperty,
+  type PanoramaRoom,
   type Property,
   type PropertyInput,
   type PropertyStatus,
 } from "@/lib/api";
+import PanoramaRoomsEditor, { cleanRooms, isHttpUrl, validateRooms } from "@/components/PanoramaRoomsEditor";
+import PropertyExtraFields, { EMPTY_EXTRA, extraFromProperty, extraToInput, type ExtraForm } from "@/components/PropertyExtraFields";
 import PropertyImage from "@/components/PropertyImage";
-import { Alert, Button, Field, INPUT, PageHeader } from "@/components/ui";
+import { Alert, Button, Field, Icon, INPUT, PageHeader } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 import { TYPE_LABELS, typeLabel } from "@/lib/property";
 
@@ -24,9 +27,22 @@ interface FormState {
   type: string;
   imageUrl: string;
   description: string;
+  panoramas: PanoramaRoom[];
+  // Thông tin chi tiết, ảnh thêm, tiện ích, nội thất, dịch vụ xung quanh (FE-31)
+  extra: ExtraForm;
 }
 
-const EMPTY: FormState = { name: "", address: "", price: "", area: "", type: "APARTMENT", imageUrl: "", description: "" };
+const EMPTY: FormState = {
+  name: "",
+  address: "",
+  price: "",
+  area: "",
+  type: "APARTMENT",
+  imageUrl: "",
+  description: "",
+  panoramas: [],
+  extra: EMPTY_EXTRA,
+};
 
 function toForm(p: Property): FormState {
   return {
@@ -37,16 +53,9 @@ function toForm(p: Property): FormState {
     type: p.type,
     imageUrl: p.imageUrl ?? "",
     description: p.description ?? "",
+    panoramas: p.panoramas ?? [],
+    extra: extraFromProperty(p),
   };
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function validate(f: FormState): string | null {
@@ -56,7 +65,7 @@ function validate(f: FormState): string | null {
   if (!Number.isInteger(price) || price < 1) return "Giá phải là số nguyên dương (VND).";
   if (!(Number(f.area) > 0)) return "Diện tích phải lớn hơn 0.";
   if (f.imageUrl.trim() && !isHttpUrl(f.imageUrl.trim())) return "Link ảnh phải bắt đầu bằng http:// hoặc https://";
-  return null;
+  return validateRooms(f.panoramas) ?? extraToInput(f.extra).error ?? null;
 }
 
 export default function PropertiesAdminPage() {
@@ -122,6 +131,9 @@ export default function PropertiesAdminPage() {
       // Gửi chuỗi rỗng để xoá ảnh/mô tả cũ
       imageUrl: form.imageUrl.trim(),
       description: form.description.trim(),
+      // Mảng rỗng = xoá hết phòng 360°
+      panoramas: cleanRooms(form.panoramas),
+      ...extraToInput(form.extra).input,
     };
     setSaving(true);
     setFormError(null);
@@ -153,12 +165,41 @@ export default function PropertiesAdminPage() {
     }
   }
 
+  // Nút thao tác của một căn: dùng chung cho thẻ (điện thoại) và bảng (máy tính)
+  const rowActions = (p: Property) => (
+      <span className="inline-flex items-center gap-1">
+        <Button variant="ghost" size="sm" className="text-brand-600" onClick={() => open(p.id, p)}>
+          Sửa
+        </Button>
+        {p.status === "AVAILABLE" && (
+          <Button variant="ghost" size="sm" onClick={() => changeStatus(p, "HIDDEN")}>
+            Ẩn
+          </Button>
+        )}
+        {p.status === "HIDDEN" && (
+          <Button variant="ghost" size="sm" onClick={() => changeStatus(p, "AVAILABLE")}>
+            Hiện lại
+          </Button>
+        )}
+        {p.status === "RESERVED" && (
+          <Button variant="ghost" size="sm" className="text-emerald-700" onClick={() => changeStatus(p, "SOLD")}>
+            Đã bán
+          </Button>
+        )}
+      </span>
+  );
+
   return (
     <section>
       <PageHeader
         title="Quản lý nhà"
         description="Căn bị ẩn hoặc đã bán không hiện ở trang khách. Căn đang giữ cọc vẫn hiện nhưng không nhận đặt lịch."
-        actions={<Button onClick={() => open("new")}>+ Thêm căn nhà</Button>}
+        actions={
+          <Button onClick={() => open("new")}>
+            <Icon name="plus" className="h-4 w-4" />
+            Thêm căn nhà
+          </Button>
+        }
       />
 
       {error && <Alert className="mt-4">{error}</Alert>}
@@ -204,19 +245,22 @@ export default function PropertiesAdminPage() {
                 className="aspect-[3/2] rounded-lg ring-1 ring-slate-200"
               />
             </div>
-            <Field id="p-description" label="Mô tả" hint="Hiện ở trang chi tiết căn nhà. Xuống dòng được giữ nguyên." className="sm:col-span-2">
+            <Field id="p-description" label="Mô tả" hint="Hiện ở trang chi tiết căn nhà, xuống dòng được giữ nguyên. Nên viết 2–3 đoạn: bố trí từng tầng hoặc từng phòng, hiện trạng và nội thất, điểm nổi bật quanh nhà." className="sm:col-span-2">
               <textarea
                 id="p-description"
-                rows={4}
+                rows={6}
                 maxLength={5000}
                 className={INPUT}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </Field>
+            <PropertyExtraFields value={form.extra} onChange={(extra) => setForm({ ...form, extra })} />
+            <PanoramaRoomsEditor value={form.panoramas} onChange={(panoramas) => setForm({ ...form, panoramas })} />
           </div>
           {formError && <p role="alert" className="mt-3 text-sm text-rose-600">{formError}</p>}
-          <div className="mt-4 flex gap-2">
+          {/* Form dài: thanh Lưu / Hủy dính dưới đáy màn hình khi cuộn */}
+          <div className="sticky bottom-0 -mx-5 -mb-5 mt-4 flex gap-2 rounded-b-xl border-t border-brand-100 bg-white/95 px-5 py-3 backdrop-blur">
             <Button onClick={save} disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu"}
             </Button>
@@ -230,59 +274,80 @@ export default function PropertiesAdminPage() {
       {items === null && !error && <p className="mt-6 text-slate-500">Đang tải...</p>}
 
       {items !== null && (
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-card">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-3">#</th>
-                <th className="px-3 py-3">Căn nhà</th>
-                <th className="px-3 py-3">Loại</th>
-                <th className="px-3 py-3">Giá</th>
-                <th className="px-3 py-3">Diện tích</th>
-                <th className="px-3 py-3">Trạng thái</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {items.map((p) => (
-                <tr key={p.id} className={p.status === "HIDDEN" || p.status === "SOLD" ? "bg-slate-50 text-slate-400" : "hover:bg-slate-50"}>
-                  <td className="px-3 py-3">{p.id}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <PropertyImage property={p} showType={false} className="h-12 w-16 shrink-0 rounded-md" />
-                      <div>
-                        <div className="font-medium">{p.name}</div>
-                        <div className="text-xs">{p.address}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">{typeLabel(p.type)}</td>
-                  <td className="whitespace-nowrap px-3 py-3">{formatVnd(p.price)}</td>
-                  <td className="px-3 py-3">{Number(p.area)} m²</td>
-                  <td className="px-3 py-3">{PROPERTY_STATUS_LABELS[p.status as PropertyStatus] ?? p.status}</td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">
-                    <button type="button" onClick={() => open(p.id, p)} className="mr-2 text-brand-600 hover:underline">Sửa</button>
-                    {p.status === "AVAILABLE" && (
-                      <button type="button" onClick={() => changeStatus(p, "HIDDEN")} className="text-slate-600 hover:underline">
-                        Ẩn
-                      </button>
-                    )}
-                    {p.status === "HIDDEN" && (
-                      <button type="button" onClick={() => changeStatus(p, "AVAILABLE")} className="text-slate-600 hover:underline">
-                        Hiện lại
-                      </button>
-                    )}
-                    {p.status === "RESERVED" && (
-                      <button type="button" onClick={() => changeStatus(p, "SOLD")} className="text-emerald-700 hover:underline">
-                        Đã bán
-                      </button>
-                    )}
-                  </td>
+        <>
+          {/* Điện thoại: dạng thẻ, nút cao 44px. Máy tính: bảng như cũ */}
+          <ul className="mt-5 space-y-3 md:hidden">
+            {items.map((p) => (
+              <li
+                key={p.id}
+                className={`rounded-xl border border-slate-200 bg-white p-3 shadow-card ${p.status === "HIDDEN" || p.status === "SOLD" ? "opacity-70" : ""}`}
+              >
+                <div className="flex gap-3">
+                  <PropertyImage property={p} showType={false} className="h-20 w-24 shrink-0 rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold leading-snug text-slate-900">{p.name}</p>
+                    <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{p.address}</p>
+                    <p className="mt-1 text-sm">
+                      <b className="text-brand-700">{formatVnd(p.price)}</b>
+                      <span className="text-slate-500"> · {Number(p.area)} m² · {typeLabel(p.type)}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                  <span className="mr-auto rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    {PROPERTY_STATUS_LABELS[p.status as PropertyStatus] ?? p.status}
+                    {(p.panoramas?.length ?? 0) > 0 && <> · 360°: {p.panoramas?.length} phòng</>}
+                  </span>
+                  {rowActions(p)}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-card md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-3">#</th>
+                  <th className="px-3 py-3">Căn nhà</th>
+                  <th className="px-3 py-3">Loại</th>
+                  <th className="px-3 py-3">Giá</th>
+                  <th className="px-3 py-3">Diện tích</th>
+                  <th className="px-3 py-3">Trạng thái</th>
+                  <th className="px-3 py-3">
+                    <span className="sr-only">Thao tác</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {items.map((p) => (
+                  <tr key={p.id} className={p.status === "HIDDEN" || p.status === "SOLD" ? "bg-slate-50 text-slate-500" : "hover:bg-slate-50"}>
+                    <td className="px-3 py-3">{p.id}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <PropertyImage property={p} showType={false} className="h-12 w-16 shrink-0 rounded-md" />
+                        <div>
+                          <div className="font-medium">{p.name}</div>
+                          <div className="text-xs">{p.address}</div>
+                          {(p.panoramas?.length ?? 0) > 0 && (
+                            <div className="mt-0.5 text-xs text-brand-600">360°: {p.panoramas?.length} phòng</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">{typeLabel(p.type)}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{formatVnd(p.price)}</td>
+                    <td className="px-3 py-3">{Number(p.area)} m²</td>
+                    <td className="px-3 py-3">{PROPERTY_STATUS_LABELS[p.status as PropertyStatus] ?? p.status}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                      {rowActions(p)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </section>
   );

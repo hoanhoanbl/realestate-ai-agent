@@ -54,8 +54,8 @@ Lý do không tự đóng: "không quan tâm căn này" chưa chắc là "không
 | Mức khách | Hệ thống làm |
 |---|---|
 | WARM | Luồng 2 tìm contact Mautic đúng email, ghi đoạn nhắc do AI viết vào field `ai_nudge_text`, gắn tag `nuoi-warm`. Mautic đưa khách vào segment "Nuôi WARM" và chạy chuỗi email của campaign. Ghi "Bắt đầu nuôi khách WARM" |
-| HOT | Nhắc sale gọi khách qua email, Telegram, ... (khách nóng nên do người gọi, không gửi email tự động) *(có từ FE-30)* |
-| COLD | Đưa vào segment "Bản tin hằng tháng" trên Mautic *(có từ FE-30, segment cấu hình ở FE-22)* |
+| HOT | Nhắc sale gọi khách qua Telegram, ghi "Đã nhắc sale gọi khách HOT" khi Telegram xác nhận gửi. Không gửi email chăm sóc tự động cho khách. |
+| COLD | Gắn tag `ban-tin-hang-thang` cho contact đúng email để Mautic đưa vào segment "Bản tin hằng tháng" sau lần cập nhật segment. Không gửi thư ngay lúc gắn tag. |
 
 Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang làm hợp đồng cọc", "Đã ký hợp đồng cọc" hoặc "Không mua" thì luồng 7 gỡ tag `nuoi-warm` để Mautic dừng gửi.
 
@@ -117,7 +117,7 @@ Script hiện chạy cho mọi khách, chưa hỏi đồng ý theo dõi. Làm ba
 3. AI Agent phân tích số liệu, được phép tra thêm database bằng tài khoản **chỉ đọc**, rồi viết nhận xét và đề xuất.
 4. Lưu báo cáo (quản lý xem lại trên web admin), gửi email báo cáo cho quản lý. Có cảnh báo thì gửi thêm một email cảnh báo riêng.
 
-Từ FE-30, báo cáo đếm thêm số lead "Quá hạn không xử lý". FE-23 sẽ thêm số liệu theo nguồn khách và chiến dịch.
+Báo cáo đếm riêng số lead "Quá hạn không xử lý" dựa theo lần đóng trong kỳ; không phụ thuộc thông báo quản lý đã gửi hay chưa. FE-23 sẽ thêm số liệu theo nguồn khách và chiến dịch.
 
 ## 7. Chống gửi trùng và xử lý lỗi của luồng 2
 
@@ -140,6 +140,5 @@ Nguyên tắc: thà để người kiểm tra còn hơn gửi trùng cho khách.
 |---|---|
 | Form đăng ký nhận tin của Mautic trên web khách (dùng chung segment "Bản tin hằng tháng") | FE-21 |
 | Cấu hình Mautic trên server: field `ai_nudge_text`, segment, campaign; bật luồng 2 | FE-22 |
-| Nhắc sale gọi khách HOT im lặng, đưa khách COLD vào bản tin, đóng lead quá hạn | FE-30 |
 | Báo cáo theo nguồn khách và chiến dịch | FE-23 |
 | Khách chọn "muốn xem căn khác" thì gắn tag Mautic để gửi gợi ý căn | Bỏ nếu thiếu giờ |

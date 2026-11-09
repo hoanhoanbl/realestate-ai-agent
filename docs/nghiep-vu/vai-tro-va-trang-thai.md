@@ -174,6 +174,26 @@ Dữ liệu trước FE-19 có buổi xem để `NEW` dù khách đã xem, vì l
 
 Căn đang có hợp đồng còn hiệu lực thì quản lý không đổi trạng thái được (trừ chuyển sang "Đã bán" như trên).
 
+#### Thông tin căn nhà cho khách xem (FE-31)
+
+Quản lý nhập trong form sửa căn ở mục **Quản lý nhà**. Ô nào để trống thì trang chi tiết nhà không hiện dòng đó.
+
+| Nhóm trong form | Gồm | Hiện ở trang khách |
+|---|---|---|
+| Thông tin chính | Tên, địa chỉ, giá, diện tích, loại, link ảnh đại diện, mô tả | Đầu trang, thẻ căn ở trang chủ |
+| Thông tin chi tiết | Phòng ngủ (0 = studio), phòng tắm/WC, số tầng (căn hộ: tầng của căn), diện tích đất, diện tích sàn, đường/hẻm trước nhà (m), hướng, pháp lý, nội thất, tình trạng sử dụng | Khối "Thông tin cơ bản"; số phòng ngủ, WC còn hiện trên thẻ căn |
+| Ảnh | Tối đa 20 link ảnh thêm, xếp thứ tự bằng nút ↑ | Bộ ảnh: ảnh đại diện trước, rồi ảnh thêm; bấm để xem toàn màn hình |
+| Tiện ích và nội thất | Bấm chọn trong gợi ý hoặc gõ mục khác rồi Enter, tối đa 30 mục mỗi loại | Khối "Tiện ích", "Nội thất" |
+| Vị trí | Dịch vụ xung quanh: nhóm (trường học, y tế, chợ/siêu thị, trung tâm thương mại, công viên, giao thông, khác), tên, khoảng cách ghi tự do ("500 m", "5 phút đi bộ"), tối đa 20 dòng | Khối "Vị trí và dịch vụ xung quanh", dưới bản đồ |
+| Ảnh 360° theo phòng | Tối đa 10 phòng, mỗi phòng tên + link ảnh | Tab "Xem 360°", nhãn "360°" trên thẻ căn |
+
+- **Bản đồ** tự hiện theo địa chỉ (Google Maps nhúng, không cần API key), không phải nhập. Địa chỉ càng đầy đủ thì ghim càng đúng.
+- **Mô tả** nên viết 2–3 đoạn: bố trí từng tầng hoặc từng phòng, hiện trạng và nội thất, điểm nổi bật quanh nhà. Số phòng, pháp lý, tiện ích đã có ô riêng, không cần lặp lại hết trong mô tả.
+- **Link ảnh** (ảnh thường và ảnh 360°) phải bắt đầu bằng `http://` hoặc `https://` và mở được từ trình duyệt của khách.
+- **Ảnh 360°** phải là ảnh toàn cảnh tỉ lệ 2:1 (chế độ 360° của điện thoại hoặc camera 360°), nên dưới 3 MB để khách xem bằng 4G không phải chờ lâu. Máy chủ chứa ảnh phải cho web khác tải ảnh: bấm **Xem thử** trước khi lưu; báo "Không tải được ảnh 360° của phòng này" là link hỏng hoặc máy chủ chặn, cần đổi chỗ lưu ảnh.
+- **Căn mẫu** dùng ảnh Unsplash, ảnh 360° của Poly Haven (đều miễn phí) và địa điểm xung quanh gần đúng, chỉ để demo. Khi backend khởi động trên DB có từ trước FE-31, các căn mẫu chưa từng được lưu bằng form mới được điền thông tin chi tiết; mô tả chỉ được thay khi vẫn còn đúng bản mẫu cũ. Căn nào quản lý đã lưu (kể cả xoá hết ảnh, tiện ích, phòng 360°) thì không bị điền lại.
+- **Luồng 6 (Telegram Agent):** công cụ "Tìm nhà" nhận thêm thông số, tiện ích, nội thất, dịch vụ xung quanh; không nhận link ảnh và link 360° (chỉ số lượng), để AI không phải đọc thừa. Luồng 6b (nạp RAG) vẫn chỉ đọc tên, địa chỉ, giá, diện tích, loại, mô tả.
+
 ### 4.4. Hợp đồng đặt cọc
 
 Mỗi căn và mỗi khách chỉ có tối đa **một hợp đồng còn hiệu lực** (đang soạn, chờ duyệt, đã gửi hoặc đã ký).

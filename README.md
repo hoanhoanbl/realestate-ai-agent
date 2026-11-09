@@ -19,6 +19,7 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 | Quy tắc nghiệp vụ: vai trò, trạng thái, đặt lịch đến đặt cọc, chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
 | Từng luồng n8n chạy thế nào | [docs/luong/](docs/luong/) |
 | Định dạng API giữa web, backend và n8n | [docs/api-contract.md](docs/api-contract.md) |
+| Quy ước giao diện web (component, điện thoại, icon, font) | [docs/giao-dien-web.md](docs/giao-dien-web.md) |
 | Cách tạo nhánh, mở PR, phát hành | [docs/quy-trinh-git.md](docs/quy-trinh-git.md) |
 | Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
 | Cài và cấu hình Mautic | [docs/mautic-setup.md](docs/mautic-setup.md) |

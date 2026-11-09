@@ -21,6 +21,11 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
     const leadRepo = {
       findOne: async () => lead,
       save: async (l: Lead) => l,
+      update: async (where: number | { id: number; status: string }, patch: Partial<Lead>) => {
+        if (typeof where === 'object' && where.status !== lead.status) return { affected: 0 };
+        Object.assign(lead, patch);
+        return { affected: 1 };
+      },
     };
     const eventRepo = {
       create: (e: any) => e,
@@ -30,6 +35,7 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
       findOne: async () => viewing,
       update: async (...args: unknown[]) => { viewingUpdates.push(args); },
     };
+    (leadRepo as any).manager = { transaction: async (fn: any) => fn({ getRepository: (entity: any) => entity.name === 'Lead' ? leadRepo : eventRepo }) };
     service = new LeadsService(leadRepo as any, eventRepo as any, viewingRepo as any, {} as any, {} as any);
   });
 
@@ -57,5 +63,19 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
     expect(() => assertNotLosingDeposit('DEPOSIT', 'LOST')).toThrow(BadRequestException);
     for (const [from, to] of [['DEPOSIT', 'VIEWED'], ['DEPOSIT', 'SIGNED'], ['VIEWED', 'LOST'], ['CONFIRMED', 'LOST'], ['NEW', 'LOST']])
       expect(() => assertNotLosingDeposit(from, to)).not.toThrow();
+  });
+  it('FE-30: callback duyệt cũ không mở lại lead đã EXPIRED', async () => {
+    lead.status = 'LOST'; lead.lostReason = 'EXPIRED';
+    await expect(service.updateStatus(4, { status: 'CONFIRMED' })).rejects.toThrow('Khách đã đóng');
+    expect(lead.status).toBe('LOST');
+    expect(events).toHaveLength(0);
+    await service.updateStatus(4, { status: 'LOST' });
+    expect(events).toHaveLength(0);
+  });
+  it('FE-30: callback điểm AI và Mautic muộn không cấp lại link duyệt cho lead đã đóng', async () => {
+    lead.status = 'LOST'; lead.lostReason = 'EXPIRED'; lead.approvalUrl = null;
+    await service.updateAiResult(4, { score: 75, level: 'HOT', approvalUrl: 'https://example.invalid/old' });
+    await service.updateMautic(4, { mauticContactId: 8, mauticPoints: 20 });
+    expect(lead).toMatchObject({ status: 'LOST', lostReason: 'EXPIRED', approvalUrl: null, score: 75, mauticPoints: 20 });
   });
 });

@@ -63,7 +63,7 @@ Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự đ�
 | **3. Hợp đồng đặt cọc** | Document signing | Webhook | Khách muốn cọc → AI soạn hợp đồng → quản lý duyệt → khách ký online → xác nhận | 2 lần Wait (quản lý duyệt, khách ký qua `/ky/[token]`) | **Hoàng** |
 | **4. Báo cáo kinh doanh** | Sales analytics | Schedule (thứ Hai) | Gom số liệu tuần → tính phễu chuyển đổi → AI phân tích, đề xuất → email quản lý | **AI Agent có tool** (truy vấn DB), Merge, cảnh báo | **Hậu** |
 | **5. Phân tích cảm nhận** | Lead follow-up | Webhook | Nhận đánh giá của khách qua `/cam-nhan/[token]` → AI phân tích sentiment, tóm tắt và gợi ý | AI Chain, cập nhật feedback, ghi event | **Hậu** |
-| **6. Telegram Agent cho khách** | Visits & Q&A | Telegram Trigger | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch | AI Agent + Postgres Memory, Tool calling, RAG | **Hoàng** |
+| **6. Telegram Agent cho khách** | Visits & Q&A | Telegram Trigger | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch; muốn gặp người hoặc bot không trả lời được thì báo sale | AI Agent + Postgres Memory, Tool calling (5 tool, có Think), RAG, Guardrails, phân loại ý định, log hội thoại | **Hoàng** |
 | **7. Đồng bộ sang Mautic** | Marketing Auto | Webhook (`lead-changed`) | Nhận thay đổi từ lead → tạo/cập nhật Contact kèm Tag (thành phố, level, source, status) | Mautic REST API, data mapping | **Hậu** |
 | **8. Mautic báo về n8n** | Marketing Auto | Webhook (Mautic) | Khách mở email, bấm link, tăng điểm → n8n ghi nhận và báo sale khi vượt ngưỡng | Webhook receiver, scoring sync | **Hậu** |
 | **Error workflow (dùng chung)** | Monitoring | Error Trigger | Luồng nào lỗi thì gửi email cảnh báo quản lý | Giám sát | **Hoàng** |
@@ -74,6 +74,20 @@ Mỗi luồng tối thiểu 12 bước và có:
 - Xử lý lỗi: luồng nhận **một lead mới** (luồng 1) thì nhánh lỗi báo `FAILED` cho lead đó. Các luồng chạy theo lịch hoặc không gắn với một lead mới (luồng 2, 4) thì để Error workflow gửi email cho quản lý.
 - Ghi log: việc làm trên một lead thì ghi vào `lead_events`. Luồng 4 lưu kết quả vào bảng `reports`.
 
+
+**Quy ước màu trong n8n** (CH-07). n8n không tô màu từng node được, nên mỗi luồng đặt sticky note có màu phía sau từng nhóm node, theo các bước kiến trúc của môn (Trigger → Xử lý → AI → Quyết định → Hành động → Người duyệt → Log). Mọi luồng dùng chung:
+
+| Màu sticky | Số màu trong JSON | Nhóm |
+|---|---|---|
+| Xanh dương | 5 | Tiếp nhận: trigger, cấu hình, chuẩn hoá, đọc dữ liệu |
+| Tím | 6 | Kiểm tra, quyết định: điều kiện, Guardrails, phân loại |
+| Xanh lá | 4 | AI: LLM, AI Agent và node con (model, tool, bộ nhớ) |
+| Cam | 2 | Con người: chờ duyệt, báo nhân viên (human-in-the-loop) |
+| Vàng | 1 | Hành động: gửi email, gọi API, lưu, ghi log, phản hồi |
+| Đỏ | 3 | Xử lý lỗi |
+| Trắng | 7 | Ghi chú, chú thích màu (màu 7 hiện gần như trắng, không dùng cho nhóm) |
+
+Thêm node mới thì đặt trong khung đúng nhóm; khung không đủ chỗ thì kéo rộng sticky. Mỗi luồng có sticky "Chú thích màu" ở góc trên (luồng 6 ghi chú thích trong sticky "Ghi chú").
 ## 7. Kiến trúc hệ thống
 
 ```
@@ -114,7 +128,7 @@ Nguyên tắc: **web làm trước, app làm sau**.
 | Sản phẩm | Nội dung |
 |---|---|
 | 8 luồng n8n + Sub-workflow + Error | Như mục 6 |
-| Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
+| Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà (bộ ảnh, xem 360° từng phòng, thông tin cơ bản, tiện ích, nội thất, bản đồ và dịch vụ xung quanh) + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
 | Web admin | Đăng nhập JWT, tổng quan (phễu theo trạng thái, tỉ lệ chốt, việc tồn), danh sách lead (hiện nguồn), chi tiết lead (dòng thời gian, duyệt, đổi giờ), lịch xem, quản lý nhà, hợp đồng, báo cáo AI hằng tuần, phân quyền tài khoản (RBAC) |
 | Mautic 5 | Quản lý contact, phân khúc khách hàng, chiến dịch nuôi WARM |
 | App nhân viên (Expo) | Đăng nhập, việc hôm nay, chi tiết lead (Duyệt, Đổi giờ, Gọi, Email), thông báo đẩy |

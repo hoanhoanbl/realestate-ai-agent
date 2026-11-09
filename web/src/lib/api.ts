@@ -24,11 +24,12 @@ export const VIEWING_STATUS_LABELS: Record<ViewingStatus, string> = {
 };
 
 // Lý do mất khách (leads.lost_reason)
-export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "OTHER";
+export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "EXPIRED" | "OTHER";
 export const LOST_REASON_LABELS: Record<LostReason, string> = {
   NO_SHOW: "Khách không đến xem",
   NOT_INTERESTED: "Không còn nhu cầu",
   CUSTOMER_CANCELLED: "Khách tự huỷ lịch",
+  EXPIRED: "Quá hạn không xử lý",
   OTHER: "Lý do khác",
 };
 
@@ -52,6 +53,36 @@ export interface Property {
   status: string;
   imageUrl: string | null;
   description: string | null;
+  // Chỉ GET /properties/{id} và danh sách admin trả hai mảng link này; danh sách công khai trả imageCount, panoramaCount
+  panoramas?: PanoramaRoom[] | null;
+  images?: string[] | null;
+  imageCount?: number;
+  panoramaCount?: number;
+  // Thông tin chi tiết (FE-31). null = chưa nhập. Số thập phân về dạng chuỗi như price/area
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  floors?: number | null;
+  landArea?: string | number | null;
+  floorArea?: string | number | null;
+  roadWidth?: string | number | null;
+  direction?: string | null;
+  legalStatus?: string | null;
+  furnishing?: string | null;
+  occupancy?: string | null;
+  features?: string[] | null;
+  furniture?: string[] | null;
+  nearby?: NearbyPlace[] | null;
+}
+
+export interface PanoramaRoom {
+  title: string;
+  url: string;
+}
+
+export interface NearbyPlace {
+  category: string;
+  name: string;
+  distance: string;
 }
 
 export interface Lead {
@@ -122,6 +153,10 @@ export const EVENT_LABELS: Record<string, string> = {
   WARM_NUDGE_SENT: "Đã nhắc khách WARM",
   WARM_NURTURE_STARTED: "Bắt đầu nuôi khách WARM (Mautic)",
   STAFF_NUDGE_SENT: "Đã nhắc nhân viên duyệt lịch",
+  HOT_NUDGE_SENT: "Đã nhắc sale gọi khách HOT",
+  COLD_NURTURE_STARTED: "Đã đưa khách COLD vào bản tin",
+  LEAD_EXPIRED: "Lịch chưa duyệt đã quá hạn",
+  LEAD_EXPIRED_NOTIFIED: "Đã báo quản lý lịch quá hạn",
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
   FEEDBACK_ANALYZED: "AI phân tích cảm nhận",
@@ -241,6 +276,22 @@ export interface PropertyInput {
   // Chuỗi rỗng = xoá
   imageUrl?: string;
   description?: string;
+  // Mảng rỗng = xoá hết (áp dụng cho mọi mảng); null = xoá thông số
+  panoramas?: PanoramaRoom[];
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  floors?: number | null;
+  landArea?: number | null;
+  floorArea?: number | null;
+  roadWidth?: number | null;
+  direction?: string | null;
+  legalStatus?: string | null;
+  furnishing?: string | null;
+  occupancy?: string | null;
+  images?: string[];
+  features?: string[];
+  furniture?: string[];
+  nearby?: NearbyPlace[];
 }
 
 // Gồm cả căn đã ẩn (chỉ admin)

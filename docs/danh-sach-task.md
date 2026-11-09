@@ -2,7 +2,7 @@
 
 Mỗi nhánh làm một task và có một **mã**. Bảng này là nơi duy nhất cấp mã, để Hoàng và Hậu không đặt trùng số. Quy trình Git đầy đủ: [quy-trinh-git.md](quy-trinh-git.md). Kế hoạch theo tuần: [ke-hoach-tich-hop.md](ke-hoach-tich-hop.md).
 
-Cập nhật lần cuối: 4/11/2026 (lần 3).
+Cập nhật lần cuối: 6/11/2026.
 
 ## 1. Quy ước đặt tên
 
@@ -44,24 +44,26 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
 | BF-07 | `bugfix/BF-07-mautic-tracking-va-nguong` | (1) Script theo dõi Mautic trên web khách bỏ qua cả `/lich` và `/hop-dong` (hiện chỉ bỏ `/ky`, `/cam-nhan`, `/admin`, nên đường dẫn có mã bí mật của link quản lý lịch bị lưu bên Mautic; ai xem được Mautic là huỷ được lịch khách). (2) Thẻ hai trục điểm coi "khách nóng" từ 70 điểm cho khớp mức HOT của AI (hiện là 75). Sửa xong cập nhật mục 4, 5 của `docs/nghiep-vu/cham-soc-va-marketing.md` | Hậu | Chưa làm (~1h) |
-| FE-22 | `feature/FE-22-mautic-server` | Cấu hình Mautic trên server: custom field `ai_nudge_text`, segment "Nuôi WARM", segment "Bản tin hằng tháng" (khách COLD, dùng chung với form FE-21), campaign; sau đó bật luồng 2 trên server. Cấu hình làm qua trình duyệt, nhánh chỉ chứa phần ghi lại vào `docs/mautic-setup.md` và JSON nếu có đổi. **Hạn 8/11** | Hậu | Chưa làm (~3h) |
-| FE-21 | `feature/FE-21-mautic-form-nhan-tin` | Form đăng ký nhận tin của Mautic trên web khách (kế hoạch 2.7) | Hậu | Chưa làm |
+| FE-22 | `feature/FE-22-mautic-server` | Cấu hình Mautic trên server: custom field `ai_nudge_text`, segment "Nuôi WARM", segment "Bản tin hằng tháng" (khách COLD, dùng chung với form FE-21), campaign; sau đó bật luồng 2 trên server. Cấu hình làm qua trình duyệt, nhánh chỉ chứa phần ghi lại vào `docs/mautic-setup.md` và JSON nếu có đổi. **Hạn 8/11** | Hậu | Đang làm. Tài liệu đã vào `dev` (PR #48, 05/11); trên server đã có field `ai_nudge_text`, segment "Nuôi WARM", 3 email và campaign (Inactive). PR #49 đã merge 06/11. Còn: tạo segment "Bản tin hằng tháng" trên server, chạy các ca nghiệm thu, bật campaign |
+| FE-21 | `feature/FE-21-mautic-form-nhan-tin` | Form đăng ký nhận tin của Mautic trên web khách (kế hoạch 2.7) | Hậu | PR #46, đang xung đột với `dev`: kéo `dev` mới về và giải xung đột |
+| BF-08 | `bugfix/FE-22-fix-mautic-server` (đặt tên trước khi có mã) | Worker và cron Mautic chạy nhầm vai trò web (thiếu `DOCKER_MAUTIC_ROLE` trong `docker-compose.mautic.yml`) từ 29/10, nên hàng đợi không được xử lý (364 tin chờ ngày 5/11), segment không rebuild, campaign không chạy. Cùng PR #49 với phần sửa tài liệu FE-22. Hoàng kiểm tra và sao lưu hàng đợi trên server **trước khi** merge release `v0.3.1`, vì CI tạo lại container là worker chạy ngay | Hậu | Xong ở `dev` (PR #49, 06/11). Hàng đợi server kiểm tra 06/11: 435 tin, đều là `PageHitNotification`, không có email; lên server khi merge release |
 
 ### Tuần 4 (9–15/11)
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
-| FE-30 | `feature/FE-30-l2-quy-tac-0411` | Luồng 2 theo quy tắc chốt 4/11: (1) nhắc sale cả lead COLD chưa duyệt sau 3 ngày; (2) giờ hẹn đã qua mà lead vẫn `NEW` thì chuyển `LOST` với lý do mới `EXPIRED` ("quá hạn không xử lý") và báo quản lý; (3) khách có đồng ý nhận email, im lặng 3 ngày sau buổi xem: HOT thì nhắc sale gọi qua Telegram, WARM vào "Nuôi WARM" như cũ, COLD vào segment "Bản tin hằng tháng". Luồng 4 đếm số lead `EXPIRED`. Tự thêm `EXPIRED` vào `LOST_REASONS` ở backend và nhãn trên web, không chờ Hoàng | Hậu | Chưa làm (~4h) |
+| FE-30 | `feature/FE-30-l2-quy-tac-0411` | Luồng 2 theo quy tắc chốt 4/11: (1) nhắc sale cả lead COLD chưa duyệt sau 3 ngày; (2) giờ hẹn đã qua mà lead vẫn `NEW` thì chuyển `LOST` với lý do mới `EXPIRED` ("quá hạn không xử lý") và báo quản lý; (3) khách có đồng ý nhận email, im lặng 3 ngày sau buổi xem: HOT thì nhắc sale gọi qua Telegram, WARM vào "Nuôi WARM" như cũ, COLD vào segment "Bản tin hằng tháng". Luồng 4 đếm số lead `EXPIRED`. Tự thêm `EXPIRED` vào `LOST_REASONS` ở backend và nhãn trên web, không chờ Hoàng | Hậu | Xong code ở `dev` (PR #47, 06/11). Luồng 2, 4 bản mới chỉ chạy trên server sau khi import ở `v0.3.1` |
 | DC-03 | `docs/DC-03-tai-lieu-luong` | Tài liệu cả 12 luồng trong `docs/luong/` cùng một khung, có mục "Triển khai lên server": viết mới luồng 1, 1b, 3, 6, 6b, Error, Thông báo nhân viên (lấy bản cũ ở nhánh `docs/luong-hoang`), sửa luồng 2, 4, 5, 7, 8 cho khớp code FE-29. Cùng PR: `api-contract.md` chuyển sang có dấu và thêm endpoint mới (việc 8.1 của OpenSpec `close-booking-to-deposit-gaps`, gộp nhánh `docs/api-contract-hoang`); cập nhật `tong-quan-du-an.md` (mục 5–7, bảng luồng, danh sách kênh đang dùng); chuyển `ke-hoach-tich-hop.md` và `kich-ban-demo-hau-backend-mautic.md` vào `docs/luu-tru/`. Hậu duyệt phần luồng 2, 4, 5, 7, 8 | Hoàng | Chưa làm (~14h) |
 | FE-20 | `feature/FE-20-telegram-homnay` | Telegram cho sale: lệnh `/homnay` (kế hoạch 3.2). Lùi từ tuần 3 vì tuần 3 Hoàng làm release và tài liệu | Hoàng | Chưa làm |
 | FE-23 | `feature/FE-23-l4-nguon-chien-dich` | Luồng 4 thêm số liệu theo nguồn khách và chiến dịch | Hậu | Chưa làm |
 | FE-24 | `feature/FE-24-bo-20-lead` | Bộ 20 lead có nhãn và cách chạy đo (kế hoạch 1.5) | Hoàng | Chưa làm |
 | FE-25 | `feature/FE-25-langfuse-l1` | Langfuse cho luồng 1, đo trên bộ 20 lead (kế hoạch 3.5). Việc đầu tiên bị cắt nếu tuần 4 quá tải (mức "nên có") | Hoàng | Chưa làm |
-| FE-26 | `feature/FE-26-web-dien-thoai` | Kiểm tra web admin trên điện thoại, sửa chỗ vỡ, nhất là danh sách lead (kế hoạch 1.3). Menu trượt đã làm ở FE-16 | Hoàng | Làm một phần |
+| FE-32 | `feature/FE-32-l6-guardrails` | Luồng 6 đủ 12 bước theo bài Agentic AI: Guardrails chặn jailbreak, phân loại ý định (gặp nhân viên → báo sale, ngoài phạm vi → trả lời mẫu), tool Think cho Agent, bot không trả lời được thì báo sale, ghi log hội thoại (`POST /api/chat-logs`, bảng `chat_logs`, che email/SĐT). Đường chạy chính 14 bước, đã thử 5 nhánh trên n8n local 6/11 | Hoàng | Xong code, chưa PR, chưa lên server |
+| CH-07 | `chore/CH-07-to-mau-node` | Tô màu nhóm node cho cả 12 workflow n8n bằng sticky note theo quy ước chung (mục 6 của `tong-quan-du-an.md`); sắp lại vị trí node luồng 1b, 2, 8 cho gọn. Không đổi logic, tham số hay cách nối node | Hoàng | Xong code, chưa PR |
 
 Từ 4/11 Hoàng viết toàn bộ tài liệu (DC-03, DC-07, DC-09); Hậu duyệt phần nói về luồng của Hậu. Các mã DC-04, DC-08, DC-10, DC-11, DC-12 cấp ngày 4/11 đã gộp vào ba task trên, không dùng lại: DC-04 vào DC-03 và DC-09, DC-08 và DC-10 và DC-12 vào DC-03, DC-11 vào DC-07.
 
-Giờ ước tính tuần 3–4: Hoàng khoảng 40h (release `v0.3.0` và `v0.3.1`, BF-06 (xong), FE-20, FE-24, FE-25, FE-26, DC-03, DC-07 (xong), DC-09 (xong)), Hậu khoảng 13h (BF-07, FE-21, FE-22, FE-23, FE-30).
+Giờ ước tính tuần 3–4: Hoàng khoảng 40h (release `v0.3.0` và `v0.3.1`, BF-06 (xong), FE-20, FE-24, FE-25, FE-26 (xong), DC-03, DC-07 (xong), DC-09 (xong)), Hậu khoảng 14h (BF-07, BF-08, FE-21, FE-22, FE-23, FE-30).
 
 Phụ thuộc: việc của Hậu không chờ Hoàng (FE-30 tự thêm `EXPIRED` vào backend và web). Các bước `v0.3.1` ở mục 9 của `docs/trien-khai.md` (DC-09), Hậu kiểm tra lại trước khi chạy.
 
@@ -96,8 +98,8 @@ Video dự phòng làm không cần nhánh. Khoá code 3/12, nộp 5/12.
 | Phiên bản | Gồm | Bước làm tay trên VPS | Ai |
 |---|---|---|---|
 | `v0.2.1` | HF-01 | Đã xong 04/11: CI deploy `b37eb1a`, web trả 200 | Hoàng |
-| `v0.3.0` | Code của FE-18 (RAG), FE-19 (close-gaps), BF-06, CH-06, DC-09, FE-29 (follow-up backend; bảng `followup_tasks` tự tạo khi backend khởi động) và các task xong trước đó. PR release: đóng PR #30 "Mer dev to main" (mở 3/11, thiếu các task sau đó, không đúng tên), mở PR mới `Release v0.3.0` theo mục 3 của `quy-trinh-git.md` sau khi BF-06, CH-06 và DC-09 vào `dev`. **Chưa import luồng 2, 7, 8**: luồng 7, 8 trên server giữ bản cũ, luồng 2 vẫn tắt | Kiểm tra trước (10.1) đã làm 04/11: không có căn trùng hợp đồng còn hiệu lực, căn 1 sẽ tự chuyển `RESERVED`, giữ lead #4 làm lead test (10.2). Sau deploy làm theo mục 8 của `docs/trien-khai.md`: RAG (DB đã có extension `vector`; chạy `backend/sql/rag-kb.sql`, import và publish luồng 6b, chạy 6b một lần); import và publish luồng 1, 1b, 4, 6; restart n8n; 10.5, 10.6 (trừ phần điểm danh, làm ở `v0.3.1`) | Hoàng |
-| `v0.3.1` | Phần n8n của FE-29 và FE-22. **Hạn 8/11** | Chạy mục 9 của `docs/trien-khai.md` (Hậu kiểm tra trước): tạo token luồng 8 (`MAUTIC_WEBHOOK_SECRET`) và gắn vào webhook Mautic, tạo credential Mautic, import và publish luồng 2, 7, 8, restart n8n; bật luồng 2, kiểm tra lời nhắc điểm danh của lead #4 | Hoàng chạy, Hậu kiểm tra bước |
+| `v0.3.0` | Code của FE-18 (RAG), FE-19 (close-gaps), BF-06, CH-06, DC-09, FE-29 (follow-up backend) và các task xong trước đó. PR #43 merge 05/11, CI deploy `66c5fad`. FE-31 và FE-26 merge sau bản này nên chưa lên server. **Chưa import luồng 2, 7, 8**: luồng 7, 8 trên server giữ bản cũ, luồng 2 vẫn tắt | Mục 8 của `docs/trien-khai.md`. Kiểm tra trước (10.1, 10.2) đã làm 04/11. Ngày 05/11: bước 1–5 đạt (backend, RAG, import và bật luồng 1, 1b, 4, 6, 6b, chạy 6b, kiểm tra IP qua proxy). Ngày 06/11: bước 6 đạt (web, đặt lịch, duyệt, link quản lý lịch, Telegram RAG; BF-06 chưa có lead đặt cọc để thử trên server), tag `v0.3.0` đã có | Hoàng |
+| `v0.3.1` | Phần n8n của FE-29 và FE-22, BF-08, FE-31, FE-26 (đã ở `dev`, không có bước tay). FE-30 nếu merge trước 8/11; nếu không, import luồng 2 bản hiện tại. **Hạn 8/11** | Trước khi merge release: đếm và sao lưu hàng đợi `messenger_messages` của Mautic (BF-08). Sau deploy chạy mục 9 của `docs/trien-khai.md` (Hậu kiểm tra trước): tạo token luồng 8 (`MAUTIC_WEBHOOK_SECRET`) và gắn vào webhook Mautic, tạo credential Mautic, import và publish luồng 2, 7, 8, restart n8n; bật luồng 2, kiểm tra lời nhắc điểm danh của lead #4 | Hoàng chạy, Hậu kiểm tra bước |
 | `v1.0.0` | Web hoàn thành | | Hoàng |
 | `v1.1.0` | Bản nộp | | Hoàng |
 
@@ -131,6 +133,8 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | FE-18 | `feature/rag-tri-thuc` | Luồng 6b nạp tri thức vào pgvector, tool "Hỏi đáp tri thức" cho luồng 6 | Hoàng | #32 | 03/11 |
 | FE-19 | `feature/FE-19-close-booking-gaps` | Vá 12 lỗ hổng từ đặt lịch đến đặt cọc (OpenSpec `close-booking-to-deposit-gaps`). Còn 8.1 (chuyển sang DC-03) và 10.1–10.6 (làm khi release `v0.3.0`) | Hoàng | #35 | 03/11 |
 | FE-29 | `feature/luong-2-va-mautic-web` (lần 2) | Backend follow-up (module `followups`, bảng `followup_tasks`, test), làm lại luồng 2, 7, 8, kịch bản demo phần Hậu | Hậu | (merge trực tiếp, `202d8b3`) | 03/11 |
+| FE-31 | `feature/FE-31-chi-tiet-nha` | Trang chi tiết nhà đầy đủ: nhiều ảnh xem toàn màn hình, xem 360° từng phòng, khối "Thông tin cơ bản", tiện ích, nội thất, bản đồ và dịch vụ xung quanh; form nhập ở Quản lý nhà; danh sách nhà công khai trả bản gọn cho tool "Tìm nhà" của luồng 6. Cách nhập: mục 4.3 của `docs/nghiep-vu/vai-tro-va-trang-thai.md` | Hoàng | #44 | 05/11 |
+| FE-26 | `feature/FE-26-web-dien-thoai` | Web khách và admin trên điện thoại theo checklist skill ui-ux-pro-max: hết tràn ngang ở 375px, vùng bấm 44px, ô nhập 16px, icon SVG, font Be Vietnam Pro tự lưu, Quản lý nhà và Phân quyền dạng thẻ. Quy ước: `docs/giao-dien-web.md` | Hoàng | #45 | 05/11 |
 
 ### Sửa lỗi (BF)
 
@@ -142,7 +146,7 @@ Mã cấp bổ sung cho các nhánh đã merge, theo thứ tự PR đầu tiên 
 | BF-04 | `fix/mautic-url-env` | Luồng 7 đọc URL Mautic từ `MAUTIC_URL` | Hoàng | #26 | 29/10 |
 | BF-06 | `bugfix/BF-06-chan-khong-mua-khi-dang-coc` | Chặn "Không mua" khi lead đang `DEPOSIT`: backend trả 400 ở cả `admin-status` và `PUT status` của n8n, web ẩn nút "Không mua" và hướng dẫn từ chối hợp đồng trước. Có test `leads.service.spec.ts`. Cùng PR: web admin và email báo cáo luồng 4 đổi chữ "Mất khách" thành "Không mua" cho khớp tên trạng thái | Hoàng | #40 | 04/11 |
 
-BF-05 đã cấp cho việc nâng Next.js rồi bỏ (chuyển thành HF-01), không dùng lại. Mã BF tiếp theo là BF-08 (BF-06, BF-07 đã cấp ở tuần 3).
+BF-05 đã cấp cho việc nâng Next.js rồi bỏ (chuyển thành HF-01), không dùng lại. Mã BF tiếp theo là BF-09 (BF-06, BF-07, BF-08 đã cấp ở tuần 3). BF-08 cấp sau khi nhánh đã tạo nên tên nhánh không có mã.
 
 ### Sửa gấp production (HF)
 

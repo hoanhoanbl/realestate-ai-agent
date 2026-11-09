@@ -1,8 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-export type FollowupType = 'REMINDER' | 'FEEDBACK' | 'WARM_NUDGE' | 'STAFF_NUDGE' | 'ATTENDANCE_CHECK' | 'ATTENDANCE_ESCALATE';
+export const FOLLOWUP_TYPES = ['REMINDER', 'FEEDBACK', 'WARM_NUDGE', 'STAFF_NUDGE', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE', 'HOT_NUDGE', 'COLD_NURTURE', 'EXPIRE_LEAD'] as const;
+export type FollowupType = typeof FOLLOWUP_TYPES[number];
+export const MAUTIC_FOLLOWUPS: FollowupType[] = ['WARM_NUDGE', 'COLD_NURTURE'];
 
-export const SCHEDULED_FOLLOWUPS: FollowupType[] = ['REMINDER', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE'];
+export const SCHEDULED_FOLLOWUPS: FollowupType[] = ['REMINDER', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE', 'EXPIRE_LEAD'];
 export type TaskState = 'CLAIMED' | 'ACTION_STARTED' | 'ACTION_DONE' | 'COMPLETED' | 'FAILED' | 'REVIEW';
 
 @Entity('followup_tasks')

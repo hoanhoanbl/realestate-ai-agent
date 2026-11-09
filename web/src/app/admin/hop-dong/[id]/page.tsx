@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import ContractDocument from "@/components/ContractDocument";
 import ContractStatusBadge from "@/components/ContractStatusBadge";
-import { Icon, buttonClass } from "@/components/ui";
+import { BackLink, Icon, buttonClass } from "@/components/ui";
 import {
   ApiError,
   approveContract,
@@ -104,9 +104,7 @@ function ContractDetailContent() {
   }
 
   const back = (
-    <Link href="/admin/hop-dong" className="text-sm text-brand-600 hover:underline">
-      ← Danh sách hợp đồng
-    </Link>
+    <BackLink href="/admin/hop-dong">Danh sách hợp đồng</BackLink>
   );
 
   if (invalidId || notFound) {
@@ -148,7 +146,7 @@ function ContractDetailContent() {
         <div className="flex flex-wrap items-center gap-2">
           {contract.lead && (
             <Link href={`/admin/leads/${contract.lead.id}`} className={buttonClass("ghost", "sm")}>
-              Hồ sơ khách →
+              Hồ sơ khách <Icon name="arrowRight" className="h-4 w-4" />
             </Link>
           )}
           {contract.content && (
@@ -197,7 +195,7 @@ function ContractDetailContent() {
                     rows={2}
                     maxLength={300}
                     placeholder="Lý do từ chối (bắt buộc)"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base sm:text-sm"
                   />
                   <button
                     type="button"
@@ -228,7 +226,7 @@ function ContractDetailContent() {
           </p>
           <p className="mt-2 break-all text-xs text-slate-600">
             Link ký (để hỗ trợ khách khi cần):{" "}
-            <a href={contract.signUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+            <a href={contract.signUrl} target="_blank" rel="noreferrer" className="inline-block py-2 text-blue-700 underline [overflow-wrap:anywhere]">
               {contract.signUrl}
             </a>
           </p>

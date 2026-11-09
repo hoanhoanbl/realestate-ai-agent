@@ -1,6 +1,6 @@
-# Chăm sóc khách và marketing
+# Quy trình 3: Chăm sóc khách và marketing
 
-Quy tắc từ sau buổi xem trở đi: hỏi cảm nhận, chăm khách im lặng, đồng bộ và chấm điểm tương tác trên Mautic, báo cáo tuần. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các chặng trước buổi xem: xem [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md).
+Quy tắc từ sau buổi xem trở đi: hỏi cảm nhận, chăm khách im lặng, đồng bộ và chấm điểm tương tác trên Mautic, báo cáo tuần. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các chặng trước buổi xem: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
 
 Cập nhật lần cuối: 4/11/2026.
 
@@ -16,7 +16,7 @@ Cập nhật lần cuối: 4/11/2026.
 
 ## 1. Hỏi cảm nhận sau buổi xem
 
-**Khi nào:** lead "Đã xem nhà", buổi xem "Khách đã đến", đã qua giờ hẹn 2 giờ, khách chưa được hỏi và chưa gửi cảm nhận. Lead chưa được điểm danh thì chưa hỏi (xem điểm danh ở [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md) mục 3.3).
+**Khi nào:** lead "Đã xem nhà", buổi xem "Khách đã đến", đã qua giờ hẹn 2 giờ, khách chưa được hỏi và chưa gửi cảm nhận. Lead chưa được điểm danh thì chưa hỏi (xem điểm danh ở [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) mục 3.3).
 
 **Hệ thống làm:**
 
@@ -41,7 +41,7 @@ Cập nhật lần cuối: 4/11/2026.
 
 | Khách chọn | Hệ thống làm | Nhân viên làm |
 |---|---|---|
-| Muốn đặt cọc | Hiện trong nhóm "Khách muốn đặt cọc" trên trang tổng quan | Gọi khách, lập hợp đồng ([dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md) mục 4) |
+| Muốn đặt cọc | Hiện trong nhóm "Khách muốn đặt cọc" trên trang tổng quan | Gọi khách, lập hợp đồng ([02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) mục 4) |
 | Muốn xem căn khác | Ghi vào cảm nhận | Gợi ý căn phù hợp hơn, khách đặt lịch mới (là một lead mới) |
 | Chưa có nhu cầu nữa | Hiện trong nhóm "Khách không còn nhu cầu". **Không** tự đóng lead | Gọi trong 24 giờ hỏi lý do, rồi bấm "Không mua" với lý do "Không còn nhu cầu" hoặc mời xem căn khác |
 

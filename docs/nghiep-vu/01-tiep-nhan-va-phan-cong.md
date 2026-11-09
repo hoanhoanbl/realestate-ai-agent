@@ -1,8 +1,8 @@
-# Tiếp nhận khách và phân công sale
+# Quy trình 1: Tiếp nhận khách và phân công sale
 
-Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Chặng sau (duyệt lịch, xem nhà, đặt cọc): xem [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md). Các lỗ hổng dẫn tới tài liệu này: xem [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), chặng 1.
+Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026, **chưa làm**. Phần nào khác với hệ thống đang chạy thì ghi rõ "Hiện tại" và "Mới". Khi làm xong phần nào, sửa [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md) cho khớp và xoá ghi chú "chưa làm" ở đây.
+**Trạng thái:** đã chốt ngày 10/11/2026, **chưa làm**. Phần nào khác với hệ thống đang chạy thì ghi rõ "Hiện tại" và "Mới". Khi làm xong phần nào, sửa [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) cho khớp và xoá ghi chú "chưa làm" ở đây.
 
 ## Tóm tắt thay đổi
 
@@ -214,18 +214,34 @@ Cách tính khung sớm nhất:
 
 Đổi giờ (của nhân viên, hoặc khi hẹn lại sau khi khách không đến) dùng cùng bộ chọn khung giờ.
 
-## 7. Phần phải sửa khi làm
+## 7. Chia việc: ai làm phần nào
 
-| Phần | Việc |
-|---|---|
-| Backend | Bảng lead: thêm người phụ trách, trạng thái `CONSULTING`, số điện thoại chuẩn hoá; một lead nhiều buổi xem. Bảng nhân viên: Telegram cá nhân, "Đang nhận khách". API tạo lead dùng chung cho mọi kênh, API khung giờ đã kín, API ghi chú lead, API chuyển sale. Đổi luật huỷ buổi xem |
-| Luồng 1 | Tách chấm điểm (khi tạo lead) khỏi duyệt lịch (khi có buổi xem). Báo sale phụ trách thay email chung. Nút Duyệt dùng được tới giờ hẹn. Bỏ mốc 24 giờ |
-| Luồng 2 | Thay mốc nhắc 3 ngày bằng kiểm tra hạn 2 giờ làm việc. Nhắc, điểm danh theo từng buổi xem |
-| Luồng 6 | Tạo lead khi khách để lại số điện thoại; gắn chat vào lead |
-| Sub-workflow thông báo nhân viên | Nhận người nhận theo sale phụ trách thay email cứng |
-| Web khách | Bộ chọn ngày và khung giờ |
-| Web admin | Form "Thêm khách", người phụ trách trên danh sách và trang lead, nút chuyển sale, ghi chú, công tắc "Đang nhận khách" |
-| Báo cáo (luồng 4, thống kê) | Đếm theo khách, không theo lượt đặt; thêm số lead theo nguồn và theo sale |
+Chia theo khu vực mỗi người đang giữ (bảng "Ai giữ phần nào" ở mục 6 của [quy-trinh-git.md](../quy-trinh-git.md)): Hậu giữ backend lead, nhân viên, follow-up, luồng 2, 4, 5, 7, 8; Hoàng giữ backend buổi xem, luồng 1, 1b, 3, 6, sub-workflow thông báo và giao diện web.
+
+**Thứ tự:** FE-33 là PR nền, merge vào `dev` trước. Các task còn lại tạo nhánh từ `dev` **sau khi** FE-33 đã merge, làm song song được.
+
+```
+FE-33 (Hậu, PR nền) ──merge──┬─▶ FE-34 Buổi xem, khung giờ          (Hoàng)
+                             ├─▶ FE-35 Luồng 1, 1b, thông báo         (Hoàng)
+                             ├─▶ FE-36 Luồng 6 tạo lead               (Hoàng)
+                             ├─▶ FE-37 Form "Thêm khách"              (Hoàng)
+                             ├─▶ FE-38 Luồng 2 hạn phản hồi, báo cáo  (Hậu)
+                             └─▶ FE-39 Admin: phụ trách, chuyển sale  (Hậu)
+FE-40 Luồng 7 lead không email (Hậu): chờ chốt mục 8
+```
+
+| Mã | Ai | Việc | Đóng lỗ |
+|---|---|---|---|
+| FE-33 | Hậu | **PR nền.** Mọi thay đổi dữ liệu của quy trình này, làm một lần: bảng lead (người phụ trách, `CONSULTING`, số điện thoại chuẩn hoá), bảng nhân viên (Telegram cá nhân, "Đang nhận khách"), loại sự kiện mới (gán sale, chuyển sale, ghi chú, quá hạn phản hồi). API tạo lead dùng chung cho mọi kênh có kiểm tra trùng số điện thoại; chia lần lượt; API chuyển sale; API ghi chú. Thêm sẵn hàm gọi API mới vào `web/src/lib/api.ts` | LH-03, LH-04, LH-10 |
+| FE-34 | Hoàng | Backend buổi xem: một lead nhiều buổi xem, trạng thái lead lấy theo buổi xem tiến xa nhất, huỷ hoặc không đến không làm mất lead. API khung giờ đã kín, chặn giờ hẹn ngoài 8:00–19:00, sớm hơn 3 giờ, xa hơn 14 ngày. Web khách: bộ chọn ngày và khung giờ | LH-05, LH-08, LH-09 |
+| FE-35 | Hoàng | Luồng 1: chấm điểm khi tạo lead, tách khỏi duyệt lịch; nút Duyệt dùng được tới giờ hẹn; bỏ mốc 24 giờ. Luồng 1b theo buổi xem. Sub-workflow thông báo nhân viên gửi cho sale phụ trách (Telegram cá nhân, push, email) thay email cứng | LH-06 |
+| FE-36 | Hoàng | Luồng 6: khách để lại số điện thoại thì gọi API tạo lead; gắn `chat_logs` vào lead; trang lead hiện lịch sử chat | LH-01, LH-11 |
+| FE-37 | Hoàng | Web admin: form "Thêm khách" (mục 1.1), báo trùng số điện thoại ngay khi gõ | LH-02 |
+| FE-38 | Hậu | Luồng 2: báo quản lý khi quá 2 giờ làm việc chưa có thao tác đầu tiên, bỏ mốc nhắc 3 ngày; nhắc và điểm danh theo từng buổi xem. Luồng 4 và thống kê: đếm theo khách, thêm số lead theo nguồn và theo sale | LH-07 |
+| FE-39 | Hậu | Web admin: cột người phụ trách ở danh sách lead, khối người phụ trách, nút chuyển sale và ô ghi chú trên trang lead, công tắc "Đang nhận khách" ở trang tài khoản | LH-04 |
+| FE-40 | Hậu | Luồng 7: đồng bộ lead không có email sang Mautic. Chờ chốt mục 8 | |
+
+Mỗi task sửa tài liệu này và [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) trong cùng PR: phần đã làm thì bỏ chữ "Mới" / "chưa làm", ghi thành quy tắc đang chạy.
 
 ## 8. Còn mở
 

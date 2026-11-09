@@ -1,11 +1,19 @@
 # Danh sách lỗ hổng theo vòng đời khách
 
-Cách làm: rà từng chặng của vòng đời khách, xếp mức, sửa từng lỗ, mỗi lỗ có điều kiện "Xong khi" rõ ràng, thử lại cả chặng. Chặng này chặt rồi mới sang chặng sau.
+Cách làm: rà từng quy trình theo vòng đời khách, xếp mức, sửa từng lỗ, mỗi lỗ có điều kiện "Xong khi" rõ ràng, thử lại cả quy trình. Quy trình này chặt rồi mới sang quy trình sau.
 
 ```
-Tiếp nhận, gán sale ─▶ Duyệt lịch ─▶ Xem nhà ─▶ Chăm sóc sau xem ─▶ Đặt cọc, ký
-        + xuyên suốt: AI, bảo mật, lỗi và giám sát, dữ liệu trùng
+Quy trình 1: Tiếp nhận, gán sale
+      │
+      ▼
+Quy trình 2: Duyệt lịch ─▶ Xem nhà ─▶ Đặt cọc, ký
+                              │
+                              └─▶ Quy trình 3: Chăm sóc sau xem, marketing (chạy song song)
+
++ xuyên suốt: AI, bảo mật, lỗi và giám sát, dữ liệu trùng
 ```
+
+Số quy trình khớp tên file trong `docs/nghiep-vu/` (`01-…`, `02-…`, `03-…`).
 
 Mốc xuất phát: server chạy bản `cd8dd5c`, cả 12 luồng đang bật (kiểm tra ngày 9/11/2026).
 
@@ -17,9 +25,9 @@ Mốc xuất phát: server chạy bản `cd8dd5c`, cả 12 luồng đang bật (
 
 Cập nhật lần cuối: 10/11/2026.
 
-## Chặng 1: Tiếp nhận và gán sale
+## Quy trình 1: Tiếp nhận và gán sale
 
-Đã rà kỹ ngày 10/11. Quy trình đích: [nghiep-vu/tiep-nhan-va-phan-cong.md](nghiep-vu/tiep-nhan-va-phan-cong.md).
+Đã rà kỹ ngày 10/11. Quy trình đích và chia việc (task nào đóng lỗ nào, ai làm): [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md) mục 7.
 
 | Mã | Lỗ hổng | Mức | Xong khi | Trạng thái |
 |---|---|---|---|---|
@@ -35,11 +43,11 @@ Cập nhật lần cuối: 10/11/2026.
 | LH-10 | Nhận ra khách cũ bằng email (kiểm tra trùng lịch, "khách đã đặt N lần khác"). Khách đổi email hoặc không dùng email thì không nhận ra | Trung bình | Kiểm tra trùng bằng số điện thoại đã chuẩn hoá ở mọi kênh | Chưa làm |
 | LH-11 | Lịch sử chat Telegram (`chat_logs`) không gắn với lead. Sale muốn xem khách đã hỏi gì phải mở Executions của n8n | Nhỏ | Trang lead hiện lịch sử chat của khách đã để lại số | Chưa làm |
 
-## Chặng 2–5: chưa rà
+## Quy trình 2, 3 và phần xuyên suốt: chưa rà
 
-Các lỗ dưới đây ghi từ lần đọc lướt trước, **chưa kiểm lại trong code**. Khi rà tới chặng nào thì kiểm lại, xếp mức và thêm "Xong khi".
+Các lỗ dưới đây ghi từ lần đọc lướt trước, **chưa kiểm lại trong code**. Khi rà tới quy trình nào thì kiểm lại, xếp mức và thêm "Xong khi".
 
-| Mã | Chặng | Lỗ hổng (chưa kiểm lại) |
+| Mã | Thuộc | Lỗ hổng (chưa kiểm lại) |
 |---|---|---|
 | LH-50 | Xuyên suốt: AI | Cả 6 luồng có AI dùng chung một model, không có model dự phòng. Hết quota thì mọi luồng AI cùng ngừng |
 | LH-51 | Xuyên suốt: bảo mật | Link riêng `/lich/<mã>` bị gửi sang Mautic qua script theo dõi (việc (1) của BF-07) |

@@ -2,8 +2,9 @@
 
 File này là luật chung của hệ thống: ai được làm gì, và mỗi đối tượng (lead, buổi xem, căn nhà, hợp đồng) có những trạng thái nào, chuyển qua lại ra sao. Quy tắc của từng chặng nằm ở:
 
-- [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md): đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
-- [cham-soc-va-marketing.md](cham-soc-va-marketing.md): sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
+- [01-tiep-nhan-va-phan-cong.md](01-tiep-nhan-va-phan-cong.md): quy trình 1, khách vào từ đâu, ai phụ trách, hạn phản hồi, khung giờ hẹn (đã chốt, chưa làm).
+- [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md): quy trình 2, đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
+- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
 
 Tài liệu luồng trong `docs/luong/` chỉ link về đây, không chép lại quy tắc. Nếu code chạy khác với file này, báo trong nhóm để sửa một trong hai, không để lệch.
 
@@ -207,7 +208,7 @@ Mỗi căn và mỗi khách chỉ có tối đa **một hợp đồng còn hiệ
 | `REJECTED` | Bị từ chối | Quản lý từ chối, kèm lý do |
 | `EXPIRED` | Hết hạn | Quản lý không duyệt kịp, hoặc khách không ký kịp |
 
-Thời hạn duyệt, ký và nhắc ký: xem [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md).
+Thời hạn duyệt, ký và nhắc ký: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
 
 ### 4.5. Cảm nhận của khách
 

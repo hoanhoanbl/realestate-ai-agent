@@ -135,7 +135,34 @@ Số giữa tăng khi release chức năng mới, số cuối tăng khi hotfix. 
 
 - `.env` không bao giờ commit. Thêm biến mới thì ghi vào `.env.example` và mục "Bước deploy làm tay" của PR.
 - File chỉ có trên server (`docker-compose.server.yml`, `.env`) không đưa vào repo.
-- File dùng chung (`lead.entity.ts`, `lead.constants.ts`, `docker-compose*.yml`, file JSON n8n): mỗi người sửa phần của mình, cần sửa phần của người kia thì nhắn trước.
+- File dùng chung: theo các quy định dưới đây.
+
+### Ai giữ phần nào
+
+Người giữ một phần là người sửa phần đó và review mọi PR đụng vào nó. Chia theo việc mỗi người đã làm (mục 4 của [danh-sach-task.md](danh-sach-task.md)).
+
+| Phần | Hoàng | Hậu |
+|---|---|---|
+| Backend | `viewings` (đặt lịch, khung giờ, buổi xem), `contracts`, `properties`, `chat-logs` | `leads`, `users`, `auth`, `followups`, `feedback`, `stats`, `reports`, `n8n` |
+| n8n | Luồng 1, 1b, 3, 6, 6b, Error, sub-workflow "Thông báo nhân viên" | Luồng 2, 4, 5, 7, 8 |
+| Web khách | Mọi trang trong `web/src/app/(khach)` | Script theo dõi Mautic (`MauticTracking.tsx`) |
+| Web admin | Lịch xem, nhà, hợp đồng, khung giao diện (`AdminShell.tsx`, `components/ui`) | Danh sách và chi tiết lead, tài khoản, báo cáo, điểm Mautic |
+| Hạ tầng | `docker-compose.yml`, `docker-compose.prod.yml`, `Caddyfile`, CI, server | `docker-compose.mautic.yml`, cấu hình Mautic |
+| Tài liệu | `docs/nghiep-vu/`, `trien-khai.md`, `quy-trinh-git.md`, `danh-sach-task.md`, `danh-sach-lo-hong.md`, tài liệu luồng của mình | `api-contract.md`, `mautic-setup.md`, tài liệu luồng của mình |
+
+### Quy định khi làm
+
+1. **Sửa phần người kia giữ:** nhắn trước. PR đó phải được người giữ duyệt.
+2. **Thay đổi dữ liệu làm trong một PR nền.** Mỗi đợt việc (ví dụ quy trình 1) có **một** PR nền gom mọi thay đổi ở các file dưới đây. PR nền merge vào `dev` xong thì các task khác của đợt mới tạo nhánh. Các task đó không thêm cột, trạng thái hay loại sự kiện nữa. Cần thêm thì mở một PR nhỏ riêng, merge trước, rồi người kia `git merge origin/dev`.
+   - `backend/src/**/entities/*.ts` (cột, bảng)
+   - `backend/src/leads/lead.constants.ts` (trạng thái, loại sự kiện, lý do)
+   - `backend/src/viewings/booking-rules.ts`, `viewing-time.ts` (mốc giờ)
+   - `web/src/lib/api.ts` (kiểu dữ liệu và hàm gọi API)
+3. **Đầu vào của sub-workflow là hợp đồng.** Muốn đổi đầu vào sub-workflow "Thông báo nhân viên" thì người giữ sub-workflow sửa trước, giữ đầu vào cũ chạy được, người gọi đổi sau.
+4. **Mỗi file JSON n8n chỉ người giữ luồng sửa.** Export lại cả file sau khi sửa trên n8n, không sửa tay hai nơi cùng lúc.
+5. **Trang dùng chung chia component.** Trang chi tiết lead có phần của cả hai: mỗi người viết component riêng trong `web/src/components/` (như `MauticScoreCard.tsx`, `ContactButtons.tsx`), trang chỉ thêm một dòng gọi component.
+6. **Kéo `dev` về mỗi ngày** trước khi làm (`git fetch` rồi `git merge origin/dev` vào nhánh của mình). Nhánh sống quá 3 ngày thì kéo `dev` trước khi mở PR.
+7. **Quy tắc nghiệp vụ đổi thì sửa tài liệu trong cùng PR** (`docs/nghiep-vu/`). Không để code và tài liệu lệch nhau.
 - Không push thẳng vào `dev` hay `main`, không `push --force` lên hai nhánh này.
 
 ## 7. Cài đặt trên GitHub

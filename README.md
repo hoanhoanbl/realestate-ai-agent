@@ -16,7 +16,7 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 |---|---|
 | Dự án làm gì, các luồng, lộ trình | [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md) |
 | Ai làm gì tuần này, mã nhánh, mốc phát hành | [docs/danh-sach-task.md](docs/danh-sach-task.md) |
-| Quy tắc nghiệp vụ: vai trò, trạng thái, đặt lịch đến đặt cọc, chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
+| Quy tắc nghiệp vụ: vai trò và trạng thái, quy trình 1 tiếp nhận, 2 đặt lịch đến đặt cọc, 3 chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
 | Từng luồng n8n chạy thế nào | [docs/luong/](docs/luong/) |
 | Định dạng API giữa web, backend và n8n | [docs/api-contract.md](docs/api-contract.md) |
 | Quy ước giao diện web (component, điện thoại, icon, font) | [docs/giao-dien-web.md](docs/giao-dien-web.md) |
@@ -24,7 +24,7 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 | Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
 | Cài và cấu hình Mautic | [docs/mautic-setup.md](docs/mautic-setup.md) |
 | Lỗ hổng còn lại, xếp theo vòng đời khách | [docs/danh-sach-lo-hong.md](docs/danh-sach-lo-hong.md) |
-| Tiếp nhận khách và phân công sale (đã chốt, chưa làm) | [docs/nghiep-vu/tiep-nhan-va-phan-cong.md](docs/nghiep-vu/tiep-nhan-va-phan-cong.md) |
+| Tiếp nhận khách và phân công sale (đã chốt, chưa làm) | [docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md](docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md) |
 
 ## Cau truc
 

@@ -23,7 +23,8 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 | Cách tạo nhánh, mở PR, phát hành | [docs/quy-trinh-git.md](docs/quy-trinh-git.md) |
 | Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
 | Cài và cấu hình Mautic | [docs/mautic-setup.md](docs/mautic-setup.md) |
-| Kế hoạch gốc 20/10 và kịch bản demo cũ (sẽ chuyển vào `docs/luu-tru/`) | [docs/ke-hoach-tich-hop.md](docs/ke-hoach-tich-hop.md), [docs/kich-ban-demo-hau-backend-mautic.md](docs/kich-ban-demo-hau-backend-mautic.md) |
+| Lỗ hổng còn lại, xếp theo vòng đời khách | [docs/danh-sach-lo-hong.md](docs/danh-sach-lo-hong.md) |
+| Tiếp nhận khách và phân công sale (đã chốt, chưa làm) | [docs/nghiep-vu/tiep-nhan-va-phan-cong.md](docs/nghiep-vu/tiep-nhan-va-phan-cong.md) |
 
 ## Cau truc
 

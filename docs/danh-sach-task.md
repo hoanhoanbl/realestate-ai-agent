@@ -1,6 +1,6 @@
 # Danh sách task và mã nhánh
 
-Mỗi nhánh làm một task và có một **mã**. Bảng này là nơi duy nhất cấp mã, để Hoàng và Hậu không đặt trùng số. Quy trình Git đầy đủ: [quy-trinh-git.md](quy-trinh-git.md). Kế hoạch theo tuần: [ke-hoach-tich-hop.md](ke-hoach-tich-hop.md).
+Mỗi nhánh làm một task và có một **mã**. Bảng này là nơi duy nhất cấp mã, để Hoàng và Hậu không đặt trùng số. Quy trình Git đầy đủ: [quy-trinh-git.md](quy-trinh-git.md).
 
 Cập nhật lần cuối: 6/11/2026.
 
@@ -33,7 +33,7 @@ Bảng chỉ liệt kê các việc có nhánh riêng. Việc nhỏ không cần
 | Khoá code | 3/12 |
 | Nộp bài | 5/12 |
 
-Tuần hiện tại là tuần 3 (2–8/11). Phân việc chỉ ghi tại file này; mục 7 và 9 của `ke-hoach-tich-hop.md` là bản kế hoạch gốc 20/10, không cập nhật nữa (sẽ chuyển vào `docs/luu-tru/` ở DC-03). Đổi người hay đổi tuần thì sửa tại đây.
+Tuần hiện tại là tuần 3 (2–8/11). Phân việc chỉ ghi tại file này. Đổi người hay đổi tuần thì sửa tại đây.
 
 Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay phải được ghi vào `docs/` bằng tiếng Việt, trong cùng task làm ra nó. Quy tắc chỉ nằm trong code hoặc OpenSpec thì người kia không biết. Tài liệu nghiệp vụ đặt trong `docs/nghiep-vu/` (DC-07); tài liệu luồng chỉ link sang đó, không chép lại quy tắc.
 
@@ -52,8 +52,9 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
+| DC-13 | `docs/DC-13-tiep-nhan-phan-cong` | Chốt quy trình tiếp nhận khách và phân công sale (`docs/nghiep-vu/tiep-nhan-va-phan-cong.md`), lập danh sách lỗ hổng theo vòng đời khách (`docs/danh-sach-lo-hong.md`), xoá kế hoạch 20/10 và 3 kịch bản demo | Hoàng | Xong, chưa PR |
 | FE-30 | `feature/FE-30-l2-quy-tac-0411` | Luồng 2 theo quy tắc chốt 4/11: (1) nhắc sale cả lead COLD chưa duyệt sau 3 ngày; (2) giờ hẹn đã qua mà lead vẫn `NEW` thì chuyển `LOST` với lý do mới `EXPIRED` ("quá hạn không xử lý") và báo quản lý; (3) khách có đồng ý nhận email, im lặng 3 ngày sau buổi xem: HOT thì nhắc sale gọi qua Telegram, WARM vào "Nuôi WARM" như cũ, COLD vào segment "Bản tin hằng tháng". Luồng 4 đếm số lead `EXPIRED`. Tự thêm `EXPIRED` vào `LOST_REASONS` ở backend và nhãn trên web, không chờ Hoàng | Hậu | Xong code ở `dev` (PR #47, 06/11). Luồng 2, 4 bản mới chỉ chạy trên server sau khi import ở `v0.3.1` |
-| DC-03 | `docs/DC-03-tai-lieu-luong` | Tài liệu cả 12 luồng trong `docs/luong/` cùng một khung, có mục "Triển khai lên server": viết mới luồng 1, 1b, 3, 6, 6b, Error, Thông báo nhân viên (lấy bản cũ ở nhánh `docs/luong-hoang`), sửa luồng 2, 4, 5, 7, 8 cho khớp code FE-29. Cùng PR: `api-contract.md` chuyển sang có dấu và thêm endpoint mới (việc 8.1 của OpenSpec `close-booking-to-deposit-gaps`, gộp nhánh `docs/api-contract-hoang`); cập nhật `tong-quan-du-an.md` (mục 5–7, bảng luồng, danh sách kênh đang dùng); chuyển `ke-hoach-tich-hop.md` và `kich-ban-demo-hau-backend-mautic.md` vào `docs/luu-tru/`. Hậu duyệt phần luồng 2, 4, 5, 7, 8 | Hoàng | Chưa làm (~14h) |
+| DC-03 | `docs/DC-03-tai-lieu-luong` | Tài liệu cả 12 luồng trong `docs/luong/` cùng một khung, có mục "Triển khai lên server": viết mới luồng 1, 1b, 3, 6, 6b, Error, Thông báo nhân viên (lấy bản cũ ở nhánh `docs/luong-hoang`), sửa luồng 2, 4, 5, 7, 8 cho khớp code FE-29. Cùng PR: `api-contract.md` chuyển sang có dấu và thêm endpoint mới (việc 8.1 của OpenSpec `close-booking-to-deposit-gaps`, gộp nhánh `docs/api-contract-hoang`); cập nhật `tong-quan-du-an.md` (mục 5–7, bảng luồng, danh sách kênh đang dùng). Hậu duyệt phần luồng 2, 4, 5, 7, 8 | Hoàng | Chưa làm (~14h) |
 | FE-20 | `feature/FE-20-telegram-homnay` | Telegram cho sale: lệnh `/homnay` (kế hoạch 3.2). Lùi từ tuần 3 vì tuần 3 Hoàng làm release và tài liệu | Hoàng | Chưa làm |
 | FE-23 | `feature/FE-23-l4-nguon-chien-dich` | Luồng 4 thêm số liệu theo nguồn khách và chiến dịch | Hậu | Chưa làm |
 | FE-24 | `feature/FE-24-bo-20-lead` | Bộ 20 lead có nhãn và cách chạy đo (kế hoạch 1.5) | Hoàng | Chưa làm |

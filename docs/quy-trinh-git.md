@@ -135,7 +135,7 @@ Số giữa tăng khi release chức năng mới, số cuối tăng khi hotfix. 
 
 - `.env` không bao giờ commit. Thêm biến mới thì ghi vào `.env.example` và mục "Bước deploy làm tay" của PR.
 - File chỉ có trên server (`docker-compose.server.yml`, `.env`) không đưa vào repo.
-- File dùng chung (`lead.entity.ts`, `lead.constants.ts`, `docker-compose*.yml`, file JSON n8n) theo mục 8 của `docs/ke-hoach-tich-hop.md`: mỗi người sửa phần của mình, cần sửa phần của người kia thì nhắn trước.
+- File dùng chung (`lead.entity.ts`, `lead.constants.ts`, `docker-compose*.yml`, file JSON n8n): mỗi người sửa phần của mình, cần sửa phần của người kia thì nhắn trước.
 - Không push thẳng vào `dev` hay `main`, không `push --force` lên hai nhánh này.
 
 ## 7. Cài đặt trên GitHub

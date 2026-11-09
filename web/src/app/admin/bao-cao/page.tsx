@@ -8,6 +8,7 @@ import {
   getReport,
   getReports,
   runReportNow,
+  sourceLabel,
   type ReportDetail,
   type ReportRow,
 } from "@/lib/api";
@@ -127,7 +128,15 @@ function ReportsContent() {
   }
 
   const metrics = detail?.metrics as
-    | { cur: Record<string, unknown>; prev: Record<string, unknown>; delta: Record<string, number>; funnel: Record<string, number | null>; period: string }
+    | {
+        cur: Record<string, unknown>;
+        prev: Record<string, unknown>;
+        delta: Record<string, number>;
+        funnel: Record<string, number | null>;
+        period: string;
+        sources?: Record<string, { current: number; previous: number; delta: number; rate: number | null }>;
+        campaigns?: { warm_nurtured: number; cold_nurtured: number; hot_nudged: number };
+      }
     | undefined;
   const analysis = detail?.analysis as { headline: string; insights: string[]; recommendations: string[]; aiUsed: boolean } | undefined;
   const reportRows = ROWS.filter(r => r.key !== "expired" || metrics?.cur?.expired != null);
@@ -271,6 +280,61 @@ function ReportsContent() {
                       );
                     })}
                   </ul>
+                </div>
+
+                {/* FE-23: Cơ cấu nguồn khách & Chiến dịch nuôi dưỡng */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className={`p-5 ${CARD}`}>
+                    <h3 className="font-semibold text-slate-900">Cơ cấu nguồn khách</h3>
+                    {metrics.sources && Object.keys(metrics.sources).length > 0 ? (
+                      <div className="mt-3 space-y-3">
+                        {Object.entries(metrics.sources).map(([src, val]) => (
+                          <div key={src}>
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium text-slate-700">{sourceLabel(src)}</span>
+                              <span className="font-semibold text-slate-900">
+                                {val.current} khách ({val.rate ?? 0}%)
+                                {val.delta !== 0 && (
+                                  <span className={`ml-2 text-xs font-normal ${val.delta > 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                    {val.delta > 0 ? `+${val.delta}` : val.delta}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-indigo-500"
+                                style={{ width: `${Math.min(100, val.rate ?? 0)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-slate-500">Chưa có dữ liệu nguồn khách trong kỳ.</p>
+                    )}
+                  </div>
+
+                  <div className={`p-5 ${CARD}`}>
+                    <h3 className="font-semibold text-slate-900">Chiến dịch nuôi dưỡng (Mautic)</h3>
+                    <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
+                        <div className="text-2xl font-bold text-amber-700">{metrics.campaigns?.warm_nurtured ?? 0}</div>
+                        <div className="mt-1 text-xs font-medium text-amber-900">Nuôi WARM</div>
+                      </div>
+                      <div className="rounded-lg bg-sky-50 p-3 ring-1 ring-sky-200">
+                        <div className="text-2xl font-bold text-sky-700">{metrics.campaigns?.cold_nurtured ?? 0}</div>
+                        <div className="mt-1 text-xs font-medium text-sky-900">Bản tin COLD</div>
+                      </div>
+                      <div className="rounded-lg bg-rose-50 p-3 ring-1 ring-rose-200">
+                        <div className="text-2xl font-bold text-rose-700">{metrics.campaigns?.hot_nudged ?? 0}</div>
+                        <div className="mt-1 text-xs font-medium text-rose-900">Nhắc chốt HOT</div>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-xs text-slate-500">
+                      Khách hàng đủ điều kiện theo quy tắc L2 được đưa vào phân khúc Mautic hoặc chuyển sang sale gọi điện trực tiếp.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

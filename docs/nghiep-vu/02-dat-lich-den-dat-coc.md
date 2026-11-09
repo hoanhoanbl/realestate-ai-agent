@@ -1,6 +1,6 @@
-# Từ đặt lịch đến đặt cọc
+# Quy trình 2: Từ đặt lịch đến đặt cọc
 
-Quy tắc của bốn chặng: đặt lịch, duyệt lịch, xem nhà và điểm danh, đặt cọc và ký. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Chặng sau buổi xem và nuôi khách: xem [cham-soc-va-marketing.md](cham-soc-va-marketing.md).
+Quy tắc của bốn chặng: đặt lịch, duyệt lịch, xem nhà và điểm danh, đặt cọc và ký. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Chặng sau buổi xem và nuôi khách: xem [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md).
 
 Mỗi quy tắc ghi: khi nào áp dụng, hệ thống làm gì, người dùng thấy gì, ai xử lý ở đâu. Thông báo lỗi trong dấu ngoặc kép là chữ người dùng thấy thật.
 
@@ -115,7 +115,7 @@ Sau giờ hẹn, nhân viên ghi nhận khách có đến hay không trên trang
 
 | Nhân viên chọn | Buổi xem | Lead | Việc tiếp theo |
 |---|---|---|---|
-| Có đến | "Khách đã đến" | "Đã xem nhà" | Khi đã qua giờ hẹn 2 giờ, khách nhận link gửi cảm nhận ([cham-soc-va-marketing.md](cham-soc-va-marketing.md)) |
+| Có đến | "Khách đã đến" | "Đã xem nhà" | Khi đã qua giờ hẹn 2 giờ, khách nhận link gửi cảm nhận ([03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md)) |
 | Không đến, đóng lead | "Khách không đến" | "Không mua", lý do "Khách không đến xem" | Không |
 | Không đến, hẹn lại | Vẫn "Chờ xem", giờ mới | Vẫn "Đã chốt lịch" | Khách nhận thư báo giờ mới; giờ mới qua kiểm tra cách 60 phút |
 

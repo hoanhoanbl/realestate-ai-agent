@@ -6,6 +6,11 @@ const vm = require('node:vm');
 const ts = require('../web/node_modules/typescript');
 const root = path.resolve(__dirname, '..');
 const jsx = (type, props) => ({ type, props });
+const scoring = {};
+vm.runInNewContext(ts.transpileModule(
+  fs.readFileSync(path.join(root, 'web/src/lib/mautic.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+).outputText, { exports: scoring, process: { env: {} } });
 
 function loadComponent(file, state) {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
@@ -23,7 +28,7 @@ function loadComponent(file, state) {
       };
       if (name === 'next/navigation') return { usePathname: () => state.pathname };
       if (name === 'next/script') return { default: 'Script' };
-      if (name === '@/lib/mautic') return { MAUTIC_PUBLIC_URL: state.mauticUrl };
+      if (name === '@/lib/mautic') return { ...scoring, MAUTIC_PUBLIC_URL: state.mauticUrl };
       if (name === '@/components/LevelBadge') return { default: 'LevelBadge' };
       throw new Error(`Unexpected import: ${name}`);
     },
@@ -91,4 +96,34 @@ for (const score of [70, 74, 75, 100]) {
 }
 assert(card(null, 20, 'HOT').includes('Ưu tiên số 1'));
 assert(card(null, 20).includes('Tương tác bứt phá'));
+
+// Chạy các hàm thực tế của hai trang để bắt lỗi thẻ và bộ lọc khác quy tắc.
+function pageFunctions(file, names, constants) {
+  const source = ts.createSourceFile(file, fs.readFileSync(path.join(root, file), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declarations = source.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text));
+  assert.equal(declarations.length, names.length);
+  const code = declarations.map(node => node.getText(source)).join('\n');
+  const context = { ...constants, isHotLead: scoring.isHotLead, ENGAGED_POINTS: 20 };
+  vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX } }).outputText, context);
+  return context;
+}
+const { buildMatrix } = pageFunctions('web/src/app/admin/page.tsx', ['buildMatrix']);
+const { matchesFilter } = pageFunctions('web/src/app/admin/leads/page.tsx', ['isEngaged', 'matchesFilter']);
+for (const score of [null, 0, 39, 40, 69, 70, 74, 75, 100]) {
+  for (const level of [null, 'COLD', 'WARM', 'HOT']) {
+    for (const points of [undefined, 0, 19, 20, 25]) {
+      const lead = { score, level, mauticPoints: points };
+      const hot = level === 'HOT' || (score !== null && score >= 70);
+      const engaged = (points ?? 0) >= 20;
+      const matrix = buildMatrix([lead]);
+      assert.equal(matrix.vipHot, Number(hot && engaged));
+      assert.equal(matrix.coolingHot, Number(hot && !engaged));
+      assert.equal(matrix.breakthrough, Number(!hot && engaged));
+      assert.equal(matrix.nurturing, Number(!hot && !engaged));
+      assert.equal(matchesFilter(lead, 'VIP_HOT'), hot && engaged);
+      assert.equal(matchesFilter(lead, 'HIGH_ENGAGEMENT'), engaged);
+      assert.equal(matchesFilter(lead, 'WARM'), level === 'WARM');
+    }
+  }
+}
 console.log('PASS: BF-07 private routes, SPA queue, referrer and scoring boundaries.');

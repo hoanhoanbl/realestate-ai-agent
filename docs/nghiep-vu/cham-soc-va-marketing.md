@@ -88,6 +88,8 @@ Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang l
 | **Khách nóng** (HOT hoặc điểm AI từ 70) | Ưu tiên số 1, chốt cọc ngay | Tiềm năng cao nhưng đang nguội |
 | **Khách khác** | Tương tác bứt phá, cần ưu tiên | Đang nuôi tự động (Mautic) |
 
+Trang tổng quan, thẻ chi tiết và bộ lọc "Ưu tiên chốt cọc" dùng chung quy tắc HOT hoặc điểm AI từ 70. Với hồ sơ cũ có điểm từ 70 nhưng nhãn mức chưa khớp, ba nơi vẫn xếp cùng nhóm ưu tiên. Các bộ lọc mức HOT/WARM/COLD tiếp tục dùng nhãn AI đã lưu; ma trận không tự sửa nhãn hoặc điểm khách.
+
 ## 5. Theo dõi hành vi trên web khách
 
 Web khách gắn script theo dõi của Mautic: mỗi lần khách chuyển trang công khai, ứng dụng gửi một lượt xem. **Không** tải script hoặc gửi lượt xem trên `/ky`, `/cam-nhan`, `/lich`, `/hop-dong`, `/admin` và các trang con của chúng. Nếu script đã tải từ trang công khai trước đó thì không tải lại hoặc gửi pageview mới khi vào trang bị loại trừ.

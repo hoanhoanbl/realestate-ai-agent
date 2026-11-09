@@ -77,7 +77,7 @@ export default function SchedulePage() {
             type="button"
             aria-pressed={tab === value}
             onClick={() => setTab(value)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+            className={`min-h-11 rounded-md px-4 py-1.5 text-sm font-medium transition sm:min-h-0 ${
               tab === value ? "bg-white text-slate-900 shadow-card" : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -114,7 +114,7 @@ export default function SchedulePage() {
                     <p className="text-lg font-bold text-brand-700">{formatTime(r.viewingTime)}</p>
                   </div>
                   <div className="min-w-[160px] flex-1">
-                    <Link href={`/admin/leads/${r.leadId}`} className="font-semibold text-slate-900 hover:text-brand-700">
+                    <Link href={`/admin/leads/${r.leadId}`} className="inline-flex min-h-11 items-center font-semibold text-slate-900 hover:text-brand-700 sm:min-h-0">
                       {r.leadName}
                     </Link>
                     <p className="text-xs text-slate-500">{r.leadPhone}</p>

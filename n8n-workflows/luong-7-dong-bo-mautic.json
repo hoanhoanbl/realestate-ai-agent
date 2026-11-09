@@ -111,7 +111,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
+        680,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000004",
@@ -154,7 +154,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        880,
+        900,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000005",
@@ -185,7 +185,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
+        1140,
         140
       ],
       "id": "70010001-0000-4000-8000-000000000006",
@@ -226,7 +226,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
+        1140,
         340
       ],
       "id": "70010001-0000-4000-8000-000000000007",
@@ -250,7 +250,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
+        1380,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000008",
@@ -293,7 +293,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1580,
+        1600,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000009",
@@ -324,7 +324,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1800,
+        1820,
         140
       ],
       "id": "70010001-0000-4000-8000-000000000010",
@@ -367,7 +367,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2020,
+        2060,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000014",
@@ -404,7 +404,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2240,
+        2280,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000011",
@@ -423,7 +423,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2460,
+        2500,
         240
       ],
       "id": "70010001-0000-4000-8000-000000000012",
@@ -456,8 +456,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1460,
-        480
+        220,
+        690
       ],
       "id": "70010001-0000-4000-8000-000000000013",
       "name": "Báo lỗi Backend",
@@ -472,7 +472,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        820,
+        840,
         180
       ],
       "parameters": {
@@ -487,8 +487,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        650,
-        650
+        0,
+        690
       ],
       "parameters": {
         "respondWith": "json",
@@ -504,8 +504,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1500,
-        650
+        440,
+        690
       ],
       "parameters": {
         "respondWith": "json",
@@ -521,12 +521,92 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1740,
-        650
+        660,
+        690
       ],
       "parameters": {
         "errorMessage": "L7 đồng bộ Mautic thất bại; xem node lỗi trong execution"
       }
+    },
+    {
+      "parameters": {
+        "content": "## 1. Tiếp nhận thay đổi lead",
+        "height": 500,
+        "width": 620,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        10
+      ],
+      "name": "Nhóm 1. Tiếp nhận thay đổi lead",
+      "id": "b051eb28-6316-514e-8e50-5851c3378207"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Đồng bộ contact sang Mautic",
+        "height": 500,
+        "width": 1320,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        10
+      ],
+      "name": "Nhóm 2. Đồng bộ contact sang Mautic",
+      "id": "6467146b-821f-51a3-8c25-c92fec48e83d"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Ghi lại backend và phản hồi",
+        "height": 500,
+        "width": 620,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2020,
+        10
+      ],
+      "name": "Nhóm 3. Ghi lại backend và phản hồi",
+      "id": "c4accc98-1805-585f-8951-62c6b9a116e8"
+    },
+    {
+      "parameters": {
+        "content": "## Xử lý lỗi\nNhánh lỗi: báo backend / phản hồi lỗi / dừng để Error workflow báo quản lý",
+        "height": 300,
+        "width": 840,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        560
+      ],
+      "name": "Nhóm lỗi",
+      "id": "43061b32-cdd2-598b-a700-05ea4f594764"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -190
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "connections": {

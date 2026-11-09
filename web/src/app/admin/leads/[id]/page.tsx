@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BackLink, Icon } from "@/components/ui";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import ContactButtons from "@/components/ContactButtons";
@@ -32,7 +33,7 @@ const POLL_MS = 5000;
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <h2 className="text-sm font-semibold uppercase text-slate-500">
         {title}
       </h2>
@@ -44,8 +45,8 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex gap-3">
-      <span className="w-32 shrink-0 text-slate-500">{label}</span>
-      <span className="min-w-0 flex-1 break-words">{children}</span>
+      <span className="w-24 shrink-0 text-slate-500 sm:w-32">{label}</span>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }
@@ -53,9 +54,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function NotFound() {
   return (
     <section>
-      <Link href="/admin/leads" className="text-sm text-blue-600 hover:underline">
-        ← Danh sách khách
-      </Link>
+      <BackLink href="/admin/leads">Danh sách khách</BackLink>
       <p className="mt-6 rounded-lg bg-slate-50 p-4 text-slate-700 ring-1 ring-slate-200">
         Không tìm thấy khách.
       </p>
@@ -123,9 +122,7 @@ function LeadDetailContent() {
 
   return (
     <section>
-      <Link href="/admin/leads" className="text-sm text-blue-600 hover:underline">
-        ← Danh sách khách
-      </Link>
+      <BackLink href="/admin/leads">Danh sách khách</BackLink>
 
       {error && (
         <p
@@ -168,7 +165,7 @@ function LeadDetailContent() {
             <MauticScoreCard lead={lead} />
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-5 grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
             <Card title="Thông tin khách">
               <ContactButtons phone={lead.phone} email={lead.email} />
               <Field label="Số điện thoại">{lead.phone}</Field>
@@ -250,8 +247,11 @@ function LeadDetailContent() {
             {feedback && feedback.submittedAt && (
               <Card title="Cảm nhận của khách">
                 <Field label="Đánh giá">
-                  <span className="text-amber-500">{"★".repeat(feedback.rating ?? 0)}</span>
-                  <span className="text-slate-300">{"★".repeat(5 - (feedback.rating ?? 0))}</span>
+                  <span className="inline-flex gap-0.5" role="img" aria-label={`${feedback.rating ?? 0} trên 5 sao`}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Icon key={n} name="star" filled={n <= (feedback.rating ?? 0)} className={`h-4 w-4 ${n <= (feedback.rating ?? 0) ? "text-amber-400" : "text-slate-300"}`} />
+                    ))}
+                  </span>
                 </Field>
                 <Field label="Lựa chọn">
                   {{ DEPOSIT: "Muốn đặt cọc", OTHER: "Muốn xem căn khác", NONE: "Không còn nhu cầu" }[feedback.interest ?? "NONE"]}

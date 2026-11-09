@@ -113,18 +113,11 @@ export class LeadsService {
       approvalUrl?: string;
     },
   ): Promise<Lead> {
-    const lead = await this.findOne(id);
-
-    lead.score = data.score;
-    lead.level = data.level;
-    if (data.reason !== undefined) lead.reason = data.reason;
-    if (data.aiReply !== undefined) lead.aiReply = data.aiReply;
-    if (data.emailSent !== undefined) lead.emailSent = data.emailSent;
-    if (data.staffNotified !== undefined) lead.staffNotified = data.staffNotified;
-    if (data.approvalUrl !== undefined) lead.approvalUrl = data.approvalUrl;
-    lead.automationStatus = 'COMPLETED';
-
-    const saved = await this.leadRepository.save(lead);
+    const { approvalUrl, ...scores } = data;
+    // Ghi riêng cột AI; không save bản ghi cũ có thể đè trạng thái LOST vừa được L2 đóng.
+    await this.leadRepository.update(id, { ...scores, automationStatus: 'COMPLETED' });
+    if (approvalUrl !== undefined) await this.leadRepository.update({ id, status: 'NEW' }, { approvalUrl });
+    const saved = await this.findOne(id);
     this.fireLeadChanged(saved, 'ai_result');
     return saved;
   }
@@ -136,33 +129,35 @@ export class LeadsService {
       error?: string;
     },
   ): Promise<Lead> {
-    const lead = await this.findOne(id);
-
-    lead.automationStatus = data.status;
-    if (data.error !== undefined) {
-      lead.automationError = data.error;
-    }
-
-    return this.leadRepository.save(lead);
+    await this.leadRepository.update(id, {
+      automationStatus: data.status,
+      ...(data.error !== undefined ? { automationError: data.error } : {}),
+    });
+    return this.findOne(id);
   }
 
   async updateStatus(
     id: number,
     data: { status: string; note?: string; lostReason?: string },
   ): Promise<Lead> {
-    const lead = await this.findOne(id);
-    const oldStatus = lead.status;
-    if (oldStatus === data.status) return lead; // trung trang thai: khong doi, khong ghi log
-    assertNotLosingDeposit(oldStatus, data.status); // cả đường n8n gọi PUT /leads/:id/status
-    lead.status = data.status;
-    if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
-    const saved = await this.leadRepository.save(lead);
-    await this.addEvent(id, {
-      type: 'STATUS_CHANGED',
-      note: `${oldStatus} -> ${data.status}${data.note ? `: ${data.note}` : ''}`,
+    const result = await this.leadRepository.manager.transaction(async em => {
+      // Cùng khóa với L2: callback duyệt cũ không mở lại lead vừa bị đóng EXPIRED.
+      const repo = em.getRepository(Lead);
+      const lead = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
+      const oldStatus = lead.status;
+      if (oldStatus === data.status) return { saved: lead, changed: false };
+      if (oldStatus === 'LOST') throw new BadRequestException('Khách đã đóng, không dùng lại thao tác duyệt cũ. Hãy tạo lịch mới.');
+      assertNotLosingDeposit(oldStatus, data.status);
+      lead.status = data.status;
+      if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
+      const saved = await repo.save(lead);
+      await em.getRepository(LeadEvent).save({ leadId: id, type: 'STATUS_CHANGED',
+        note: `${oldStatus} -> ${data.status}${data.note ? `: ${data.note}` : ''}` });
+      return { saved, changed: true };
     });
-    this.fireLeadChanged(saved, 'status_changed');
-    return saved;
+    if (result.changed) this.fireLeadChanged(result.saved, 'status_changed');
+    return result.saved;
   }
 
   async findByMauticId(contactId: number, email?: string): Promise<Lead | null> {
@@ -174,8 +169,8 @@ export class LeadsService {
         where: { email: email.trim().toLowerCase() },
       });
       if (lead && !lead.mauticContactId) {
-        lead.mauticContactId = contactId;
-        await this.leadRepository.save(lead);
+        await this.leadRepository.update(lead.id, { mauticContactId: contactId });
+        return this.findOne(lead.id);
       }
     }
     return lead;
@@ -185,14 +180,12 @@ export class LeadsService {
     id: number,
     data: { mauticContactId?: number; mauticPoints?: number },
   ): Promise<Lead> {
-    const lead = await this.findOne(id);
-    if (data.mauticContactId !== undefined) {
-      lead.mauticContactId = data.mauticContactId;
-    }
-    if (data.mauticPoints !== undefined) {
-      lead.mauticPoints = data.mauticPoints;
-    }
-    return this.leadRepository.save(lead);
+    const patch = {
+      ...(data.mauticContactId !== undefined ? { mauticContactId: data.mauticContactId } : {}),
+      ...(data.mauticPoints !== undefined ? { mauticPoints: data.mauticPoints } : {}),
+    };
+    if (Object.keys(patch).length) await this.leadRepository.update(id, patch);
+    return this.findOne(id);
   }
 
   async addEvent(

@@ -11,7 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { PropertiesService } from './properties.service';
+import { PropertiesService, type PropertyListItem } from './properties.service';
 import { Property } from './entities/property.entity';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/create-property.dto';
 import { SearchPropertyDto } from './dto/search-property.dto';
@@ -26,7 +26,7 @@ export class PropertiesController {
 
   // Công khai: chỉ các căn không bị ẩn. Lọc tuỳ chọn: ?q=&minPrice=&maxPrice=&minArea=&type=&limit=
   @Get()
-  findAll(@Query() filter: SearchPropertyDto): Promise<Property[]> {
+  findAll(@Query() filter: SearchPropertyDto): Promise<PropertyListItem[]> {
     return this.propertiesService.findAll(filter);
   }
 

@@ -93,11 +93,11 @@ export default function ContractDocument({ data }: { data: ContractDocumentData 
   const blocks = data.content ? parseContent(data.content) : [];
 
   return (
-    <article className="contract-paper relative mx-auto bg-white text-[15px] leading-relaxed text-slate-900">
+    <article className="contract-paper relative mx-auto overflow-hidden bg-white text-[15px] leading-relaxed text-slate-900">
       {!signed && (
         <p
           aria-hidden
-          className="pointer-events-none absolute inset-0 flex items-center justify-center text-7xl font-bold uppercase text-slate-900/5 -rotate-30"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center text-5xl font-bold uppercase text-slate-900/5 -rotate-30 sm:text-7xl"
         >
           Chưa ký
         </p>

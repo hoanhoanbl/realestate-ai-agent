@@ -90,7 +90,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        660,
+        680,
         300
       ],
       "id": "b1f0a009-0000-4000-8000-000000000000",
@@ -109,7 +109,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        880,
+        900,
         200
       ],
       "id": "b1f0a004-0000-4000-8000-000000000000",
@@ -152,7 +152,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1100,
+        1120,
         300
       ],
       "id": "b1f0a005-0000-4000-8000-000000000000",
@@ -172,7 +172,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1320,
+        1340,
         200
       ],
       "id": "b1f0a006-0000-4000-8000-000000000000",
@@ -189,7 +189,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1540,
+        1560,
         300
       ],
       "id": "b1f0a007-0000-4000-8000-000000000000",
@@ -204,11 +204,59 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        -100
+        -40,
+        -330
       ],
       "id": "b1f0a008-0000-4000-8000-000000000000",
       "name": "Ghi chú"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Nhận yêu cầu thông báo",
+        "height": 400,
+        "width": 620,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        70
+      ],
+      "name": "Nhóm 1. Nhận yêu cầu thông báo",
+      "id": "87d9412f-f00f-5788-84ad-5146f2ef8b84"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Gửi email và Telegram cho nhân viên",
+        "height": 400,
+        "width": 1060,
+        "color": 1
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        70
+      ],
+      "name": "Nhóm 2. Gửi email và Telegram cho nhân viên",
+      "id": "494bead9-0ab3-53c7-a56d-f735be546592"
+    },
+    {
+      "parameters": {
+        "content": "## Chú thích màu (chung mọi luồng)\nXanh dương = tiếp nhận, trigger · Tím = kiểm tra, quyết định · Xanh lá = AI · Cam = con người (duyệt, báo nhân viên) · Vàng = hành động, lưu, ghi log · Đỏ = xử lý lỗi",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -130
+      ],
+      "name": "Chú thích màu",
+      "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
     }
   ],
   "connections": {

@@ -10,10 +10,11 @@ const VARIANTS: Record<ButtonVariant, string> = {
   danger: "bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-200",
 };
 
+// Điện thoại: cao tối thiểu 44px cho dễ chạm (skill ui-ux-pro-max, touch-target-size); máy tính giữ cỡ gọn
 const SIZES: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-5 py-3 text-base",
+  sm: "min-h-11 px-3 py-1.5 text-sm sm:min-h-8",
+  md: "min-h-11 px-4 py-2 text-sm sm:min-h-10",
+  lg: "min-h-12 px-5 py-3 text-base",
 };
 
 // Dùng cho cả <button> và <Link>: <Link className={buttonClass("secondary")}>

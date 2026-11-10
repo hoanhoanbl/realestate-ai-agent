@@ -11,6 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
+import { LeadIntakeService } from './lead-intake.service';
+import { AssignLeadDto, CreateLeadDto, LeadNoteDto } from './dto/create-lead.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { Lead } from './entities/lead.entity';
 import { LeadEvent } from './entities/lead-event.entity';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
@@ -25,7 +29,39 @@ import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
 
 @Controller('leads')
 export class LeadsController {
-  constructor(private readonly leadsService: LeadsService) {}
+  constructor(private readonly leadsService: LeadsService, private readonly intake: LeadIntakeService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() dto: CreateLeadDto, @Req() req: { user: AuthUser }) {
+    return this.intake.create(dto, req.user);
+  }
+
+  @Post('intake')
+  @UseGuards(WebhookSecretGuard)
+  receive(@Body() dto: CreateLeadDto) {
+    return this.intake.create(dto);
+  }
+
+  // Đặt trước :id để không bị ParseIntPipe coi "lookup" là id.
+  @Get('lookup')
+  @UseGuards(JwtAuthGuard)
+  async lookup(@Query('phone') phone: string) {
+    return { lead: await this.intake.lookup(phone) };
+  }
+
+  @Put(':id/assignee')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  reassign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignLeadDto, @Req() req: { user: AuthUser }) {
+    return this.intake.reassign(id, dto, req.user);
+  }
+
+  @Post(':id/notes')
+  @UseGuards(JwtAuthGuard)
+  note(@Param('id', ParseIntPipe) id: number, @Body() dto: LeadNoteDto, @Req() req: { user: AuthUser }) {
+    return this.intake.addNote(id, dto.note, req.user);
+  }
 
   // --- Cho người dùng đăng nhập (web admin, app) ---
 

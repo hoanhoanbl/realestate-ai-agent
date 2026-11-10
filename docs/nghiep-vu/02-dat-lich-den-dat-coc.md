@@ -6,6 +6,8 @@ Mỗi quy tắc ghi: khi nào áp dụng, hệ thống làm gì, người dùng 
 
 Cập nhật lần cuối: 4/11/2026.
 
+**Bổ sung FE-33 (local, chưa triển khai server, 10/11):** đặt lịch khách mới đi qua intake chung, chuẩn hoá số điện thoại và gán người phụ trách trong cùng transaction với buổi xem. Hồ sơ `CONSULTING` chưa từng có buổi xem được đặt lịch đầu tiên trên cùng lead, giữ sale và bổ sung thông tin còn thiếu. Hồ sơ đã có buổi xem hoặc ở trạng thái khác nhận 409, không tạo lead trùng số. Cơ chế nhiều buổi xem và callback theo buổi xem chờ FE-34/FE-35. Callback duyệt/đổi lịch n8n ghi nhận phản hồi đầu tiên; note gửi lại qua intake được lưu vào lead cũ. API tiếp nhận khách chưa đặt lịch tạo `CONSULTING`, email/ngân sách không bắt buộc. Hợp đồng và cách triển khai: [FE-33](../fe-33-nen-tiep-nhan.md).
+
 ## Các mốc thời gian
 
 | Mốc | Giá trị hiện tại | Ở đâu |
@@ -49,7 +51,7 @@ Backend kiểm tra theo thứ tự dưới đây, trong một transaction có kh
 | Mỗi IP đặt tối đa 5 lần trong 10 phút. Trợ lý AI đặt hộ (gọi kèm secret) không bị giới hạn | "Bạn gửi quá nhiều lần, vui lòng thử lại sau ít phút" |
 | Căn phải đang "Đang bán" | "Căn nhà này hiện không nhận đặt lịch xem" |
 | Không có lịch đang chờ nào của căn đó cách giờ chọn dưới 60 phút. "Đang chờ" = buổi xem "Chờ xem" của lead "Mới" hoặc "Đã chốt lịch" | "Khung giờ này đã có khách hẹn xem căn này (lúc …). Vui lòng chọn giờ cách ít nhất 60 phút." |
-| Cùng email chưa có lịch đang chờ cho cùng căn | "Bạn đã có lịch xem căn này lúc …. Nếu cần đổi giờ, hãy dùng link trong email xác nhận hoặc liên hệ nhân viên." |
+| FE-33 local: số điện thoại chưa có hồ sơ, hoặc hồ sơ CONSULTING chưa từng có buổi xem; các trường hợp khác chờ FE-34/35 | "Số điện thoại này đã có hồ sơ. Vui lòng liên hệ nhân viên để đặt thêm hoặc đổi lịch xem." |
 
 Hai lỗi trùng lịch trả mã 409, giới hạn đặt lịch trả 429. Trợ lý AI nhận lý do từ backend và nói lại cho khách.
 

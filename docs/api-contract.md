@@ -6,6 +6,8 @@ Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Requ
 
 ## Quy uoc chung
 
+**FE-33 (local, chưa triển khai server):** [Hợp đồng API tiếp nhận và phân công sale](fe-33-nen-tiep-nhan.md#hợp-đồng-api) bổ sung `POST /leads`, `POST /leads/intake`, lookup theo số điện thoại, chuyển người phụ trách, ghi chú và cấu hình nhận khách. Lead có trạng thái `CONSULTING`; email và ngân sách có thể `null` với khách chưa đặt lịch. Các API đặt lịch cũ giữ đầu vào bắt buộc; phần chuyển tiếp chống trùng số được ghi tại tài liệu FE-33.
+
 - Backend NestJS chay o cong **8081**, tien to `/api` (vi du `http://localhost:8081/api/leads`). Swagger: `/api/docs`.
 - n8n chay o cong `5678`. Web (Next.js) chay o cong `3000`.
 - JSON dung **camelCase** (`createdAt`, `propertyId`, `automationStatus`). Ten cot trong database la snake_case, chi la chi tiet noi bo cua backend.
@@ -235,3 +237,4 @@ Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `
 | 12/10/2026 | Hoang (Hau duyet) | Tuan 2: them `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `lead_events` |
 | 21/10/2026 | Hau | Them cot `source`, `mautic_contact_id`, `mautic_points`, endpoint `PUT /api/leads/{id}/mautic`, webhook `lead-changed` |
 | 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |
+| 10/11/2026 | Hau (local) | FE-33: API tiep nhan/tra trung theo SDT, gan/chuyen sale, ghi chu, cau hinh nhan khach; CONSULTING, email/ngan sach nullable; chi tiet trong `fe-33-nen-tiep-nhan.md` |

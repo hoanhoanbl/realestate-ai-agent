@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -13,14 +14,35 @@ export class Lead {
   @Column()
   name: string;
 
-  @Column()
-  email: string;
+  @Column({ type: 'varchar', nullable: true })
+  email: string | null;
 
   @Column()
   phone: string;
 
-  @Column('bigint')
-  budget: number;
+  // Không unique: dữ liệu cũ có thể trùng, việc gộp khách phải được duyệt riêng.
+  @Index('idx_leads_phone_normalized')
+  @Column({ name: 'phone_normalized', type: 'varchar', length: 20, nullable: true })
+  phoneNormalized: string | null;
+
+  @Index('idx_leads_assigned_user')
+  @Column({ name: 'assigned_user_id', type: 'integer', nullable: true })
+  assignedUserId: number | null;
+
+  @Column({ name: 'assigned_at', type: 'timestamptz', nullable: true })
+  assignedAt: Date | null;
+
+  @Column({ name: 'response_due_at', type: 'timestamptz', nullable: true })
+  responseDueAt: Date | null;
+
+  @Column({ name: 'first_response_at', type: 'timestamptz', nullable: true })
+  firstResponseAt: Date | null;
+
+  @Column({ name: 'interested_property_ids', type: 'integer', array: true, nullable: true })
+  interestedPropertyIds: number[] | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  budget: number | null;
 
   @Column({ type: 'text', nullable: true })
   needs: string | null;

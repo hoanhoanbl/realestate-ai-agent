@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { IsString, Matches } from 'class-validator';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthUser } from '../auth/auth.types';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateRoutingDto } from './dto/update-routing.dto';
 
 class PushTokenDto {
   // Token Expo Push có dạng ExponentPushToken[xxxx]
@@ -18,6 +19,16 @@ class PushTokenDto {
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('assignees')
+  findAssignees() {
+    return this.usersService.findAssignees();
+  }
+
+  @Put(':id/routing')
+  updateRouting(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoutingDto, @Req() req: { user: AuthUser }) {
+    return this.usersService.updateRouting(id, dto, req.user);
+  }
 
   // Quản lý xem danh sách tất cả tài khoản và phân quyền
   @Get()

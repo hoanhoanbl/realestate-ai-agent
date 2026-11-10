@@ -2,7 +2,7 @@
 
 Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026, **chưa làm**. Phần nào khác với hệ thống đang chạy thì ghi rõ "Hiện tại" và "Mới". Khi làm xong phần nào, sửa [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) cho khớp và xoá ghi chú "chưa làm" ở đây.
+**Trạng thái:** đã chốt ngày 10/11/2026. FE-33 đã triển khai local: dữ liệu, API nhận khách/tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi. Chưa PR hoặc triển khai server. Hợp đồng API, bước nâng cấp và giới hạn chuyển tiếp: [FE-33](../fe-33-nen-tiep-nhan.md). Các phần nhiều buổi xem, nối bot/workflow, giao diện và cảnh báo vẫn chờ FE-34–FE-40; không coi các quy tắc đích dưới đây là đã chạy trên server.
 
 ## Tóm tắt thay đổi
 

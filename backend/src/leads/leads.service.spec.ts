@@ -29,7 +29,7 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
     };
     const eventRepo = {
       create: (e: any) => e,
-      save: async (e: any) => { events.push(e); return e; },
+      save: async (e: any) => { const saved = { ...e, createdAt: new Date() }; events.push(saved); return saved; },
     };
     const viewingRepo = {
       findOne: async () => viewing,
@@ -77,5 +77,25 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
     await service.updateAiResult(4, { score: 75, level: 'HOT', approvalUrl: 'https://example.invalid/old' });
     await service.updateMautic(4, { mauticContactId: 8, mauticPoints: 20 });
     expect(lead).toMatchObject({ status: 'LOST', lostReason: 'EXPIRED', approvalUrl: null, score: 75, mauticPoints: 20 });
+  });
+  it('FE-33: callback duyệt ghi nhận phản hồi ngay trong transaction và không đè thời điểm cũ', async () => {
+    lead.status = 'NEW'; lead.firstResponseAt = null;
+    await service.updateStatus(4, { status: 'CONFIRMED' });
+    const firstResponseAt = lead.firstResponseAt;
+    expect(firstResponseAt).toBeInstanceOf(Date);
+    await service.updateStatus(4, { status: 'CONFIRMED' });
+    await service.addEvent(4, { type: 'APPROVED' });
+    expect(lead.firstResponseAt).toEqual(firstResponseAt);
+  });
+  it('FE-33: sự kiện đổi giờ là phản hồi; sự kiện tự động không phải phản hồi', async () => {
+    lead.status = 'NEW'; lead.firstResponseAt = null;
+    for (const type of ['AI_SCORED', 'REMINDER_SENT', 'APPROVAL_TIMEOUT']) {
+      await service.addEvent(4, { type });
+      expect(lead.firstResponseAt).toBeNull();
+    }
+    const event = await service.addEvent(4, { type: 'RESCHEDULE_REQUESTED' });
+    expect(lead.firstResponseAt).toEqual(event.createdAt);
+    await service.addEvent(4, { type: 'VIEWING_RESCHEDULED' });
+    expect(lead.firstResponseAt).toEqual(event.createdAt);
   });
 });

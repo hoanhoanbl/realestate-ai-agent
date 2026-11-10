@@ -29,7 +29,7 @@ const GROUPS: { title: string; links: NavLink[] }[] = [
     links: [
       { href: "/admin/bao-cao", label: "Báo cáo", icon: "chart", roles: ["MANAGER"] },
       { href: "/admin/nha", label: "Quản lý nhà", icon: "home", roles: ["MANAGER"] },
-      { href: "/admin/tai-khoan", label: "Phân quyền", icon: "shield", roles: ["MANAGER"] },
+      { href: "/admin/tai-khoan", label: "Tài khoản", icon: "shield", roles: ["MANAGER", "SALE"] },
     ],
   },
 ];

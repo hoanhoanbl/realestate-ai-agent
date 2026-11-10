@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import ContactButtons from "@/components/ContactButtons";
 import LeadActions from "@/components/LeadActions";
+import LeadAssignmentPanel from "@/components/LeadAssignmentPanel";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import MauticScoreCard from "@/components/MauticScoreCard";
@@ -161,6 +162,7 @@ function LeadDetailContent() {
           </div>
 
           <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
+          <LeadAssignmentPanel key={lead.id} lead={lead} onChanged={() => setVersion((v) => v + 1)} />
 
           <div className="mt-5">
             <MauticScoreCard lead={lead} />

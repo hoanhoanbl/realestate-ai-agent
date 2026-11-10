@@ -178,6 +178,16 @@ integration(
           .get('/api/users/assignees')
           .auth(saleToken, { type: 'bearer' })
           .expect(200);
+          await request(http).get('/api/users/me/routing').expect(401);
+          const mine = await request(http).get('/api/users/me/routing').auth(saleToken, { type: 'bearer' }).expect(200);
+          expect(mine.body).toMatchObject({ id: sales[0].id, role: 'SALE', acceptingLeads: true });
+          expect(mine.body).not.toHaveProperty('passwordHash');
+          expect(mine.body).not.toHaveProperty('pushToken');
+          await request(http).get('/api/users').auth(saleToken, { type: 'bearer' }).expect(403);
+          await request(http).put(`/api/users/${sales[1].id}/routing`).auth(saleToken, { type: 'bearer' })
+            .send({ acceptingLeads: false }).expect(403);
+          await request(http).put(`/api/users/${sales[0].id}/routing`).auth(saleToken, { type: 'bearer' })
+            .send({ acceptingLeads: false, telegramChatId: '123456789' }).expect(200);
       } finally {
         if (previousSecret === undefined) delete process.env.WEBHOOK_SECRET;
         else process.env.WEBHOOK_SECRET = previousSecret;

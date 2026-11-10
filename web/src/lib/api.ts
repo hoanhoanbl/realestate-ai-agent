@@ -587,6 +587,10 @@ export function addLeadNote(id: number, note: string): Promise<LeadEvent> {
 }
 
 export type AssigneeOption = Pick<UserAccount, "id" | "name" | "role" | "acceptingLeads">;
+export type UserRoutingInfo = Pick<UserAccount, "id" | "name" | "email" | "role" | "acceptingLeads" | "telegramChatId">;
+export function getMyRouting(): Promise<UserRoutingInfo> {
+  return request("/users/me/routing");
+}
 export function getAssignees(): Promise<AssigneeOption[]> {
   return request("/users/assignees");
 }

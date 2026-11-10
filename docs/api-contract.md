@@ -6,6 +6,8 @@ Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Requ
 
 ## Quy uoc chung
 
+**FE-39 (local):** `GET /api/users/me/routing` có JWT trả cấu hình nhận khách của chính người đăng nhập (`id,name,email,role,telegramChatId,acceptingLeads`), không trả hash/push token. Sale vẫn không được xem `/users` hay sửa routing của người khác. Xem [FE-39](fe-39-admin-phu-trach.md).
+
 **FE-33 (local, chưa triển khai server):** [Hợp đồng API tiếp nhận và phân công sale](fe-33-nen-tiep-nhan.md#hợp-đồng-api) bổ sung `POST /leads`, `POST /leads/intake`, lookup theo số điện thoại, chuyển người phụ trách, ghi chú và cấu hình nhận khách. Lead có trạng thái `CONSULTING`; email và ngân sách có thể `null` với khách chưa đặt lịch. Các API đặt lịch cũ giữ đầu vào bắt buộc; phần chuyển tiếp chống trùng số được ghi tại tài liệu FE-33.
 
 - Backend NestJS chay o cong **8081**, tien to `/api` (vi du `http://localhost:8081/api/leads`). Swagger: `/api/docs`.

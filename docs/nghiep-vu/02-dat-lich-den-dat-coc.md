@@ -88,6 +88,8 @@ Giữ nguyên người phụ trách, nguồn, tên và đồng ý nhận tin c�
 
 ## 2. Duyệt lịch
 
+FE-39 local bổ sung thẻ người phụ trách và ghi chú trên trang chi tiết khách. Chủ hoặc quản lý ghi kết quả liên hệ; quản lý chuyển sale ở cùng thẻ. Duyệt/đổi giờ và điểm danh vẫn dùng các nút nghiệp vụ hiện có. Xem [FE-39](../fe-39-admin-phu-trach.md).
+
 ### 2.1. Duyệt
 
 - Nhân viên bấm **Duyệt** trong thông báo (email, Telegram, ...) hoặc trên trang chi tiết lead.

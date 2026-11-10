@@ -75,6 +75,7 @@ const POLL_IDLE_MS = 20000;
 
 const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "ALL", label: "Mọi trạng thái" },
+  { value: "CONSULTING", label: "Đang tư vấn" },
   { value: "NEW", label: "Mới, chờ duyệt" },
   { value: "CONFIRMED", label: "Đã chốt lịch" },
   { value: "VIEWED", label: "Đã xem nhà" },

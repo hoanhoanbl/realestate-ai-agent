@@ -2,8 +2,9 @@
 
 File này là luật chung của hệ thống: ai được làm gì, và mỗi đối tượng (lead, buổi xem, căn nhà, hợp đồng) có những trạng thái nào, chuyển qua lại ra sao. Quy tắc của từng chặng nằm ở:
 
-- [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md): đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
-- [cham-soc-va-marketing.md](cham-soc-va-marketing.md): sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
+- [01-tiep-nhan-va-phan-cong.md](01-tiep-nhan-va-phan-cong.md): quy trình 1, khách vào từ đâu, ai phụ trách, hạn phản hồi, khung giờ hẹn (đã chốt, chưa làm).
+- [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md): quy trình 2, đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
+- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
 
 Tài liệu luồng trong `docs/luong/` chỉ link về đây, không chép lại quy tắc. Nếu code chạy khác với file này, báo trong nhóm để sửa một trong hai, không để lệch.
 
@@ -84,11 +85,12 @@ Vì sao không làm đăng nhập cho khách:
 
 ### 4.1. Lead (khách đăng ký xem nhà)
 
-Mỗi lần khách đặt lịch tạo ra **một lead gắn với một buổi xem một căn**. Khách đặt lịch xem căn khác là một lead mới. Trang chi tiết lead hiện mục "Các lần đặt khác" gồm các lead có cùng email.
+Từ FE-33 và FE-34 (local, chưa triển khai server): **một lead là một khách**, nhận ra bằng số điện thoại. Một lead có nhiều buổi xem (mục 4.2), mỗi lúc tối đa một buổi đang mở. Khách đặt lịch xem căn khác thì buổi xem mới gắn vào lead cũ. Trang chi tiết lead hiện lịch sử các buổi xem, và mục "Các lần đặt khác" cho các lead cũ trùng số điện thoại (dữ liệu trước FE-33 chưa gộp).
 
 | Mã | Nhãn trên web | Nghĩa |
 |---|---|---|
-| `NEW` | Mới | Vừa đặt lịch, chờ nhân viên duyệt |
+| `CONSULTING` | Đang tư vấn | Có hồ sơ nhưng chưa có buổi xem nào đang mở: khách để lại số qua bot hoặc nhân viên nhập tay, hoặc buổi xem vừa bị huỷ, khách không đến |
+| `NEW` | Mới | Có buổi xem vừa đặt, chờ nhân viên duyệt |
 | `CONFIRMED` | Đã chốt lịch | Nhân viên đã duyệt, chờ đến giờ xem |
 | `VIEWED` | Đã xem nhà | Khách đã đến xem (đã điểm danh) |
 | `DEPOSIT` | Đang làm hợp đồng cọc | Đã lập hợp đồng, chờ duyệt hoặc chờ khách ký |
@@ -97,9 +99,17 @@ Mỗi lần khách đặt lịch tạo ra **một lead gắn với một buổi 
 
 ```mermaid
 stateDiagram-v2
+    [*] --> CONSULTING: Để lại số điện thoại (bot, nhập tay)
     [*] --> NEW: Khách đặt lịch
+    CONSULTING --> NEW: Đặt lịch xem
     NEW --> CONFIRMED: Nhân viên duyệt
+    NEW --> CONSULTING: Huỷ lịch, chưa từng xem
+    CONFIRMED --> CONSULTING: Huỷ hoặc không đến, chưa từng xem
     CONFIRMED --> VIEWED: Điểm danh "có đến"
+    CONFIRMED --> VIEWED: Huỷ hoặc không đến, đã từng xem buổi khác
+    VIEWED --> NEW: Đặt thêm lịch xem
+    LOST --> NEW: Khách quay lại đặt lịch
+    CONSULTING --> LOST
     VIEWED --> DEPOSIT: Lập hợp đồng
     DEPOSIT --> VIEWED: Hợp đồng bị từ chối / hết hạn
     DEPOSIT --> SIGNED: Khách ký
@@ -112,12 +122,14 @@ stateDiagram-v2
 
 | Từ → Đến | Ai, khi nào |
 |---|---|
-| (chưa có) → `NEW` | Khách đặt lịch qua web, Telegram, ... |
+| (chưa có) → `CONSULTING` | Khách để lại số điện thoại qua bot, hoặc nhân viên nhập tay |
+| (chưa có) → `NEW` | Khách đặt lịch lần đầu qua web, Telegram, ... |
+| `CONSULTING`, `VIEWED`, `LOST` → `NEW` | Khách (cùng số điện thoại) đặt lịch xem: buổi xem mới gắn vào lead cũ. Lead `LOST` được mở lại và xoá lý do đóng. Không đặt được khi đang có buổi xem mở, hoặc khi đang `DEPOSIT` / `SIGNED` |
 | `NEW` → `CONFIRMED` | Nhân viên duyệt bằng nút trong email, Telegram, ... hoặc trên web admin. Không duyệt được khi AI chưa chấm điểm xong |
-| `CONFIRMED` → `LOST` (`CUSTOMER_CANCELLED`) | Khách tự huỷ bằng link quản lý lịch (link gửi kèm thư chốt lịch, nên khách chỉ có link sau khi được duyệt) |
+| `NEW`, `CONFIRMED` → `VIEWED` hoặc `CONSULTING` | Khách tự huỷ bằng link quản lý lịch. Chỉ buổi xem chuyển "Đã huỷ"; lead về `VIEWED` nếu khách từng đến một buổi khác, không thì về `CONSULTING`. Lead **không** bị đóng |
 | `NEW` → `LOST` (`EXPIRED`) | Tự động: giờ hẹn đã qua mà chưa ai duyệt *(có từ FE-30)* |
 | `CONFIRMED` → `VIEWED` | Nhân viên điểm danh "có đến" |
-| `CONFIRMED` → `LOST` (`NO_SHOW`) | Nhân viên điểm danh "không đến" và chọn đóng lead |
+| `CONFIRMED` → `VIEWED` hoặc `CONSULTING` | Nhân viên điểm danh "không đến" và không hẹn lại (về trạng thái như khi khách huỷ). Lead không bị đóng; muốn đóng thì bấm "Không mua" |
 | `CONFIRMED` → `CONFIRMED` (giờ mới) | Nhân viên đổi giờ, hoặc điểm danh "không đến" và chọn hẹn lại |
 | `VIEWED` → `DEPOSIT` | Nhân viên lập hợp đồng đặt cọc |
 | `DEPOSIT` → `VIEWED` | Hợp đồng bị quản lý từ chối hoặc hết hạn |
@@ -130,9 +142,9 @@ Khách đang `DEPOSIT` **không** bấm "Không mua" được: quản lý phải
 
 | Mã | Nhãn | Khi nào |
 |---|---|---|
-| `NO_SHOW` | Khách không đến xem | Điểm danh "không đến" và đóng lead |
+| `NO_SHOW` | Khách không đến xem | Chỉ còn ở dữ liệu trước FE-34; từ FE-34 điểm danh "không đến" không đóng lead |
 | `NOT_INTERESTED` | Không còn nhu cầu | Nhân viên chọn sau khi gọi khách |
-| `CUSTOMER_CANCELLED` | Khách tự huỷ lịch | Khách huỷ bằng link quản lý lịch |
+| `CUSTOMER_CANCELLED` | Khách tự huỷ lịch | Chỉ còn ở dữ liệu trước FE-34; từ FE-34 khách huỷ lịch không đóng lead |
 | `EXPIRED` | Quá hạn không xử lý | Tự động, giờ hẹn qua mà chưa duyệt *(có từ FE-30)* |
 | `OTHER` | Lý do khác | Mặc định khi nhân viên không chọn lý do |
 
@@ -144,13 +156,13 @@ Khách mất trước khi có lý do (dữ liệu cũ) để trống.
 
 ### 4.2. Buổi xem
 
-Mỗi lead có đúng một buổi xem. Đổi giờ thì sửa giờ trên buổi xem đó, giờ cũ được ghi vào nhật ký.
+Một lead có thể có nhiều buổi xem (mỗi lần đặt một buổi), nhưng mỗi lúc **tối đa một buổi đang mở** (`NEW`). Buổi xem đã kết thúc giữ lại làm lịch sử. Đổi giờ thì sửa giờ trên buổi xem đang mở, giờ cũ được ghi vào nhật ký.
 
 | Mã | Nhãn | Từ đâu |
 |---|---|---|
 | `NEW` | Chờ xem | Khi khách đặt lịch; vẫn `NEW` khi đổi giờ |
 | `ATTENDED` | Khách đã đến | Điểm danh "có đến" |
-| `NO_SHOW` | Khách không đến | Điểm danh "không đến" và đóng lead |
+| `NO_SHOW` | Khách không đến | Điểm danh "không đến" và không hẹn lại |
 | `CANCELLED` | Đã huỷ | Khách huỷ bằng link, hoặc nhân viên bấm "Không mua" khi buổi xem còn chờ |
 
 Dữ liệu trước FE-19 có buổi xem để `NEW` dù khách đã xem, vì lúc đó chưa có điểm danh.
@@ -207,7 +219,7 @@ Mỗi căn và mỗi khách chỉ có tối đa **một hợp đồng còn hiệ
 | `REJECTED` | Bị từ chối | Quản lý từ chối, kèm lý do |
 | `EXPIRED` | Hết hạn | Quản lý không duyệt kịp, hoặc khách không ký kịp |
 
-Thời hạn duyệt, ký và nhắc ký: xem [dat-lich-den-dat-coc.md](dat-lich-den-dat-coc.md).
+Thời hạn duyệt, ký và nhắc ký: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
 
 ### 4.5. Cảm nhận của khách
 

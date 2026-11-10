@@ -5,7 +5,7 @@ Môn: Chuyên đề 2, No-code / Low-code Automation (n8n). Nhóm: **Hoàng**, *
 Các tài liệu khác:
 
 - [api-contract.md](api-contract.md): luật chung về dữ liệu và API. Mâu thuẫn thì file đó thắng.
-- [ke-hoach-tich-hop.md](ke-hoach-tich-hop.md): kế hoạch chi tiết tích hợp Mautic, Agentic AI và App (chốt 20/10/2026).
+- [danh-sach-lo-hong.md](danh-sach-lo-hong.md): lỗ hổng còn lại, xếp theo vòng đời khách.
 - [mautic-setup.md](mautic-setup.md): hướng dẫn hạ tầng và cấu hình Mautic 5.
 
 ## 1. Yêu cầu của môn
@@ -134,7 +134,7 @@ Nguyên tắc: **web làm trước, app làm sau**.
 | App nhân viên (Expo) | Đăng nhập, việc hôm nay, chi tiết lead (Duyệt, Đổi giờ, Gọi, Email), thông báo đẩy |
 | Báo cáo | Mô tả bài toán, kiến trúc, từng luồng, kết quả đo lường |
 
-## 10. Mốc thời gian chốt (theo `ke-hoach-tich-hop.md`)
+## 10. Mốc thời gian chốt
 
 - **Demo tuần 1:** Thứ Bảy 24/10/2026
 - **Web hoàn thành:** 22/11/2026

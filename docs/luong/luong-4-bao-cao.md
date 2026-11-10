@@ -69,12 +69,12 @@ sequenceDiagram
 | 1 | Thứ Hai 8h / Chạy tay / Quản lý bấm tạo ngay | Ba cách khởi động, cùng dẫn vào một đường |
 | 2 | Cấu hình | Địa chỉ backend, web, email quản lý |
 | 3 | Kỳ báo cáo (Code) | Từ 00:00 bảy ngày trước đến 00:00 hôm nay, giờ Việt Nam |
-| 4–5 | Số liệu tuần này / tuần trước (Postgres) | Đếm khách, trạng thái, hợp đồng, cảm nhận, thời gian duyệt và số lead quá hạn không xử lý. `expired` đếm mỗi lead một lần theo thời điểm event `LEAD_EXPIRED` trong kỳ, không đếm event thông báo, không gộp với `no_show`. |
-| 6 | Tính phễu và cảnh báo (Code) | Tỉ lệ chuyển đổi, chênh lệch, **6 quy tắc cảnh báo cố định** |
+| 4–5 | Số liệu tuần này / tuần trước (Postgres) | Đếm khách, trạng thái, hợp đồng, cảm nhận, thời gian duyệt và số lead quá hạn không xử lý (`expired`). Bổ sung thống kê cơ cấu nguồn khách (`sources_breakdown`) và các chiến dịch nuôi dưỡng (`campaign_warm`, `campaign_cold`, `hot_followup`) (FE-23). |
+| 6 | Tính phễu và cảnh báo (Code) | Tỉ lệ chuyển đổi, chênh lệch, cơ cấu nguồn khách (`sources`), số liệu chiến dịch nuôi dưỡng (`campaigns`), **quy tắc cảnh báo cố định** (gồm cảnh báo nguồn marketing sụt giảm > 50%) |
 | 7 | AI Agent phân tích | Gemini + công cụ tra cứu + bộ phân tích đầu ra có cấu trúc. Tối đa 6 vòng suy luận |
 | 8 | Kiểm tra AI (Code) | **Guardrail**: AI thiếu hoặc lỗi thì dựng báo cáo tối thiểu từ số liệu, báo cáo vẫn được gửi |
 | 9 | Lưu báo cáo | Backend lưu vào bảng `weekly_reports` |
-| 10 | Soạn email báo cáo → Email báo cáo tuần | Bảng số liệu so sánh, phễu, nhận định, đề xuất |
+| 10 | Soạn email báo cáo → Email báo cáo tuần | Bảng số liệu so sánh, phễu, cơ cấu nguồn khách & chiến dịch Mautic, nhận định, đề xuất |
 | 11 | Có cảnh báo? → Email cảnh báo quản lý | Chỉ khi có điểm bất thường |
 
 ## 5. Vì sao an toàn khi để AI tự viết SQL?

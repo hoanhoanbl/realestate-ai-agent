@@ -9,9 +9,10 @@ export type ChatRoute = typeof CHAT_ROUTES[number];
 @Entity('chat_logs')
 export class ChatLog {
   @PrimaryGeneratedColumn() id: number;
+  @Index() @Column({ name: 'lead_id', type: 'integer', nullable: true }) leadId: number | null;
   @Column({ length: 20, default: 'telegram' }) channel: string;
   @Index() @Column({ name: 'chat_id', length: 40 }) chatId: string;
-  @Column({ length: 20 }) route: ChatRoute;
+  @Column({ type: 'varchar', length: 20 }) route: ChatRoute;
   @Column({ type: 'text' }) question: string;
   @Column({ type: 'text' }) reply: string;
   @Column({ name: 'used_fallback', default: false }) usedFallback: boolean;

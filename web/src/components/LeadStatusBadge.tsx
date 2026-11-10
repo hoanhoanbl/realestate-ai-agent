@@ -1,6 +1,10 @@
 import type { LeadStatus } from "@/lib/api";
 
 const CONFIG: Record<LeadStatus, { label: string; style: string }> = {
+  CONSULTING: {
+    label: "Đang tư vấn",
+    style: "bg-cyan-50 text-cyan-700 ring-cyan-200",
+  },
   NEW: {
     label: "Mới",
     style: "bg-slate-100 text-slate-700 ring-slate-200",

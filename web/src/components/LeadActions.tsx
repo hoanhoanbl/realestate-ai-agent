@@ -156,7 +156,7 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
         )}
         {canMarkViewed && viewing && noShowOpen && (
           <div className="flex flex-col gap-2 rounded-lg bg-white p-3 ring-1 ring-slate-300">
-            <p className="text-sm font-medium text-slate-700">Khách không đến. Hẹn lại hay đóng?</p>
+            <p className="text-sm font-medium text-slate-700">Khách không đến. Hẹn lại, hay chỉ ghi nhận không đến?</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="datetime-local"
@@ -192,16 +192,16 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 type="button"
                 disabled={busy !== null}
                 onClick={() => {
-                  if (!window.confirm("Đóng khách này với lý do: khách không đến xem?")) return;
+                  if (!window.confirm("Ghi nhận khách không đến buổi xem này? Khách vẫn còn trong danh sách để tư vấn tiếp. Muốn đóng khách thì dùng nút Mất khách.")) return;
                   run("noshow-close", async () => {
                     await recordAttendance(viewing.id, { outcome: "NO_SHOW", next: "CLOSE" });
                     setNoShowOpen(false);
-                    return "Đã ghi nhận khách không đến và đóng khách.";
+                    return "Đã ghi nhận khách không đến. Khách quay lại danh sách để tư vấn tiếp.";
                   });
                 }}
                 className="min-h-11 rounded-md px-3 py-1.5 text-sm sm:min-h-0 font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
               >
-                Đóng (Không mua)
+                Chỉ ghi nhận không đến
               </button>
               <button
                 type="button"

@@ -88,7 +88,7 @@ function PropertyDetail() {
   return (
     <section>
       {back}
-      <div className="mt-4 grid gap-8 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* min-w-0: dải ảnh nhỏ cuộn ngang không được đẩy cột rộng ra trên điện thoại */}
         <div className="min-w-0 lg:col-span-3">
           <PropertyMedia property={property} />
@@ -208,7 +208,7 @@ function DetailSkeleton() {
   return (
     <section aria-busy="true" aria-label="Đang tải căn nhà">
       <Skeleton className="h-4 w-28" />
-      <div className="mt-4 grid gap-8 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <Skeleton className="aspect-[16/10] rounded-2xl" />
           <Skeleton className="mt-5 h-7 w-2/3" />

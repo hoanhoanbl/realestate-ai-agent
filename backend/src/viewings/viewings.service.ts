@@ -14,9 +14,20 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Property } from '../properties/entities/property.entity';
 import { CreateViewingDto } from './dto/create-viewing.dto';
 import { AttendanceDto, UpdateViewingDto } from './dto/update-viewing.dto';
-import { assertViewingStarted, parseViewingTime } from './viewing-time';
-import { assertNoBookingConflict, assertNoDuplicateBooking, lockProperty } from './booking-rules';
+import {
+  assertCustomerSlot,
+  assertStaffTime,
+  assertViewingStarted,
+  bookableSlots,
+  earliestBookableSlot,
+  latestBookableTime,
+  parseViewingTime,
+  vnDateKey,
+  vnTimeKey,
+} from './viewing-time';
+import { assertNoBookingConflict, BOOKING_GAP_MINUTES, lockProperty } from './booking-rules';
 import { LeadsService } from '../leads/leads.service';
+import { LeadIntakeService } from '../leads/lead-intake.service';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 
@@ -36,6 +47,7 @@ export class ViewingsService {
     private readonly httpService: HttpService,
     private readonly leadsService: LeadsService,
     private readonly n8nService: N8nService,
+    private readonly intake: LeadIntakeService,
   ) {}
 
   async create(createViewingDto: CreateViewingDto): Promise<{ viewing: Viewing; lead: Lead }> {
@@ -69,8 +81,8 @@ export class ViewingsService {
     }
 
     const { text: normalizedViewingTime, date: viewingDate } = parseViewingTime(viewingTime);
-
-    const eventId = crypto.randomUUID();
+    // Khách và bot: trong giờ xem, tròn giờ, đặt trước 3 giờ làm việc, không quá 14 ngày (kiểm tra trước mọi thao tác ghi)
+    assertCustomerSlot(viewingDate);
 
     // Kiểm tra trùng và ghi trong cùng một transaction, khoá theo căn để hai yêu cầu cùng lúc không lọt cả hai
     const { savedLead, savedViewing } = await this.viewingRepository.manager.transaction(async (em) => {
@@ -80,23 +92,12 @@ export class ViewingsService {
       if (!current || current.status !== 'AVAILABLE') {
         throw new BadRequestException('Căn nhà này hiện không nhận đặt lịch xem');
       }
-      await assertNoDuplicateBooking(em, propertyId, email);
       await assertNoBookingConflict(em, propertyId, viewingDate);
 
-      const savedLead = await em.save(
-        em.create(Lead, {
-          name,
-          email,
-          phone,
-          budget,
-          needs: needs || null,
-          source: source || null,
-          consentMarketing: Boolean(consentMarketing),
-          eventId,
-          status: 'NEW',
-          automationStatus: 'PENDING',
-        }),
-      );
+      const { lead: savedLead } = await this.intake.receive(em, {
+        name, email, phone, budget, needs, source: source || 'direct', consentMarketing,
+        interestedPropertyIds: [propertyId],
+      }, { status: 'NEW', booking: true });
       const savedViewing = await em.save(
         em.create(Viewing, {
           propertyId,
@@ -110,7 +111,7 @@ export class ViewingsService {
     });
 
     // Call n8n webhook asynchronously so lead/viewing saving isn't blocked by n8n failure
-    this.triggerN8nWebhook(savedLead, propertyId, normalizedViewingTime, savedViewing.manageToken).catch((err) => {
+    this.triggerN8nWebhook(savedLead, propertyId, normalizedViewingTime, savedViewing.manageToken, savedViewing.id).catch((err) => {
       this.logger.error(`Error triggering n8n webhook: ${err.message}`);
     });
 
@@ -122,6 +123,7 @@ export class ViewingsService {
     propertyId: number,
     viewingTime: string,
     manageToken: string | null,
+    viewingId: number,
   ): Promise<void> {
     const webhookUrl =
       process.env.N8N_WEBHOOK_URL ||
@@ -140,6 +142,7 @@ export class ViewingsService {
       source: lead.source || 'direct',
       propertyId,
       viewingTime,
+      viewingId, // luồng 1 so với buổi xem mới nhất để nút Duyệt cũ không chốt nhầm buổi xem mới
       manageToken,
     };
 
@@ -182,6 +185,39 @@ export class ViewingsService {
         automationError: `Không gọi được n8n sau ${maxRetries} lần thử`,
       });
     }
+  }
+
+  // Khung giờ khách đặt được cho một căn, đánh dấu khung đã có người hẹn. Công khai, không trả dữ liệu khách.
+  async getSlots(propertyId: number, now: Date = new Date()) {
+    const property = await this.propertyRepository.findOne({ where: { id: propertyId } });
+    if (!property) throw new NotFoundException(`Property with id ${propertyId} not found`);
+    if (property.status !== 'AVAILABLE') {
+      throw new BadRequestException('Căn nhà này hiện không nhận đặt lịch xem');
+    }
+    const earliest = earliestBookableSlot(now);
+    const latest = latestBookableTime(now);
+    const gapMs = BOOKING_GAP_MINUTES * 60000;
+    // Cùng điều kiện "lịch đang chờ" với assertNoBookingConflict: buổi xem NEW của khách còn NEW/CONFIRMED
+    const rows: { viewing_time: Date }[] = await this.viewingRepository.query(
+      `SELECT v.viewing_time
+         FROM viewings v JOIN leads l ON l.id = v.lead_id
+        WHERE v.property_id = $1 AND v.status = 'NEW' AND l.status IN ('NEW', 'CONFIRMED')
+          AND v.viewing_time > $2::timestamptz - make_interval(mins => $4)
+          AND v.viewing_time < $3::timestamptz + make_interval(mins => $4)`,
+      [propertyId, earliest.toISOString(), latest.toISOString(), BOOKING_GAP_MINUTES],
+    );
+    const taken = rows.map((r) => new Date(r.viewing_time).getTime());
+    const days: { date: string; slots: { time: string; start: string; available: boolean }[] }[] = [];
+    for (const slot of bookableSlots(now)) {
+      const date = vnDateKey(slot);
+      if (days.length === 0 || days[days.length - 1].date !== date) days.push({ date, slots: [] });
+      days[days.length - 1].slots.push({
+        time: vnTimeKey(slot),
+        start: slot.toISOString(),
+        available: !taken.some((t) => Math.abs(t - slot.getTime()) < gapMs),
+      });
+    }
+    return { earliest: earliest.toISOString(), latest: latest.toISOString(), days };
   }
 
   findAll(): Promise<Viewing[]> {
@@ -238,6 +274,8 @@ export class ViewingsService {
     noShowNote?: string,
   ): Promise<Viewing> {
     const { date } = parseViewingTime(rawTime);
+    // Nhân viên: giờ ở tương lai và trong giờ xem
+    assertStaffTime(date);
     let oldTime = viewing.viewingTime;
 
     const saved = await this.viewingRepository.manager.transaction(async (em) => {
@@ -261,6 +299,7 @@ export class ViewingsService {
       type: 'VIEWING_RESCHEDULED',
       note: `${fmt(oldTime)} -> ${fmt(date)} (bởi ${user.name})`,
     });
+    await this.leadsService.recordFirstResponse(lead.id, user);
 
     if (lead.status === 'CONFIRMED') {
       try {
@@ -311,11 +350,11 @@ export class ViewingsService {
       type: 'VIEWING_NO_SHOW',
       note: `Khách không đến buổi xem ${fmt(viewing.viewingTime)} ${by}`,
     });
-    return this.leadsService.updateStatus(lead.id, {
-      status: 'LOST',
-      lostReason: 'NO_SHOW',
-      note: `Khách không đến ${dto.note ? dto.note + ' ' : ''}${by}`,
-    });
+    // Chỉ buổi xem này kết thúc; khách vẫn còn, việc đóng lead do nhân viên quyết định riêng
+    return this.leadsService.restoreBaseStatus(
+      lead.id,
+      `Khách không đến ${dto.note ? dto.note + ' ' : ''}${by}`,
+    );
   }
 
   // ---- Khách tự quản lý lịch qua link /lich/<token> ----
@@ -366,11 +405,7 @@ export class ViewingsService {
       type: 'VIEWING_CANCELLED',
       note: `Khách tự huỷ lịch xem ${fmt(viewing.viewingTime)} qua link trong email`,
     });
-    await this.leadsService.updateStatus(lead.id, {
-      status: 'LOST',
-      lostReason: 'CUSTOMER_CANCELLED',
-      note: 'Khách tự huỷ lịch',
-    });
+    await this.leadsService.restoreBaseStatus(lead.id, 'Khách tự huỷ lịch');
     return { ok: true };
   }
 

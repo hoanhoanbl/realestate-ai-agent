@@ -1,9 +1,9 @@
 BEGIN;
-CREATE TEMP TABLE leads(id int,created_at timestamptz,level text,status text,automation_status text) ON COMMIT DROP;
+CREATE TEMP TABLE leads(id int,created_at timestamptz,level text,status text,automation_status text,source text) ON COMMIT DROP;
 CREATE TEMP TABLE lead_events(lead_id int,type text,note text,created_at timestamptz) ON COMMIT DROP;
 CREATE TEMP TABLE contracts(status text,signed_at timestamptz,deposit_amount bigint,created_at timestamptz) ON COMMIT DROP;
 CREATE TEMP TABLE feedbacks(submitted_at timestamptz,rating int) ON COMMIT DROP;
-INSERT INTO leads VALUES(1,'2026-09-01','COLD','LOST','COMPLETED');
+INSERT INTO leads VALUES(1,'2026-09-01','COLD','LOST','COMPLETED','facebook');
 INSERT INTO lead_events VALUES
  (1,'LEAD_EXPIRED','fixture','2026-11-04'),
  (1,'LEAD_EXPIRED','duplicate event must not double count','2026-11-05'),

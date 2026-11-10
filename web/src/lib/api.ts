@@ -233,6 +233,9 @@ export interface Stats {
   hot: number;
   warm: number;
   cold: number;
+  bySource?: { source: string; count: number }[];
+  byAssignee?: { assignedUserId: number | null; count: number }[];
+  overdueResponses?: number;
 }
 
 export class ApiError extends Error {

@@ -79,7 +79,7 @@ Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep
 | FE-35 | `feature/FE-35-l1-bao-sale-phu-trach` | Luồng 1 tách chấm điểm khỏi duyệt lịch, nút Duyệt tới giờ hẹn; luồng 1b; sub-workflow thông báo gửi sale phụ trách | Hoàng | Chờ FE-33 |
 | FE-36 | `feature/FE-36-l6-tao-lead` | Luồng 6 tạo lead khi khách để lại số, gắn lịch sử chat vào lead | Hoàng | Chờ FE-33 |
 | FE-37 | `feature/FE-37-them-khach` | Web admin: form "Thêm khách" cho khách ngoài hệ thống | Hoàng | Chờ FE-33 |
-| FE-38 | `feature/FE-38-l2-han-phan-hoi` | Luồng 2 báo quản lý khi quá 2 giờ làm việc, bỏ mốc 3 ngày; luồng 4 và thống kê đếm theo khách, theo nguồn, theo sale | Hậu | Chờ FE-33 |
+| FE-38 | `feature/FE-38-l2-han-phan-hoi` | Luồng 2 báo quản lý khi quá 2 giờ làm việc, bỏ mốc 3 ngày; luồng 4 và thống kê đếm theo khách, theo nguồn, theo sale | Hậu | Xong local, chưa PR/server. Có kiểm thử PostgreSQL và n8n với dịch vụ gửi giả lập. Xem [FE-38](fe-38-han-phan-hoi.md) |
 | FE-39 | `feature/FE-39-admin-phu-trach` | Web admin: người phụ trách, chuyển sale, ghi chú, công tắc "Đang nhận khách" | Hậu | Chờ FE-33 |
 | FE-40 | `feature/FE-40-l7-khong-email` | Luồng 7 đồng bộ lead không có email sang Mautic | Hậu | Chờ chốt cách làm |
 

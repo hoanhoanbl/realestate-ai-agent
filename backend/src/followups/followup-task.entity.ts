@@ -4,7 +4,7 @@ export const FOLLOWUP_TYPES = ['REMINDER', 'FEEDBACK', 'WARM_NUDGE', 'STAFF_NUDG
 export type FollowupType = typeof FOLLOWUP_TYPES[number];
 export const MAUTIC_FOLLOWUPS: FollowupType[] = ['WARM_NUDGE', 'COLD_NURTURE'];
 
-export const SCHEDULED_FOLLOWUPS: FollowupType[] = ['REMINDER', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE', 'EXPIRE_LEAD'];
+export const SCHEDULED_FOLLOWUPS: FollowupType[] = ['REMINDER', 'FEEDBACK', 'ATTENDANCE_CHECK', 'ATTENDANCE_ESCALATE', 'EXPIRE_LEAD', 'STAFF_NUDGE'];
 export type TaskState = 'CLAIMED' | 'ACTION_STARTED' | 'ACTION_DONE' | 'COMPLETED' | 'FAILED' | 'REVIEW';
 
 @Entity('followup_tasks')
@@ -14,8 +14,8 @@ export class FollowupTask {
   @Column({ name: 'lead_id' }) leadId: number;
   @Column({ name: 'viewing_id' }) viewingId: number;
   @Column({ name: 'viewing_time', type: 'timestamptz' }) viewingTime: Date;
-  @Column({ length: 30 }) type: FollowupType;
-  @Column({ length: 30 }) state: TaskState;
+  @Column({ type: 'varchar', length: 30 }) type: FollowupType;
+  @Column({ type: 'varchar', length: 30 }) state: TaskState;
   @Column({ length: 120 }) owner: string;
   @Column({ length: 64 }) token: string;
   @Column({ name: 'lease_until', type: 'timestamptz' }) leaseUntil: Date;

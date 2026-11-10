@@ -6,12 +6,10 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const workflow = JSON.parse(read('n8n-workflows/luong-2-follow-up.json'));
 const query = workflow.nodes.find(n => n.name === 'Lấy lead cần follow-up').parameters.query;
 if (process.argv.includes('--sql')) {
-  const source = read('backend/src/followups/followups.service.ts');
-  const snapshot = source.match(/m\.query\(`(SELECT l\.status[\s\S]+?)`, \[leadId,/);
-  assert(snapshot, 'Missing snapshot query');
+  const { FOLLOWUP_SNAPSHOT_SQL } = require('../backend/dist/followups/followup-sql.js');
   const fixture = read('backend/test/followup-selection.fixture.sql')
     .replace('-- SELECTOR', query.trim().replace(/;$/, ''))
-    .replace('TRUNCATE pg_temp.leads', `PREPARE followup_snapshot(int,text) AS ${snapshot[1]};\nEXECUTE followup_snapshot(1,'REMINDER:%');\nDEALLOCATE followup_snapshot;\nTRUNCATE pg_temp.leads`);
+    .replace('TRUNCATE pg_temp.leads', `PREPARE followup_snapshot(int,text,int) AS ${FOLLOWUP_SNAPSHOT_SQL};\nEXECUTE followup_snapshot(1,'REMINDER:%',1);\nDEALLOCATE followup_snapshot;\nTRUNCATE pg_temp.leads`);
   process.stdout.write(fixture);
   return;
 }

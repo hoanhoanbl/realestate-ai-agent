@@ -24,7 +24,8 @@ GRANT SELECT ON properties, viewings, lead_events, weekly_reports TO n8n_readonl
 
 -- Bảng có cột nhạy cảm: chỉ cho đọc các cột cần thiết
 GRANT SELECT (id, name, email, phone, budget, needs, score, level, reason, status,
-              automation_status, automation_error, created_at) ON leads TO n8n_readonly;
+              automation_status, automation_error, created_at, source, assigned_user_id,
+              assigned_at, response_due_at, first_response_at) ON leads TO n8n_readonly;
 GRANT SELECT (id, lead_id, property_id, title, deposit_amount, property_price, status,
               approved_by, created_by, signed_at, created_at) ON contracts TO n8n_readonly;
 GRANT SELECT (id, lead_id, rating, interest, comment, submitted_at,

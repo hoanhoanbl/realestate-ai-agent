@@ -18,7 +18,7 @@ Cập nhật lần cuối: 4/11/2026.
 | Hai lịch xem cùng căn phải cách nhau | 60 phút | `BOOKING_GAP_MINUTES` trong `backend/src/viewings/booking-rules.ts` |
 | Giới hạn đặt lịch mỗi IP | 5 lần / 10 phút | Biến môi trường `BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS` |
 | Chờ nhân viên duyệt trước khi báo quản lý | 24 giờ | Node "Chờ duyệt" của luồng 1 |
-| Nhắc sale duyệt lead chưa duyệt | Sau 3 ngày | Luồng 2 |
+| FE-38 local: báo quản lý khi chưa có thao tác đầu tiên | Quá 2 giờ làm việc theo responseDueAt; không cần có lịch | Luồng 2; chưa phát hành server |
 | Nhắc lịch cho khách | Trong vòng 24 giờ trước giờ hẹn | Luồng 2 (chạy mỗi giờ) |
 | Được điểm danh | Từ 30 phút trước giờ hẹn | `ATTENDANCE_GRACE_MS` trong `backend/src/viewings/viewing-time.ts` |
 | Nhắc nhân viên điểm danh | 2 giờ sau giờ hẹn | Luồng 2 |

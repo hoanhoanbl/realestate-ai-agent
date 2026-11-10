@@ -135,6 +135,7 @@ function ReportsContent() {
         funnel: Record<string, number | null>;
         period: string;
         sources?: Record<string, { current: number; previous: number; delta: number; rate: number | null }>;
+        assignees?: Record<string, { current: number; previous: number; delta: number }>;
         campaigns?: { warm_nurtured: number; cold_nurtured: number; hot_nudged: number };
       }
     | undefined;
@@ -282,6 +283,16 @@ function ReportsContent() {
                   </ul>
                 </div>
 
+                {metrics.assignees && (
+                  <div className={`p-5 ${CARD}`}>
+                    <h3 className="font-semibold text-slate-900">Khách mới theo người phụ trách</h3>
+                    <CompareBars rows={Object.entries(metrics.assignees).map(([id, value]) => ({
+                      label: id === "unassigned" ? "Chưa phân công" : `Nhân viên #${id}`,
+                      current: value.current, previous: value.previous,
+                    }))} />
+                    {Object.keys(metrics.assignees).length === 0 && <p className="mt-2 text-sm text-slate-500">Chưa có khách mới trong kỳ.</p>}
+                  </div>
+                )}
                 {/* FE-23: Cơ cấu nguồn khách & Chiến dịch nuôi dưỡng */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className={`p-5 ${CARD}`}>

@@ -234,3 +234,7 @@ Các ca cần kiểm thử end-to-end trước khi chuyển Campaign sang **Acti
 - [Mautic 5.2: Emails and Tokens](https://docs.mautic.org/en/5.2/channels/emails.html)
 - [Mautic 5.2: Campaign Builder & Delays](https://docs.mautic.org/en/5.2/campaigns/campaign_builder.html)
 - [Docker Mautic Official Image Environment Roles](https://github.com/mautic/docker-mautic)
+
+## 10. Nghiệm thu local ngày 10/11/2026
+
+Đã kiểm tra cấu hình API chỉ đọc bằng scripts/check-mautic-local-setup.cjs. Campaign giữ Inactive; chưa gửi mail. Container worker/cron local còn chạy bản cũ dưới Apache; file compose đã sửa role. Chi tiết kết quả và phần Hoàng nghiệm thu server: [FE-22 local](fe-22-nghiem-thu-local.md).

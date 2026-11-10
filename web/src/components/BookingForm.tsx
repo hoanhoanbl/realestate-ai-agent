@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { createViewing, formatVnd, type Lead, type Property } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ApiError,
+  createViewing,
+  formatVnd,
+  getViewingSlots,
+  type Lead,
+  type Property,
+  type ViewingSlots,
+} from "@/lib/api";
+import { dayLabel, formatDate, formatTime } from "@/lib/time";
 
 interface FormState {
   name: string;
@@ -11,6 +20,7 @@ interface FormState {
   phone: string;
   budget: string;
   needs: string;
+  // ISO UTC của khung giờ đã chọn (ViewingSlot.start)
   viewingTime: string;
   consentData: boolean;
   consentMarketing: boolean;
@@ -42,10 +52,7 @@ function validate(form: FormState): string | null {
   if (form.budget === "" || !Number.isInteger(budget) || budget < 0) {
     return "Ngân sách phải là số nguyên không âm (đơn vị VND).";
   }
-  if (!form.viewingTime) return "Vui lòng chọn giờ xem nhà.";
-  if (new Date(form.viewingTime).getTime() < Date.now()) {
-    return "Giờ xem nhà phải ở trong tương lai.";
-  }
+  if (!form.viewingTime) return "Vui lòng chọn ngày và khung giờ xem nhà.";
   if (!form.consentData) {
     return "Vui lòng xác nhận đồng ý cho phép xử lý dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.";
   }
@@ -64,6 +71,36 @@ export default function BookingForm({ property }: { property: Property }) {
   // Ô bẫy bot: ẩn với người dùng, bot tự điền thì backend từ chối
   const [website, setWebsite] = useState("");
 
+  // Khung giờ còn trống của căn này (FE-34)
+  const [slots, setSlots] = useState<ViewingSlots | null>(null);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [day, setDay] = useState<string>("");
+
+  const loadSlots = useCallback(async () => {
+    try {
+      const data = await getViewingSlots(property.id);
+      setSlots(data);
+      setSlotsError(null);
+      // Giữ ngày đang chọn nếu còn khung trống, không thì chuyển sang ngày đầu tiên còn khung
+      setDay((current) => {
+        const stillOpen = data.days.find((d) => d.date === current && d.slots.some((x) => x.available));
+        return stillOpen ? current : (data.days.find((d) => d.slots.some((x) => x.available))?.date ?? "");
+      });
+      // Khung đang chọn mà vừa bị người khác đặt thì bỏ chọn
+      setForm((prev) => {
+        const chosen = data.days.flatMap((d) => d.slots).find((x) => x.start === prev.viewingTime);
+        return chosen?.available ? prev : { ...prev, viewingTime: "" };
+      });
+    } catch (e: unknown) {
+      setSlotsError(e instanceof Error ? e.message : "Không tải được các khung giờ.");
+    }
+  }, [property.id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadSlots();
+  }, [loadSlots]);
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -78,10 +115,6 @@ export default function BookingForm({ property }: { property: Property }) {
       return;
     }
 
-    // input datetime-local trả "YYYY-MM-DDTHH:mm", backend cần có giây
-    const viewingTime =
-      form.viewingTime.length === 16 ? `${form.viewingTime}:00` : form.viewingTime;
-
     setSubmitting(true);
     try {
       const result = await createViewing({
@@ -91,7 +124,7 @@ export default function BookingForm({ property }: { property: Property }) {
         budget: Number(form.budget),
         needs: form.needs.trim() || undefined,
         propertyId: property.id,
-        viewingTime,
+        viewingTime: form.viewingTime,
         source: utmSource,
         consentMarketing: form.consentMarketing,
         website: website || undefined,
@@ -99,6 +132,8 @@ export default function BookingForm({ property }: { property: Property }) {
       setCreated(result.lead);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Gửi yêu cầu thất bại.");
+      // Khung vừa bị đặt hoặc giờ không còn hợp lệ: tải lại để khách chọn khung khác
+      if (e instanceof ApiError && (e.status === 400 || e.status === 409)) void loadSlots();
     } finally {
       setSubmitting(false);
     }
@@ -223,18 +258,81 @@ export default function BookingForm({ property }: { property: Property }) {
         />
       </div>
 
-      <div>
-        <label htmlFor="time" className="mb-1 block text-sm font-medium">
-          Giờ xem nhà
-        </label>
-        <input
-          id="time"
-          type="datetime-local"
-          className={INPUT}
-          value={form.viewingTime}
-          onChange={(e) => update("viewingTime", e.target.value)}
-        />
-      </div>
+      <fieldset className="min-w-0">
+        <legend className="mb-1 block text-sm font-medium">Giờ xem nhà</legend>
+        {slotsError && (
+          <p className="text-sm text-red-700">
+            {slotsError}{" "}
+            <button type="button" onClick={() => void loadSlots()} className="font-medium underline">
+              Tải lại
+            </button>
+          </p>
+        )}
+        {!slots && !slotsError && <p className="text-sm text-slate-500">Đang tải các khung giờ…</p>}
+        {slots && !slots.days.some((d) => d.slots.some((x) => x.available)) && (
+          <p className="text-sm text-slate-600">
+            Căn này đã kín lịch trong 14 ngày tới. Vui lòng liên hệ nhân viên hoặc chọn căn khác.
+          </p>
+        )}
+        {slots && slots.days.some((d) => d.slots.some((x) => x.available)) && (
+          <>
+            <div role="group" aria-label="Chọn ngày" className="flex gap-2 overflow-x-auto pb-1">
+              {slots.days.map((d) => {
+                const open = d.slots.some((x) => x.available);
+                const active = d.date === day;
+                return (
+                  <button
+                    key={d.date}
+                    type="button"
+                    disabled={!open}
+                    aria-pressed={active}
+                    aria-label={dayLabel(d.slots[0].start).includes(",") ? dayLabel(d.slots[0].start) : `${dayLabel(d.slots[0].start)}, ${formatDate(d.slots[0].start).slice(0, 5)}`}
+                    onClick={() => setDay(d.date)}
+                    className={`min-h-11 shrink-0 rounded-lg border px-3 py-2 text-sm ${
+                      active
+                        ? "border-blue-600 bg-blue-600 font-semibold text-white"
+                        : open
+                          ? "border-slate-300 bg-white text-slate-800 hover:border-blue-400"
+                          : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {/* dayLabel đã kèm ngày với các thứ khác hôm nay/ngày mai: chỉ lấy phần trước dấu phẩy */}
+                    <span className="block">{dayLabel(d.slots[0].start).split(",")[0]}</span>
+                    <span className="block text-xs opacity-80">{formatDate(d.slots[0].start).slice(0, 5)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div role="group" aria-label="Chọn khung giờ" className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {(slots.days.find((d) => d.date === day)?.slots ?? []).map((slot) => {
+                const selected = form.viewingTime === slot.start;
+                return (
+                  <button
+                    key={slot.start}
+                    type="button"
+                    disabled={!slot.available}
+                    aria-pressed={selected}
+                    onClick={() => update("viewingTime", slot.start)}
+                    className={`min-h-11 rounded-lg border px-2 py-2 text-sm ${
+                      selected
+                        ? "border-blue-600 bg-blue-600 font-semibold text-white"
+                        : slot.available
+                          ? "border-slate-300 bg-white text-slate-800 hover:border-blue-400"
+                          : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 line-through"
+                    }`}
+                  >
+                    {formatTime(slot.start)}
+                    {!slot.available && <span className="sr-only"> (đã có người đặt)</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Khung gạch ngang đã có khách đặt. Xem nhà từ 08:00 đến 19:00, đặt trước tối thiểu 3 giờ làm việc.
+            </p>
+          </>
+        )}
+      </fieldset>
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-700">
         <div className="flex items-start gap-2.5">

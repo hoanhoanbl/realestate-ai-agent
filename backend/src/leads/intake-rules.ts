@@ -11,10 +11,10 @@ export function normalizePhone(value: string): string {
   return phone;
 }
 
-// Việt Nam UTC+7, mỗi ngày 08:00–21:00, kể cả cuối tuần. Không phụ thuộc TZ của máy chủ.
-export function responseDeadline(from: Date): Date {
+// Cộng giờ làm việc: Việt Nam UTC+7, mỗi ngày 08:00–21:00, kể cả cuối tuần. Không phụ thuộc TZ của máy chủ.
+export function addWorkingHours(from: Date, hours: number): Date {
   const local = new Date(from.getTime() + 7 * 3600000);
-  let remaining = 2 * 3600000;
+  let remaining = hours * 3600000;
   while (remaining > 0) {
     const start = new Date(local);
     start.setUTCHours(8, 0, 0, 0);
@@ -31,6 +31,11 @@ export function responseDeadline(from: Date): Date {
     remaining -= used;
   }
   return new Date(local.getTime() - 7 * 3600000);
+}
+
+// Hạn phản hồi đầu tiên của sale: 2 giờ làm việc.
+export function responseDeadline(from: Date): Date {
+  return addWorkingHours(from, 2);
 }
 
 export const INTAKE_LOCK_NAMESPACE = 1002;

@@ -2,7 +2,7 @@
 
 Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026. FE-33 đã triển khai local: dữ liệu, API nhận khách/tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi. Chưa PR hoặc triển khai server. Hợp đồng API, bước nâng cấp và giới hạn chuyển tiếp: [FE-33](../fe-33-nen-tiep-nhan.md). Các phần nhiều buổi xem, nối bot/workflow, giao diện và cảnh báo vẫn chờ FE-34–FE-40; không coi các quy tắc đích dưới đây là đã chạy trên server.
+**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3). Còn lại: nối bot và workflow (FE-35, FE-36), giao diện nhập tay và người phụ trách (FE-37, FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
 
 ## Tóm tắt thay đổi
 
@@ -78,8 +78,8 @@ Ví dụ chị Bình:
 |---|---|---|
 | Chat bot hỏi giá, để lại số | Không có gì trong hệ thống | Lead #42 "Đang tư vấn", gán sale Minh |
 | Đặt xem căn Sơn Trà | Lead #42, AI chấm, email, báo nhân viên | Buổi xem 1 dưới lead #42 |
-| Đặt xem thêm căn Hải Châu | Lead #43, AI chấm lại, email lại, sale khác có thể duyệt | Buổi xem 2 dưới lead #42, vẫn Minh |
-| Huỷ lịch Sơn Trà | Lead #42 "Không mua" | Buổi xem 1 "Đã huỷ", lead vẫn còn |
+| Đặt xem thêm căn Hải Châu (sau khi đã xem Sơn Trà) | Lead #43, AI chấm lại, email lại, sale khác có thể duyệt | Buổi xem 2 dưới lead #42, vẫn Minh *(đang chạy, FE-34)* |
+| Huỷ lịch Sơn Trà (khi chưa xem) | Lead #42 "Không mua" | Buổi xem 1 "Đã huỷ", lead về "Đang tư vấn" *(đang chạy, FE-34)* |
 | Báo cáo tuần | 2 khách, 1 mất | 1 khách, xem 2 căn |
 
 ### 3.1. Trạng thái lead
@@ -98,12 +98,14 @@ Thêm một trạng thái đầu **"Đang tư vấn"** (`CONSULTING`), đứng t
 | Mới | Có ít nhất một buổi xem chờ duyệt |
 | Đã chốt lịch trở đi | Như hiện tại |
 
-Lead có nhiều buổi xem thì trạng thái lead là **trạng thái tiến xa nhất** trong các buổi xem. Ví dụ buổi 1 đã xem, buổi 2 đang chờ duyệt thì lead là "Đã xem nhà".
+**Đang chạy (FE-34):** mỗi khách có **tối đa một buổi xem đang mở** (chờ duyệt hoặc đã chốt). Muốn đặt buổi tiếp theo, buổi đang mở phải xong (đã xem, không đến, đã huỷ). Lead đi theo buổi đang mở: khách đã xem căn A rồi đặt căn B thì lead về "Mới" (chờ duyệt buổi 2), còn buổi 1 vẫn "Khách đã đến" trong lịch sử. Hợp đồng cọc lấy căn của buổi **đã đến** gần nhất.
+
+**Chưa làm:** nhiều buổi xem mở cùng lúc, mỗi buổi duyệt riêng, trạng thái lead lấy theo buổi tiến xa nhất. Cần chuyển nút Duyệt và luồng 1, 1b, 2 sang theo từng buổi xem, nên để sau FE-35 và FE-38.
 
 ### 3.2. Huỷ buổi xem không có nghĩa là mất khách
 
-- Khách tự huỷ, hoặc khách không đến: chỉ buổi xem đó chuyển "Đã huỷ" / "Khách không đến".
-- Nếu lead không còn buổi xem nào đang chờ, lead quay về "Đang tư vấn" để sale gọi lại. Sale quyết định có đóng lead hay không.
+- Khách tự huỷ, hoặc khách không đến: chỉ buổi xem đó chuyển "Đã huỷ" / "Khách không đến" *(đang chạy, FE-34)*.
+- Lead quay về "Đã xem nhà" nếu khách từng đến một buổi khác, không thì về "Đang tư vấn", để sale gọi lại. Sale quyết định có đóng lead hay không.
 - Lead chỉ "Không mua" khi sale (hoặc quản lý) đóng, hoặc khi hệ thống đóng vì quá hạn (mục 5).
 
 ### 3.3. AI chấm điểm
@@ -187,6 +189,8 @@ Lead vào 23:00          → hạn 10:00 sáng mai
 
 ## 6. Đặt lịch xem: khung giờ
 
+**Đang chạy ở local từ FE-34** (danh sách khung: `GET /api/viewings/slots`, xem [api-contract.md](../api-contract.md) mục 3.1; thông báo lỗi: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) mục 1.2). Luồng 6 (bot) nhận các quy tắc này qua mô tả công cụ đặt lịch.
+
 | | Hiện tại | Mới |
 |---|---|---|
 | Giờ được hẹn | Bất kỳ | **8:00–19:00** |
@@ -233,7 +237,7 @@ FE-40 Luồng 7 lead không email (Hậu): chờ chốt mục 8
 | Mã | Ai | Việc | Đóng lỗ |
 |---|---|---|---|
 | FE-33 | Hậu | **PR nền.** Mọi thay đổi dữ liệu của quy trình này, làm một lần: bảng lead (người phụ trách, `CONSULTING`, số điện thoại chuẩn hoá), bảng nhân viên (Telegram cá nhân, "Đang nhận khách"), loại sự kiện mới (gán sale, chuyển sale, ghi chú, quá hạn phản hồi). API tạo lead dùng chung cho mọi kênh có kiểm tra trùng số điện thoại; chia lần lượt; API chuyển sale; API ghi chú. Thêm sẵn hàm gọi API mới vào `web/src/lib/api.ts` | LH-03, LH-04, LH-10 |
-| FE-34 | Hoàng | Backend buổi xem: một lead nhiều buổi xem, trạng thái lead lấy theo buổi xem tiến xa nhất, huỷ hoặc không đến không làm mất lead. API khung giờ đã kín, chặn giờ hẹn ngoài 8:00–19:00, sớm hơn 3 giờ, xa hơn 14 ngày. Web khách: bộ chọn ngày và khung giờ | LH-05, LH-08, LH-09 |
+| FE-34 | Hoàng | Backend buổi xem: khách cũ đặt thêm lịch trên cùng lead (mỗi lúc tối đa một buổi xem đang mở), huỷ hoặc không đến không đóng lead, hợp đồng lấy buổi đã đến gần nhất. API khung giờ đã kín, chặn giờ hẹn ngoài 8:00–19:00, sớm hơn 3 giờ, xa hơn 14 ngày. Web khách: bộ chọn ngày và khung giờ. **Đã làm ở local** (change OpenSpec `fe34-repeat-viewings-time-slots`); chưa chạy thử luồng 1, 6, 7 trên n8n thật | LH-05, LH-08, LH-09 |
 | FE-35 | Hoàng | Luồng 1: chấm điểm khi tạo lead, tách khỏi duyệt lịch; nút Duyệt dùng được tới giờ hẹn; bỏ mốc 24 giờ. Luồng 1b theo buổi xem. Sub-workflow thông báo nhân viên gửi cho sale phụ trách (Telegram cá nhân, push, email) thay email cứng | LH-06 |
 | FE-36 | Hoàng | Luồng 6: khách để lại số điện thoại thì gọi API tạo lead; gắn `chat_logs` vào lead; trang lead hiện lịch sử chat | LH-01, LH-11 |
 | FE-37 | Hoàng | Web admin: form "Thêm khách" (mục 1.1), báo trùng số điện thoại ngay khi gõ | LH-02 |

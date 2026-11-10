@@ -175,11 +175,48 @@ Chung cho moi callback:
 | GET | `/api/properties` | Danh sach bat dong san (ban gon: khong co `images`, `panoramas`, thay bang `imageCount`, `panoramaCount`) |
 | GET | `/api/stats` | Dem lead theo muc, tra `{ "total": 0, "hot": 0, "warm": 0, "cold": 0 }` |
 | GET | `/api/viewings` | Danh sach lich xem nha |
+| GET | `/api/viewings/slots?propertyId={id}` | Cong khai. Cac khung gio khach dat duoc cua mot can, danh dau khung da kin (muc 3.1) |
 | GET | `/api/properties/{id}` | Mot bat dong san (tuan 2). Khong co: `404` |
 | PUT | `/api/leads/{id}/status` | n8n doi trang thai ban hang (muc 2.3, can `X-Webhook-Secret`) |
 | PUT | `/api/leads/{id}/mautic` | n8n cap nhat ID / diem Mautic (muc 2.5, can `X-Webhook-Secret`) |
 | POST | `/api/leads/{id}/events` | n8n ghi su kien (muc 2.4, can `X-Webhook-Secret`) |
 | GET | `/api/leads/{id}/events` | Dong thoi gian cua lead, cu nhat truoc |
+
+### 3.1. Khung gio dat lich xem nha (FE-34)
+
+`GET /api/viewings/slots?propertyId=5` (khong can dang nhap, khong tra du lieu khach):
+
+```json
+{
+  "earliest": "2026-11-11T03:00:00.000Z",
+  "latest": "2026-11-24T12:16:17.655Z",
+  "days": [
+    {
+      "date": "2026-11-11",
+      "slots": [
+        { "time": "10:00", "start": "2026-11-11T03:00:00.000Z", "available": true },
+        { "time": "11:00", "start": "2026-11-11T04:00:00.000Z", "available": false }
+      ]
+    }
+  ]
+}
+```
+
+- `date`, `time`: ngay va gio Viet Nam (UTC+7). `start`: gio bat dau dang ISO UTC, gui lai nguyen gia tri nay vao `viewingTime` khi dat lich.
+- `available: false`: da co khach hen can nay trong vong duoi 60 phut.
+- Can khong nhan dat lich (da giu coc, da ban, an): `400`. Khong co can: `404`. `propertyId` khong phai so: `400`.
+
+Quy tac gio cho `POST /api/viewings` (khach, bot) va `PUT /api/viewings/{id}` (nhan vien). Sai thi tra `400`, khong luu gi:
+
+| Quy tac | Ap dung | Thong bao |
+|---|---|---|
+| Trong khoang 08:00-19:00 gio Viet Nam | Moi nguoi | `Giờ xem nhà phải trong khoảng 08:00–19:00` |
+| Tron gio (phut va giay bang 0) | Khach, bot | `Giờ xem nhà phải tròn giờ (ví dụ 09:00, 10:00)` |
+| Dat truoc it nhat 3 gio lam viec (08:00-21:00), lam tron len gio chan | Khach, bot | `Cần đặt trước ít nhất 3 giờ làm việc. Khung sớm nhất còn đặt được: 10:00 11/11/2026` |
+| Khong qua 14 ngay toi | Khach, bot | `Chỉ nhận đặt lịch trong vòng 14 ngày tới` |
+| O tuong lai | Nhan vien | `viewingTime phải ở trong tương lai` |
+
+Hai lich cung mot can van phai cach nhau it nhat 60 phut, sai thi tra `409` nhu truoc.
 
 ## 4. Du lieu (4 bang)
 
@@ -238,3 +275,4 @@ Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `
 | 21/10/2026 | Hau | Them cot `source`, `mautic_contact_id`, `mautic_points`, endpoint `PUT /api/leads/{id}/mautic`, webhook `lead-changed` |
 | 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |
 | 10/11/2026 | Hau (local) | FE-33: API tiep nhan/tra trung theo SDT, gan/chuyen sale, ghi chu, cau hinh nhan khach; CONSULTING, email/ngan sach nullable; chi tiet trong `fe-33-nen-tiep-nhan.md` |
+| 10/11/2026 | Hoang | FE-34: `GET /api/viewings/slots`, quy tac khung gio dat lich (muc 3.1) |

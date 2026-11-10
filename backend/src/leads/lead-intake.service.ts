@@ -14,6 +14,7 @@ import { LeadEvent } from './entities/lead-event.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
+import { formatVn } from '../viewings/viewing-time';
 import type { AuthUser } from '../auth/auth.types';
 import { AssignLeadDto, CreateLeadDto } from './dto/create-lead.dto';
 import {
@@ -31,7 +32,8 @@ export interface IntakeResult {
 export interface IntakeOptions {
   actor?: AuthUser;
   status?: 'NEW' | 'CONSULTING';
-  firstViewingOnly?: boolean;
+  // Đặt buổi xem (POST /viewings): gắn buổi xem vào lead cũ nếu khách chưa có buổi nào đang mở.
+  booking?: boolean;
 }
 
 @Injectable()
@@ -84,17 +86,23 @@ export class LeadIntakeService {
     const existing = await this.phoneQuery(em, phone)
       .setLock('pessimistic_write')
       .getOne();
-    // Luồng cũ xử lý được buổi xem đầu tiên trên hồ sơ tư vấn. Các buổi xem tiếp theo
-    // cần FE-34/35 để callback không ghi đè trạng thái đã xem/đang cọc.
-    if (
-      existing &&
-      options.firstViewingOnly &&
-      (existing.status !== 'CONSULTING' ||
-        (await em.getRepository(Viewing).countBy({ leadId: existing.id })) > 0)
-    ) {
-      throw new ConflictException(
-        'Số điện thoại này đã có hồ sơ. Vui lòng liên hệ nhân viên để đặt thêm hoặc đổi lịch xem.',
-      );
+    // Mỗi khách chỉ có tối đa một buổi xem đang mở (FE-34): luồng 1, 1b, 2 và nút Duyệt đều tính theo lead
+    // và lấy buổi xem mới nhất, nên chưa xử lý được nhiều buổi mở cùng lúc.
+    if (existing && options.booking) {
+      if (existing.status === 'DEPOSIT' || existing.status === 'SIGNED') {
+        throw new ConflictException(
+          'Bạn đang làm hợp đồng đặt cọc với chúng tôi. Vui lòng liên hệ nhân viên để đặt thêm lịch xem.',
+        );
+      }
+      const open = await em.getRepository(Viewing).findOne({
+        where: { leadId: existing.id, status: 'NEW' },
+        order: { id: 'DESC' },
+      });
+      if (open) {
+        throw new ConflictException(
+          `Bạn đang có lịch xem lúc ${formatVn(open.viewingTime)}. Nếu cần đổi giờ, hãy dùng link trong email xác nhận hoặc liên hệ nhân viên.`,
+        );
+      }
     }
     if (existing && options.actor) {
       // Nhập tay không sửa/mở lại khách cũ; giao diện mời người dùng mở lead hiện có.
@@ -140,7 +148,8 @@ export class LeadIntakeService {
           'Khách cũ liên hệ lại, mở về Đang tư vấn',
         );
       }
-      if (options.firstViewingOnly) {
+      if (options.booking) {
+        const before = existing.status;
         existing.status = 'NEW';
         existing.email ??= dto.email?.trim().toLowerCase() || null;
         existing.budget ??= dto.budget ?? null;
@@ -159,7 +168,7 @@ export class LeadIntakeService {
           em,
           existing.id,
           'STATUS_CHANGED',
-          'CONSULTING -> NEW: Đặt buổi xem đầu tiên',
+          `${before} -> NEW: Đặt buổi xem mới`,
         );
       }
       if (dto.note?.trim())

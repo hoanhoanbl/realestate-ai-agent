@@ -1029,7 +1029,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- Đọc lại lịch ngay lúc duyệt: khách có thể đã tự huỷ, hoặc lịch đã được duyệt / đổi giờ ở nơi khác\nSELECT l.status AS lead_status, v.status AS viewing_status, v.viewing_time, v.manage_token\nFROM leads l\nJOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true\nWHERE l.id = $1::int;",
+        "query": "-- Đọc lại lịch ngay lúc duyệt: khách có thể đã tự huỷ, hoặc lịch đã được duyệt / đổi giờ ở nơi khác.\n-- viewing_id: so với buổi xem của lần đặt này (FE-34), để nút Duyệt cũ không chốt nhầm buổi xem mới sau khi khách huỷ rồi đặt lại\nSELECT l.status AS lead_status, v.id AS viewing_id, v.status AS viewing_status, v.viewing_time, v.manage_token\nFROM leads l\nJOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true\nWHERE l.id = $1::int;",
         "options": {
           "queryReplacement": "={{ $('Webhook').first().json.body.leadId }}"
         }
@@ -1078,6 +1078,16 @@
                 "type": "string",
                 "operation": "equals",
                 "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "87d9df9e-7ce8-5170-b384-3c38c3e882ea",
+              "leftValue": "={{ !$('Webhook').first().json.body.viewingId || Number($('Kiểm tra lịch còn chờ duyệt').first().json.viewing_id) === Number($('Webhook').first().json.body.viewingId) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -1147,6 +1157,16 @@
                 "operation": "equals",
                 "name": "filter.operator.equals"
               }
+            },
+            {
+              "id": "c986a0ae-c9a1-56ec-9591-2a6dcc04c18a",
+              "leftValue": "={{ !$('Webhook').first().json.body.viewingId || Number($('Kiểm tra lịch còn chờ duyệt').first().json.viewing_id) === Number($('Webhook').first().json.body.viewingId) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -1190,6 +1210,16 @@
                 "type": "string",
                 "operation": "equals",
                 "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "8f68f6ae-e133-5d2d-baf1-4f74077a498f",
+              "leftValue": "={{ !$('Webhook').first().json.body.viewingId || Number($('Kiểm tra lịch còn chờ duyệt').first().json.viewing_id) === Number($('Webhook').first().json.body.viewingId) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],

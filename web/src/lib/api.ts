@@ -141,7 +141,17 @@ export type LeadDetail = Lead & {
   property: Property | null;
   // Bản ghi cũ trùng điện thoại; không tự gộp lịch sử trong FE-33.
   otherBookings: OtherBooking[];
+  // Mọi buổi xem của khách, mới nhất trước (FE-34)
+  viewings: ViewingHistoryItem[];
 };
+
+export interface ViewingHistoryItem {
+  id: number;
+  propertyId: number;
+  propertyName: string | null;
+  viewingTime: string | null;
+  status: ViewingStatus;
+}
 
 export interface OtherBooking {
   id: number;
@@ -597,6 +607,26 @@ export function createViewing(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+}
+
+// Khung giờ khách đặt được của một căn (FE-34). date/time là giờ Việt Nam, start là ISO UTC gửi lại làm viewingTime.
+export interface ViewingSlot {
+  time: string;
+  start: string;
+  available: boolean;
+}
+export interface ViewingSlotDay {
+  date: string;
+  slots: ViewingSlot[];
+}
+export interface ViewingSlots {
+  earliest: string;
+  latest: string;
+  days: ViewingSlotDay[];
+}
+
+export function getViewingSlots(propertyId: number): Promise<ViewingSlots> {
+  return request<ViewingSlots>(`/viewings/slots?propertyId=${propertyId}`);
 }
 
 // ---- Khu quản trị (cần đăng nhập) ----

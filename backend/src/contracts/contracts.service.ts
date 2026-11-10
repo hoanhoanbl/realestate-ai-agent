@@ -98,8 +98,13 @@ export class ContractsService {
       .getCount();
     if (active > 0) throw new ConflictException('Khách này đã có hợp đồng đang xử lý');
 
-    const viewing = await this.viewingRepository.findOne({ where: { leadId: lead.id }, order: { id: 'DESC' } });
-    const property = viewing ? await this.propertyRepository.findOne({ where: { id: viewing.propertyId } }) : null;
+    // Căn của buổi xem gần nhất mà khách đã đến. Buổi xem sau bị huỷ hay không đến không đổi căn của hợp đồng.
+    const viewing = await this.viewingRepository.findOne({
+      where: { leadId: lead.id, status: 'ATTENDED' },
+      order: { viewingTime: 'DESC', id: 'DESC' },
+    });
+    if (!viewing) throw new BadRequestException('Khách chưa có buổi xem nào đã đến, chưa lập hợp đồng được');
+    const property = await this.propertyRepository.findOne({ where: { id: viewing.propertyId } });
     if (!property) throw new BadRequestException('Khách chưa có căn nhà để lập hợp đồng');
     if (dto.depositAmount > Number(property.price)) {
       throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá căn nhà');

@@ -99,3 +99,27 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
     expect(lead.firstResponseAt).toEqual(event.createdAt);
   });
 });
+
+describe('FE-34: webhook lead-changed chỉ gửi khi lead có email', () => {
+  const previous = process.env.N8N_LEAD_CHANGED_URL;
+  beforeAll(() => { process.env.N8N_LEAD_CHANGED_URL = 'http://n8n:5678/webhook/lead-changed'; });
+  afterAll(() => {
+    if (previous === undefined) delete process.env.N8N_LEAD_CHANGED_URL;
+    else process.env.N8N_LEAD_CHANGED_URL = previous;
+  });
+  const make = () => {
+    const callWebhook = jest.fn().mockResolvedValue(undefined);
+    const service = new LeadsService({} as any, {} as any, {} as any, {} as any, { callWebhook } as any);
+    return { callWebhook, fire: (lead: Partial<Lead>) => (service as any).fireLeadChanged(lead, 'status_changed') };
+  };
+  it('lead không có email thì không gọi n8n', () => {
+    const { callWebhook, fire } = make();
+    fire({ id: 7, name: 'Bình', email: null, phone: '0901234567', status: 'CONSULTING' });
+    expect(callWebhook).not.toHaveBeenCalled();
+  });
+  it('lead có email vẫn gọi n8n như trước', () => {
+    const { callWebhook, fire } = make();
+    fire({ id: 8, name: 'An', email: 'an@example.test', phone: '0901234567', status: 'NEW' });
+    expect(callWebhook).toHaveBeenCalledWith('lead-changed', expect.objectContaining({ leadId: 8, email: 'an@example.test' }));
+  });
+});

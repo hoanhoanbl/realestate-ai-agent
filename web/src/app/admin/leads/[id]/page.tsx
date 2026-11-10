@@ -10,6 +10,7 @@ import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import MauticScoreCard from "@/components/MauticScoreCard";
 import StatusBadge from "@/components/StatusBadge";
+import ViewingHistory from "@/components/ViewingHistory";
 import {
   ApiError,
   eventLabel,
@@ -202,6 +203,12 @@ function LeadDetailContent() {
                 </>
               )}
             </Card>
+
+            {lead.viewings?.length > 1 && (
+              <Card title={`Lịch sử ${lead.viewings.length} buổi xem`}>
+                <ViewingHistory viewings={lead.viewings} />
+              </Card>
+            )}
 
             {lead.otherBookings?.length > 0 && (
               <Card title={`Khách này đã đặt ${lead.otherBookings.length} lần khác`}>

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AttendanceDto, RescheduleRequestDto, UpdateViewingDto } from './dto/update-viewing.dto';
 import type { AuthUser } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,6 +18,12 @@ export class ViewingsController {
     @Body() createViewingDto: CreateViewingDto,
   ): Promise<{ viewing: Viewing; lead: Lead }> {
     return this.viewingsService.create(createViewingDto);
+  }
+
+  // Công khai: danh sách khung giờ của một căn để form đặt lịch hiện khung đã kín
+  @Get('slots')
+  getSlots(@Query('propertyId', ParseIntPipe) propertyId: number) {
+    return this.viewingsService.getSlots(propertyId);
   }
 
   @Get()

@@ -103,7 +103,22 @@ export class LeadsService {
     const owner = lead.assignedUserId ? await this.leadRepository.manager.findOne(User, { where: { id: lead.assignedUserId } }) : null;
     const assignedUser = owner ? { id: owner.id, name: owner.name, email: owner.email,
       role: owner.role, telegramChatId: owner.telegramChatId, acceptingLeads: owner.acceptingLeads } : null;
-    return { ...lead, viewing, property, otherBookings, assignedUser };
+    // Lịch sử các buổi xem của khách, mới nhất trước (buổi đầu tiên là buổi hiện tại nếu còn mở)
+    const viewings: {
+      id: number;
+      propertyId: number;
+      propertyName: string | null;
+      viewingTime: Date | null;
+      status: string;
+    }[] = await this.leadRepository.query(
+      `SELECT v.id, v.property_id AS "propertyId", p.name AS "propertyName",
+              v.viewing_time AS "viewingTime", v.status
+         FROM viewings v LEFT JOIN properties p ON p.id = v.property_id
+        WHERE v.lead_id = $1
+        ORDER BY v.id DESC`,
+      [id],
+    );
+    return { ...lead, viewing, property, otherBookings, assignedUser, viewings };
   }
 
   async updateAiResult(
@@ -167,6 +182,14 @@ export class LeadsService {
     });
     if (result.changed) this.fireLeadChanged(result.saved, 'status_changed');
     return result.saved;
+  }
+
+  // Một buổi xem kết thúc mà khách chưa đến (khách huỷ, không đến): chỉ buổi xem đó kết thúc, lead không bị đóng.
+  // Lead về trạng thái gốc: VIEWED nếu có buổi xem khác đã đến, không thì CONSULTING (sale tiếp tục chăm).
+  // Đóng lead là thao tác riêng của nhân viên ("Mất khách").
+  async restoreBaseStatus(id: number, note: string): Promise<Lead> {
+    const attended = await this.viewingRepository.countBy({ leadId: id, status: 'ATTENDED' });
+    return this.updateStatus(id, { status: attended > 0 ? 'VIEWED' : 'CONSULTING', note });
   }
 
   async findByMauticId(contactId: number, email?: string): Promise<Lead | null> {
@@ -325,6 +348,8 @@ export class LeadsService {
   private fireLeadChanged(lead: Lead, trigger: string): void {
     const url = process.env.N8N_LEAD_CHANGED_URL;
     if (!url) return;
+    // Luồng 7 tìm và tạo Contact Mautic theo email; lead nhập tay hoặc từ bot chưa có email thì chưa đồng bộ được (FE-40)
+    if (!lead.email) return;
 
     const payload = {
       event: 'lead_changed',

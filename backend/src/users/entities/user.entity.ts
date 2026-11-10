@@ -22,6 +22,15 @@ export class User {
   @Column({ name: 'push_token', type: 'text', nullable: true })
   pushToken: string | null;
 
+  @Column({ name: 'telegram_chat_id', type: 'varchar', length: 40, nullable: true })
+  telegramChatId: string | null;
+
+  @Column({ name: 'accepting_leads', default: true })
+  acceptingLeads: boolean;
+
+  @Column({ name: 'last_assigned_at', type: 'timestamptz', nullable: true })
+  lastAssignedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

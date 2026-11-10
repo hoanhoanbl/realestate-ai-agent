@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Lead } from './entities/lead.entity';
 import { LeadEvent } from './entities/lead-event.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
@@ -14,6 +14,8 @@ import { Property } from '../properties/entities/property.entity';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 import { assertViewingStarted } from '../viewings/viewing-time';
+import { NORMALIZED_PHONE_SQL } from './intake-rules';
+import { User } from '../users/entities/user.entity';
 
 // Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
 // vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
@@ -80,7 +82,7 @@ export class LeadsService {
           where: { id: viewing.propertyId },
         })
       : null;
-    // Mỗi lần đặt lịch là một lead mới: liệt kê các lần đặt khác của cùng email để nhân viên biết khách cũ
+    // Chỉ liệt kê bản ghi cũ trùng điện thoại; FE-33 không tự gộp/xoá lịch sử.
     const otherBookings: {
       id: number;
       status: string;
@@ -93,12 +95,15 @@ export class LeadsService {
          FROM leads l
          LEFT JOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true
          LEFT JOIN properties p ON p.id = v.property_id
-        WHERE lower(l.email) = lower($1) AND l.id <> $2
+        WHERE ${NORMALIZED_PHONE_SQL} = $1 AND l.id <> $2
         ORDER BY l.created_at DESC
         LIMIT 20`,
-      [lead.email, lead.id],
+      [lead.phoneNormalized ?? lead.phone.replace(/[\s.()-]/g, '').replace(/^\+84/, '0'), lead.id],
     );
-    return { ...lead, viewing, property, otherBookings };
+    const owner = lead.assignedUserId ? await this.leadRepository.manager.findOne(User, { where: { id: lead.assignedUserId } }) : null;
+    const assignedUser = owner ? { id: owner.id, name: owner.name, email: owner.email,
+      role: owner.role, telegramChatId: owner.telegramChatId, acceptingLeads: owner.acceptingLeads } : null;
+    return { ...lead, viewing, property, otherBookings, assignedUser };
   }
 
   async updateAiResult(
@@ -150,6 +155,10 @@ export class LeadsService {
       if (oldStatus === 'LOST') throw new BadRequestException('Khách đã đóng, không dùng lại thao tác duyệt cũ. Hãy tạo lịch mới.');
       assertNotLosingDeposit(oldStatus, data.status);
       lead.status = data.status;
+      // Callback duyệt qua email/Telegram cũng là thao tác đầu tiên, không chỉ nút trên web.
+      if (oldStatus === 'NEW' && data.status === 'CONFIRMED' && !lead.firstResponseAt) {
+        lead.firstResponseAt = new Date();
+      }
       if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
       const saved = await repo.save(lead);
       await em.getRepository(LeadEvent).save({ leadId: id, type: 'STATUS_CHANGED',
@@ -192,14 +201,20 @@ export class LeadsService {
     id: number,
     data: { type: string; note?: string },
   ): Promise<LeadEvent> {
-    await this.findOne(id); // 404 neu lead khong ton tai
-    return this.leadEventRepository.save(
-      this.leadEventRepository.create({
-        leadId: id,
-        type: data.type,
-        note: data.note ?? null,
-      }),
-    );
+    return this.leadRepository.manager.transaction(async em => {
+      const repo = em.getRepository(Lead);
+      const lead = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
+      const event = await em.getRepository(LeadEvent).save({
+        leadId: id, type: data.type, note: data.note ?? null,
+      });
+      // Các sự kiện này chỉ phát sau thao tác nhân viên; không tính AI, nhắc lịch hay timeout.
+      if (['APPROVED', 'RESCHEDULE_REQUESTED', 'VIEWING_RESCHEDULED'].includes(data.type) && !lead.firstResponseAt) {
+        lead.firstResponseAt = event.createdAt;
+        await repo.save(lead);
+      }
+      return event;
+    });
   }
 
   findEvents(id: number): Promise<LeadEvent[]> {
@@ -228,6 +243,7 @@ export class LeadsService {
     if (lead.approvalUrl) {
       try {
         await this.n8nService.resume(lead.approvalUrl, 'approve');
+        await this.recordFirstResponse(id, user);
         return { via: 'resume' };
       } catch (err: any) {
         const status = err?.response?.status;
@@ -244,6 +260,7 @@ export class LeadsService {
     } catch {
       throw new BadGatewayException('Không gọi được n8n để chốt lịch');
     }
+    await this.recordFirstResponse(id, user);
     return { via: 'manual' };
   }
 
@@ -267,11 +284,13 @@ export class LeadsService {
     if (viewing && viewing.status === 'NEW') {
       await this.viewingRepository.update(viewing.id, { status: 'CANCELLED' });
     }
-    return this.updateStatus(id, {
+    const saved = await this.updateStatus(id, {
       status: 'LOST',
       lostReason: data.reason ?? 'OTHER',
       note: `${data.note ? data.note + ' ' : ''}(bởi ${user.name})`,
     });
+    await this.recordFirstResponse(id, user);
+    return saved;
   }
 
   // Khách có đến xem: buổi xem ATTENDED, khách VIEWED. Dùng cho cả nút "Đã xem nhà" cũ và API ghi nhận buổi xem.
@@ -284,10 +303,17 @@ export class LeadsService {
     }
     assertViewingStarted(viewing.viewingTime);
     await this.viewingRepository.update(viewing.id, { status: 'ATTENDED' });
-    return this.updateStatus(lead.id, {
+    const saved = await this.updateStatus(lead.id, {
       status: 'VIEWED',
       note: `${note ? note + ' ' : ''}(bởi ${user.name})`,
     });
+    await this.recordFirstResponse(lead.id, user);
+    return saved;
+  }
+
+  async recordFirstResponse(id: number, user: AuthUser): Promise<void> {
+    await this.leadRepository.update({ id, firstResponseAt: IsNull(),
+      ...(user.role === 'MANAGER' ? {} : { assignedUserId: user.id }) }, { firstResponseAt: new Date() });
   }
 
   // Called only after the follow-up transaction has committed its status/event changes.

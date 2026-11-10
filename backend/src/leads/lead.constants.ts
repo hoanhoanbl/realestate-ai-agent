@@ -1,4 +1,5 @@
 export const LEAD_STATUSES = [
+  'CONSULTING',
   'NEW',
   'CONFIRMED',
   'VIEWED',
@@ -8,6 +9,12 @@ export const LEAD_STATUSES = [
 ];
 
 export const LEAD_EVENT_TYPES = [
+  'LEAD_CREATED',
+  'LEAD_ASSIGNED',
+  'LEAD_REASSIGNED',
+  'LEAD_REOPENED',
+  'NOTE_ADDED',
+  'RESPONSE_OVERDUE',
   'AI_SCORED',
   'APPROVED',
   'RESCHEDULE_REQUESTED',

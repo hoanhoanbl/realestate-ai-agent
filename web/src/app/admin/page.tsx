@@ -30,9 +30,10 @@ import { formatTime, vnDayKey } from "@/lib/time";
 const POLL_MS = 15000;
 
 // Thứ tự phễu bán hàng (LOST tách riêng vì là nhánh rời)
-const FUNNEL_ORDER: LeadStatus[] = ["NEW", "CONFIRMED", "VIEWED", "DEPOSIT", "SIGNED"];
+const FUNNEL_ORDER: LeadStatus[] = ["CONSULTING", "NEW", "CONFIRMED", "VIEWED", "DEPOSIT", "SIGNED"];
 
 const BAR: Record<LeadStatus, string> = {
+  CONSULTING: "bg-cyan-400",
   NEW: "bg-slate-400",
   CONFIRMED: "bg-blue-500",
   VIEWED: "bg-violet-500",

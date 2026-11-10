@@ -15,8 +15,9 @@ import { Property } from '../properties/entities/property.entity';
 import { CreateViewingDto } from './dto/create-viewing.dto';
 import { AttendanceDto, UpdateViewingDto } from './dto/update-viewing.dto';
 import { assertViewingStarted, parseViewingTime } from './viewing-time';
-import { assertNoBookingConflict, assertNoDuplicateBooking, lockProperty } from './booking-rules';
+import { assertNoBookingConflict, lockProperty } from './booking-rules';
 import { LeadsService } from '../leads/leads.service';
+import { LeadIntakeService } from '../leads/lead-intake.service';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 
@@ -36,6 +37,7 @@ export class ViewingsService {
     private readonly httpService: HttpService,
     private readonly leadsService: LeadsService,
     private readonly n8nService: N8nService,
+    private readonly intake: LeadIntakeService,
   ) {}
 
   async create(createViewingDto: CreateViewingDto): Promise<{ viewing: Viewing; lead: Lead }> {
@@ -70,8 +72,6 @@ export class ViewingsService {
 
     const { text: normalizedViewingTime, date: viewingDate } = parseViewingTime(viewingTime);
 
-    const eventId = crypto.randomUUID();
-
     // Kiểm tra trùng và ghi trong cùng một transaction, khoá theo căn để hai yêu cầu cùng lúc không lọt cả hai
     const { savedLead, savedViewing } = await this.viewingRepository.manager.transaction(async (em) => {
       await lockProperty(em, propertyId);
@@ -80,23 +80,12 @@ export class ViewingsService {
       if (!current || current.status !== 'AVAILABLE') {
         throw new BadRequestException('Căn nhà này hiện không nhận đặt lịch xem');
       }
-      await assertNoDuplicateBooking(em, propertyId, email);
       await assertNoBookingConflict(em, propertyId, viewingDate);
 
-      const savedLead = await em.save(
-        em.create(Lead, {
-          name,
-          email,
-          phone,
-          budget,
-          needs: needs || null,
-          source: source || null,
-          consentMarketing: Boolean(consentMarketing),
-          eventId,
-          status: 'NEW',
-          automationStatus: 'PENDING',
-        }),
-      );
+      const { lead: savedLead } = await this.intake.receive(em, {
+        name, email, phone, budget, needs, source: source || 'direct', consentMarketing,
+        interestedPropertyIds: [propertyId],
+      }, { status: 'NEW', firstViewingOnly: true });
       const savedViewing = await em.save(
         em.create(Viewing, {
           propertyId,
@@ -261,6 +250,7 @@ export class ViewingsService {
       type: 'VIEWING_RESCHEDULED',
       note: `${fmt(oldTime)} -> ${fmt(date)} (bởi ${user.name})`,
     });
+    await this.leadsService.recordFirstResponse(lead.id, user);
 
     if (lead.status === 'CONFIRMED') {
       try {

@@ -74,7 +74,7 @@ Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
-| FE-33 | `feature/FE-33-nen-tiep-nhan` | PR nền: cột và trạng thái mới của lead, nhân viên, loại sự kiện; API tạo lead chung có kiểm tra trùng số điện thoại; chia sale lần lượt; chuyển sale; ghi chú; hàm mới trong `web/src/lib/api.ts` | Hậu | Chưa làm |
+| FE-33 | `feature/FE-33-nen-tiep-nhan` | PR nền: cột và trạng thái mới của lead, nhân viên, loại sự kiện; API tạo lead chung có kiểm tra trùng số điện thoại; chia sale lần lượt; chuyển sale; ghi chú; hàm mới trong `web/src/lib/api.ts` | Hậu | Đã triển khai local, chưa PR/chưa lên server. API, SQL nâng cấp và giới hạn chuyển tiếp: [FE-33](fe-33-nen-tiep-nhan.md) |
 | FE-34 | `feature/FE-34-buoi-xem-khung-gio` | Một lead nhiều buổi xem, huỷ không mất lead; API khung giờ đã kín, giới hạn giờ hẹn; bộ chọn khung giờ trên web khách | Hoàng | Chờ FE-33 |
 | FE-35 | `feature/FE-35-l1-bao-sale-phu-trach` | Luồng 1 tách chấm điểm khỏi duyệt lịch, nút Duyệt tới giờ hẹn; luồng 1b; sub-workflow thông báo gửi sale phụ trách | Hoàng | Chờ FE-33 |
 | FE-36 | `feature/FE-36-l6-tao-lead` | Luồng 6 tạo lead khi khách để lại số, gắn lịch sử chat vào lead | Hoàng | Chờ FE-33 |

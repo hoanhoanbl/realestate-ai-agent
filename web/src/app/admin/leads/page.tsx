@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
-import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
+import { Alert, buttonClass, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
 import {
   formatDateTime,
   formatVnd,
@@ -191,7 +191,15 @@ function LeadsContent() {
             ? "Điểm và mức do AI chấm. Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
             : "Điểm và mức do AI chấm. Trang tự cập nhật định kỳ."
         }
-        actions={updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+        actions={
+          <>
+            {updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+            <Link href="/admin/leads/them" className={buttonClass("primary")}>
+              <Icon name="plus" className="h-4 w-4" />
+              Thêm khách
+            </Link>
+          </>
+        }
       />
 
       <div className={`mt-5 flex flex-wrap items-center gap-3 p-3 ${CARD}`}>

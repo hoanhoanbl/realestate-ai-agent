@@ -1,7 +1,59 @@
 # Luồng 8: Mautic gửi hành vi về backend
 
-File: `n8n-workflows/luong-8-mautic-bao-ve.json`.
-Trigger: `POST /webhook/mautic-event?token=<token-rieng>`.
+File: `n8n-workflows/luong-8-mautic-bao-ve.json` (25 node, không tính ghi chú; id `luong8Realestat0`).
+Kích hoạt: `POST /webhook/mautic-event?token=<token-rieng>`. Luồng này xác thực bằng **token trong URL**, không dùng Header Auth.
+
+Khung chung của các tài liệu luồng: [README.md](README.md). Các mục "Cấu hình sau khi import", "Thứ tự xử lý", "Payload thử" và "Giới hạn còn lại" là phần chi tiết riêng của luồng này.
+
+## 1. Làm gì trong thực tế
+
+Mautic theo dõi khách thực sự làm gì: mở email, xem trang một căn nhà, điểm tương tác tăng lên. Luồng 8 nhận các sự kiện đó, cập nhật điểm hành vi của lead ở backend, ghi vào lịch sử khách, và **báo sale đúng lúc khách "nóng lên"**: điểm từ dưới ngưỡng (mặc định 20) lên đạt ngưỡng, hoặc khách vừa xem trang một căn nhà (`/nha/:id`). Điểm hành vi của Mautic là một trục riêng, không thay điểm AI chấm khi đặt lịch.
+
+Quy tắc nghiệp vụ: [nghiep-vu/03-cham-soc-va-marketing.md](../nghiep-vu/03-cham-soc-va-marketing.md) mục 4 và 5.
+
+## 2. Ai tham gia
+
+Mautic (gọi webhook), backend (lưu điểm và lịch sử), sale phụ trách và nhóm sale (nhận thông báo qua [sub-workflow](thong-bao-nhan-vien.md)), quản lý (nhận báo lỗi), người cấu hình Mautic (đặt URL webhook kèm token).
+
+## 3. Từng bước
+
+Workflow chia thành năm nhóm bằng ghi chú: **1. Nhận và xác thực webhook Mautic**, **2. Từng sự kiện: tìm lead**, **3. Cập nhật điểm và ghi event**, **4. Báo nhân viên khi vượt ngưỡng**, **5. Tổng kết lô**, và một nhóm **Xử lý lỗi**. Mô tả đầy đủ ở mục "Thứ tự xử lý" bên dưới.
+
+## 4. Nối với hệ thống
+
+| Hướng | Gọi gì |
+|---|---|
+| Mautic → luồng 8 | `POST /webhook/mautic-event?token=...` (cấu hình trong Mautic > Settings > Webhooks) |
+| Luồng 8 → backend | `GET /api/leads/by-mautic/:contactId` (tìm lead), `PUT /api/leads/:id/mautic` (điểm), `POST /api/leads/:id/events` |
+| Luồng 8 → sub-workflow | [Thông báo nhân viên](thong-bao-nhan-vien.md), cách gọi cũ (nhóm sale chung) |
+
+Chiều từ backend sang Mautic (tạo contact, gắn tag) là [luồng 7](luong-7-dong-bo-mautic.md).
+
+## 5. Khi lỗi thì sao
+
+Thiếu hoặc sai token thì trả HTTP 403 (node `Từ chối webhook`) và không ghi gì. Lỗi ở một sự kiện không dừng cả lô: luồng ghi nhận lỗi, đi tiếp các sự kiện còn lại, rồi trả **một** phản hồi tổng kết; có lỗi thì HTTP 500 và `Stop And Error` để [Error workflow](error-workflow.md) báo quản lý. Giới hạn đã biết (chưa chống trùng theo event ID, retry cả lô có thể báo lại) ở mục "Giới hạn còn lại" bên dưới.
+
+## 6. Triển khai lên server
+
+| Mục | Giá trị |
+|---|---|
+| Workflow id | `luong8Realestat0` |
+| Credential | Không dùng credential n8n. Xác thực bằng token trong URL |
+| Biến `.env` | `MAUTIC_WEBHOOK_SECRET` (token, ít nhất 24 ký tự; **trống thì mọi sự kiện bị từ chối 403**), `WEBHOOK_SECRET`, `PUBLIC_WEB_URL`, `BACKEND_URL` |
+| Việc làm tay | Các bước ở mục "Cấu hình sau khi import" bên dưới; đặt URL webhook kèm `?token=` trong Mautic |
+| Error workflow | Chọn `errorWfRealestat` trong Settings |
+
+Lưu ý: node `Cấu hình` đặt sẵn một giá trị dự phòng cho `webhookSecret` trong file JSON khi biến `WEBHOOK_SECRET` trống. Luôn đặt `WEBHOOK_SECRET` thật ở môi trường chạy thật, đừng dựa vào giá trị dự phòng.
+
+Hiện trạng:
+
+- **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi luồng 8 đã bật, là **bản cũ**. Bản mô tả ở đây (có token, xử lý theo lô) **chưa lên server**.
+- **Phát hành:** làm theo [trien-khai.md mục 9](../trien-khai.md) (bản `v0.3.1`): tạo `MAUTIC_WEBHOOK_SECRET`, tạo lại n8n để nhận biến, gắn token vào webhook Mautic, import luồng 8, publish, kiểm tra bằng một sự kiện thử.
+- **Chưa kiểm trên server:** cả luồng với Mautic server thật (xem mục "Giới hạn còn lại").
+
+## 7. Cách chạy thử
+
+Dùng mục "Payload thử" bên dưới: gửi payload mẫu tới URL **đã có token**; contact trong payload phải đã liên kết với một lead đúng môi trường. Kiểm tra: lead có sự kiện điểm mới trong lịch sử, và sale nhận thông báo khi điểm vượt ngưỡng. Thử không có token để thấy HTTP 403.
 
 ## Cấu hình sau khi import
 

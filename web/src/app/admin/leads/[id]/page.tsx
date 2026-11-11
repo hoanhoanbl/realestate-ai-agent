@@ -6,10 +6,13 @@ import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import ContactButtons from "@/components/ContactButtons";
 import LeadActions from "@/components/LeadActions";
+import LeadAssignmentPanel from "@/components/LeadAssignmentPanel";
+import LeadChatHistory from "@/components/LeadChatHistory";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import MauticScoreCard from "@/components/MauticScoreCard";
 import StatusBadge from "@/components/StatusBadge";
+import ViewingHistory from "@/components/ViewingHistory";
 import {
   ApiError,
   eventLabel,
@@ -160,6 +163,7 @@ function LeadDetailContent() {
           </div>
 
           <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
+          <LeadAssignmentPanel key={lead.id} lead={lead} onChanged={() => setVersion((v) => v + 1)} />
 
           <div className="mt-5">
             <MauticScoreCard lead={lead} />
@@ -203,6 +207,12 @@ function LeadDetailContent() {
               )}
             </Card>
 
+            {lead.viewings?.length > 1 && (
+              <Card title={`Lịch sử ${lead.viewings.length} buổi xem`}>
+                <ViewingHistory viewings={lead.viewings} />
+              </Card>
+            )}
+
             {lead.otherBookings?.length > 0 && (
               <Card title={`Khách này đã đặt ${lead.otherBookings.length} lần khác`}>
                 <ul className="space-y-1">
@@ -220,6 +230,8 @@ function LeadDetailContent() {
                 </ul>
               </Card>
             )}
+
+            <LeadChatHistory leadId={lead.id} />
 
             <Card title="Kết quả AI">
               {lead.score === null ? (

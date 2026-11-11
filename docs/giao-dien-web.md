@@ -1,6 +1,6 @@
 # Quy ước giao diện web
 
-Áp dụng cho cả web khách (`web/src/app/(khach)`) và web admin (`web/src/app/admin`). Các quy ước lấy theo checklist của skill ui-ux-pro-max và đã áp dụng cho mọi trang ở FE-26.
+Áp dụng cho cả web khách (`web/src/app/(khach)`) và web admin (`web/src/app/admin`). Các quy ước lấy theo checklist của skill ui-ux-pro-max và đã áp dụng cho mọi trang ở FE-26. Skill nằm trong repo ở `.claude/skills/ui-ux-pro-max/` (bản `v2.15.0`, CH-08), Claude Code tự dùng khi làm giao diện; script tra cứu của skill cần Python 3.
 
 ## 1. Dùng component có sẵn
 

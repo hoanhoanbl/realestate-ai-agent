@@ -6,17 +6,19 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
-import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
+import { Alert, buttonClass, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
 import {
   formatDateTime,
   formatVnd,
   getLeads,
+  getAssignees,
   sourceLabel,
   type Lead,
   type LeadStatus,
   type Level,
 } from "@/lib/api";
 import { normalizeText } from "@/lib/property";
+import { isHotLead } from "@/lib/mautic";
 
 // Mức AI chấm + hai nhóm theo điểm tương tác Mautic (Hậu, trục thứ hai)
 type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
@@ -40,7 +42,7 @@ function isEngaged(lead: Lead): boolean {
 function matchesFilter(lead: Lead, filter: Filter): boolean {
   if (filter === "ALL") return true;
   if (filter === "HIGH_ENGAGEMENT") return isEngaged(lead);
-  if (filter === "VIP_HOT") return lead.level === "HOT" && isEngaged(lead);
+  if (filter === "VIP_HOT") return isHotLead(lead) && isEngaged(lead);
   return lead.level === filter;
 }
 
@@ -58,7 +60,7 @@ function MauticPoints({ lead }: { lead: Lead }) {
       >
         {engaged && <Icon name="flame" className="h-3.5 w-3.5" />}+{pts} pts
       </span>
-      {lead.level === "HOT" && engaged && (
+      {isHotLead(lead) && engaged && (
         <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-700">
           <Icon name="rocket" className="h-3.5 w-3.5" />
           Ưu tiên
@@ -74,6 +76,7 @@ const POLL_IDLE_MS = 20000;
 
 const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "ALL", label: "Mọi trạng thái" },
+  { value: "CONSULTING", label: "Đang tư vấn" },
   { value: "NEW", label: "Mới, chờ duyệt" },
   { value: "CONFIRMED", label: "Đã chốt lịch" },
   { value: "VIEWED", label: "Đã xem nhà" },
@@ -134,6 +137,14 @@ function LeadsContent() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [owners, setOwners] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    getAssignees().then(users => { if (active) setOwners(Object.fromEntries(users.map(u => [u.id, u.name]))); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const ownerName = (lead: Lead) => lead.assignedUserId ? owners[lead.assignedUserId] ?? `Nhân viên #${lead.assignedUserId}` : "Chưa phân công";
 
   // Có lead nào đang PENDING (chờ AI chấm điểm) thì tự tải lại thường xuyên hơn
   const hasPending = useMemo(() => leads?.some((l) => l.automationStatus === "PENDING") ?? false, [leads]);
@@ -190,7 +201,15 @@ function LeadsContent() {
             ? "Điểm và mức do AI chấm. Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
             : "Điểm và mức do AI chấm. Trang tự cập nhật định kỳ."
         }
-        actions={updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+        actions={
+          <>
+            {updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+            <Link href="/admin/leads/them" className={buttonClass("primary")}>
+              <Icon name="plus" className="h-4 w-4" />
+              Thêm khách
+            </Link>
+          </>
+        }
       />
 
       <div className={`mt-5 flex flex-wrap items-center gap-3 p-3 ${CARD}`}>
@@ -271,6 +290,7 @@ function LeadsContent() {
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Khách</th>
+                  <th className="px-4 py-3">Phụ trách</th>
                   <th className="px-4 py-3">Ngân sách</th>
                   <th className="px-4 py-3">AI chấm</th>
                   <th className="px-4 py-3">Mautic</th>
@@ -292,6 +312,7 @@ function LeadsContent() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{sourceLabel(lead.source)}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-slate-700">{ownerName(lead)}</td>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">{formatVnd(lead.budget)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -345,6 +366,7 @@ function LeadsContent() {
                     </div>
                   </div>
                   {lead.reason && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{lead.reason}</p>}
+                  <p className="mt-2 text-sm text-slate-600">Phụ trách: <span className="font-medium">{ownerName(lead)}</span></p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <LeadStatusBadge status={lead.status} />
                     <StatusBadge status={lead.automationStatus} />

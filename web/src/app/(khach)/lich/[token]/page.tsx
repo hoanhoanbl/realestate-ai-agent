@@ -92,7 +92,7 @@ function ManageBookingContent() {
           </h1>
           <p className="mt-2 text-emerald-900">
             {done === "cancelled"
-              ? "Cảm ơn anh/chị đã báo trước. Khi cần, anh/chị có thể đặt lịch mới bất cứ lúc nào."
+              ? "Cảm ơn anh/chị đã báo trước. Khi cần xem lại, anh/chị có thể chọn khung giờ mới ngay trên trang căn nhà."
               : "Nhân viên sẽ liên hệ để hẹn giờ mới. Lịch cũ vẫn giữ cho tới khi nhân viên đổi."}
           </p>
           <Link href="/" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700">

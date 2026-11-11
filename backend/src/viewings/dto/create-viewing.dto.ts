@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
@@ -47,6 +48,12 @@ export class CreateViewingDto {
   @IsOptional()
   @IsBoolean()
   consentMarketing?: boolean;
+
+  // Id cuộc chat Telegram (FE-36): chỉ được dùng khi request mang X-Webhook-Secret, còn lại bị bỏ qua
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  chatId?: string;
 
   // Ô ẩn bẫy bot: người thật không thấy nên luôn để trống
   @IsOptional()

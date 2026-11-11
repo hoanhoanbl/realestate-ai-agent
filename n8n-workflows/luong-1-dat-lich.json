@@ -423,12 +423,12 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gom dữ liệu báo nhân viên (gửi sang sub-workflow \"thong-bao-nhan-vien\")\nconst k = $('Chuẩn hoá').first().json;\nconst ai = $('Basic LLM Chain').first().json.output;\nconst p = $('Ghép dữ liệu').first().json.property;\nconst source = String($('Webhook').first().json.body?.source ?? '').toLowerCase();\nconst webUrl = String($env.PUBLIC_WEB_URL || 'http://localhost:3000').replace(/\\/$/, '');\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst money = (n) => {\n  n = Number(n) || 0;\n  if (n >= 1e9) return (Math.round(n / 1e7) / 100).toLocaleString('vi-VN') + ' tỷ';\n  if (n >= 1e6) return Math.round(n / 1e6).toLocaleString('vi-VN') + ' triệu';\n  return n.toLocaleString('vi-VN') + ' đ';\n};\nconst SOURCES = { facebook: 'Facebook', zalo: 'Zalo', google: 'Google', tiktok: 'TikTok', referral: 'Giới thiệu', direct: 'Trực tiếp' };\nconst sourceText = SOURCES[source] ?? (source || 'Trực tiếp');\nconst t = DateTime.fromISO(k.viewingTime).setZone('Asia/Ho_Chi_Minh');\nconst thu = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật'][t.weekday];\nconst timeText = t.toFormat('HH:mm') + ' · ' + thu + ' ' + t.toFormat('dd/MM/yyyy');\n\nconst resume = $execution.resumeUrl + ($execution.resumeUrl.includes('?') ? '&' : '?');\nconst approveUrl = resume + 'action=approve';\nconst rescheduleUrl = resume + 'action=reschedule';\nconst detailUrl = webUrl + '/admin/leads/' + k.leadId;\n\nconst color = { HOT: '#dc2626', WARM: '#f59e0b', COLD: '#6b7280' }[ai.level] ?? '#2563eb';\nconst row = (label, value) => '<tr><td style=\"padding:10px;color:#6b7280;width:35%\">' + label + '</td><td style=\"padding:10px\">' + value + '</td></tr>';\nconst btn = (url, label, bg) => '<a href=\"' + esc(url) + '\" style=\"background:' + bg + ';color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block;margin:0 6px 6px 0\">' + label + '</a>';\nconst emailHtml = '<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">'\n  + '<div style=\"background:' + color + ';color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách ' + esc(ai.level) + ' - cần duyệt lịch xem nhà</div>'\n  + '<div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">'\n  + '<p style=\"margin-top:0\"><b>Điểm AI: ' + esc(ai.score) + '/100</b> &mdash; ' + esc(ai.reason) + '</p>'\n  + '<table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">'\n  + row('Khách hàng', '<b>' + esc(k.name) + '</b>')\n  + row('Số điện thoại', esc(k.phone))\n  + row('Email', esc(k.email))\n  + row('Ngân sách', esc(Number(k.budget).toLocaleString('vi-VN')) + ' VND')\n  + row('Nguồn khách', esc(sourceText))\n  + row('Nhu cầu', esc(k.needs || '(không ghi)'))\n  + row('Căn nhà', esc(p.name) + ', ' + esc(p.address))\n  + row('Giờ xem nhà', '<b>' + esc(timeText) + '</b>')\n  + '</table>'\n  + '<p style=\"margin-top:20px;padding:12px;background:#fffbeb;border-left:4px solid #f59e0b\"><b>Gợi ý của AI:</b> ' + esc(ai.staffNote) + '</p>'\n  + '<p style=\"margin-top:20px\">' + btn(approveUrl, 'Duyệt lịch', '#16a34a') + btn(rescheduleUrl, 'Đổi giờ', '#6b7280') + btn(detailUrl, 'Xem chi tiết', '#2563eb') + '</p>'\n  + '</div>'\n  + '<div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Bấm nút trong vòng 24 giờ. Quá hạn, hệ thống sẽ báo cho quản lý.</div>'\n  + '</div>';\n\nreturn [{\n  json: {\n    leadId: k.leadId,\n    level: ai.level,\n    title: k.name + ' - ' + ai.score + ' điểm - cần duyệt lịch xem',\n    fields: [\n      { icon: '👤', label: 'Khách', value: k.name },\n      { icon: '📞', label: 'SĐT', value: k.phone },\n      { icon: '✉️', label: 'Email', value: k.email },\n      { icon: '💰', label: 'Ngân sách', value: money(k.budget) },\n      { icon: '📣', label: 'Nguồn', value: sourceText },\n      { sep: true },\n      { icon: '🏠', label: 'Căn', value: p.name },\n      { icon: '📍', label: 'Địa chỉ', value: p.address },\n      { icon: '🕙', label: 'Giờ xem', value: timeText },\n      { sep: true },\n      { icon: '🎯', label: 'Điểm AI', value: ai.score + '/100 (' + ai.level + ')' },\n      { icon: '🧠', label: 'Lý do', value: ai.reason },\n      { icon: '📝', label: 'Nhu cầu', value: k.needs },\n    ],\n    note: 'Gợi ý của AI: ' + ai.staffNote,\n    actions: [\n      { label: '✅ Duyệt lịch', url: approveUrl },\n      { label: '🕓 Đổi giờ', url: rescheduleUrl },\n      { label: '📋 Xem chi tiết', url: detailUrl },\n    ],\n    detailUrl,\n    emailTo: $('Cấu hình').first().json.staffEmail,\n    emailHtml,\n  },\n}];"
+        "jsCode": "// Gom dữ liệu báo nhân viên (gửi sang sub-workflow \"thong-bao-nhan-vien\")\nconst k = $('Chuẩn hoá').first().json;\nconst ai = $('Basic LLM Chain').first().json.output;\nconst p = $('Ghép dữ liệu').first().json.property;\nconst source = String($('Webhook').first().json.body?.source ?? '').toLowerCase();\nconst webUrl = String($env.PUBLIC_WEB_URL || 'http://localhost:3000').replace(/\\/$/, '');\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst money = (n) => {\n  n = Number(n) || 0;\n  if (n >= 1e9) return (Math.round(n / 1e7) / 100).toLocaleString('vi-VN') + ' tỷ';\n  if (n >= 1e6) return Math.round(n / 1e6).toLocaleString('vi-VN') + ' triệu';\n  return n.toLocaleString('vi-VN') + ' đ';\n};\nconst SOURCES = { facebook: 'Facebook', zalo: 'Zalo', google: 'Google', tiktok: 'TikTok', referral: 'Giới thiệu', direct: 'Trực tiếp' };\nconst sourceText = SOURCES[source] ?? (source || 'Trực tiếp');\nconst t = DateTime.fromISO(k.viewingTime).setZone('Asia/Ho_Chi_Minh');\nconst thu = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật'][t.weekday];\nconst timeText = t.toFormat('HH:mm') + ' · ' + thu + ' ' + t.toFormat('dd/MM/yyyy');\n\n// FE-35: nút Duyệt / Đổi giờ là link do backend cấp (dùng được tới giờ hẹn), không còn gắn với lần chạy này.\n// Backend lỗi thì chỉ còn nút \"Xem chi tiết\"; nhân viên duyệt trên trang quản trị.\nconst linkRes = $('Lấy link duyệt').isExecuted ? $('Lấy link duyệt').first().json : {};\nconst approveUrl = /^https?:\\/\\//.test(String(linkRes.approveUrl ?? '')) ? linkRes.approveUrl : '';\nconst rescheduleUrl = /^https?:\\/\\//.test(String(linkRes.rescheduleUrl ?? '')) ? linkRes.rescheduleUrl : '';\nconst assigneeId = Number($('Webhook').first().json.body?.assignedUserId) || 0;\nconst detailUrl = webUrl + '/admin/leads/' + k.leadId;\n\nconst color = { HOT: '#dc2626', WARM: '#f59e0b', COLD: '#6b7280' }[ai.level] ?? '#2563eb';\nconst row = (label, value) => '<tr><td style=\"padding:10px;color:#6b7280;width:35%\">' + label + '</td><td style=\"padding:10px\">' + value + '</td></tr>';\nconst btn = (url, label, bg) => '<a href=\"' + esc(url) + '\" style=\"background:' + bg + ';color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block;margin:0 6px 6px 0\">' + label + '</a>';\nconst emailHtml = '<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">'\n  + '<div style=\"background:' + color + ';color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách ' + esc(ai.level) + ' - cần duyệt lịch xem nhà</div>'\n  + '<div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">'\n  + '<p style=\"margin-top:0\"><b>Điểm AI: ' + esc(ai.score) + '/100</b> &mdash; ' + esc(ai.reason) + '</p>'\n  + '<table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">'\n  + row('Khách hàng', '<b>' + esc(k.name) + '</b>')\n  + row('Số điện thoại', esc(k.phone))\n  + row('Email', esc(k.email))\n  + row('Ngân sách', esc(Number(k.budget).toLocaleString('vi-VN')) + ' VND')\n  + row('Nguồn khách', esc(sourceText))\n  + row('Nhu cầu', esc(k.needs || '(không ghi)'))\n  + row('Căn nhà', esc(p.name) + ', ' + esc(p.address))\n  + row('Giờ xem nhà', '<b>' + esc(timeText) + '</b>')\n  + '</table>'\n  + '<p style=\"margin-top:20px;padding:12px;background:#fffbeb;border-left:4px solid #f59e0b\"><b>Gợi ý của AI:</b> ' + esc(ai.staffNote) + '</p>'\n  + '<p style=\"margin-top:20px\">' + (approveUrl ? btn(approveUrl, 'Duyệt lịch', '#16a34a') : '') + (rescheduleUrl ? btn(rescheduleUrl, 'Đổi giờ', '#6b7280') : '') + btn(detailUrl, 'Xem chi tiết', '#2563eb') + '</p>'\n  + '</div>'\n  + '<div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Nút Duyệt và Đổi giờ dùng được tới giờ hẹn. Quá 2 giờ làm việc chưa xử lý, hệ thống sẽ báo cho quản lý.</div>'\n  + '</div>';\n\nreturn [{\n  json: {\n    leadId: k.leadId,\n    level: ai.level,\n    title: k.name + ' - ' + ai.score + ' điểm - cần duyệt lịch xem',\n    fields: [\n      { icon: '👤', label: 'Khách', value: k.name },\n      { icon: '📞', label: 'SĐT', value: k.phone },\n      { icon: '✉️', label: 'Email', value: k.email },\n      { icon: '💰', label: 'Ngân sách', value: money(k.budget) },\n      { icon: '📣', label: 'Nguồn', value: sourceText },\n      { sep: true },\n      { icon: '🏠', label: 'Căn', value: p.name },\n      { icon: '📍', label: 'Địa chỉ', value: p.address },\n      { icon: '🕙', label: 'Giờ xem', value: timeText },\n      { sep: true },\n      { icon: '🎯', label: 'Điểm AI', value: ai.score + '/100 (' + ai.level + ')' },\n      { icon: '🧠', label: 'Lý do', value: ai.reason },\n      { icon: '📝', label: 'Nhu cầu', value: k.needs },\n    ],\n    note: 'Gợi ý của AI: ' + ai.staffNote,\n    actions: [\n      ...(approveUrl ? [{ label: '✅ Duyệt lịch', url: approveUrl }] : []),\n      ...(rescheduleUrl ? [{ label: '🕓 Đổi giờ', url: rescheduleUrl }] : []),\n      { label: '📋 Xem chi tiết', url: detailUrl },\n    ],\n    detailUrl,\n    assigneeId, // sub-workflow gửi riêng cho sale này; 0 = chưa có người phụ trách, báo quản lý\n    emailHtml,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2220,
+        2420,
         200
       ],
       "id": "c2a7d001-0000-4000-8000-000000000000",
@@ -456,7 +456,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2380,
+        2640,
         200
       ],
       "id": "c2a7d002-0000-4000-8000-000000000000",
@@ -471,13 +471,13 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"score\": $('Basic LLM Chain').first().json.output.score,\n  \"level\": $('Basic LLM Chain').first().json.output.level,\n  \"reason\": $('Basic LLM Chain').first().json.output.reason,\n  \"aiReply\": $('Basic LLM Chain').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"staffNotified\": true,\n  \"approvalUrl\": $execution.resumeUrl\n} }}",
+        "jsonBody": "={{ {\n  \"score\": $('Basic LLM Chain').first().json.output.score,\n  \"level\": $('Basic LLM Chain').first().json.output.level,\n  \"reason\": $('Basic LLM Chain').first().json.output.reason,\n  \"aiReply\": $('Basic LLM Chain').first().json.output.emailBody,\n  \"emailSent\": true,\n  \"staffNotified\": !!($('Thông báo nhân viên').first().json.emailSent || $('Thông báo nhân viên').first().json.telegramSent || $('Thông báo nhân viên').first().json.pushSent)\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3200,
+        2960,
         200
       ],
       "id": "c801e0de-d265-ea9a-e465-03e3649fdd43",
@@ -518,350 +518,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3420,
+        3180,
         200
       ],
       "id": "2fedf074-d5dd-821e-9926-37817d9854a6",
       "name": "Ghi log AI_SCORED",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "iYLrhsH8b8dDkZ0n",
-          "name": "Header Auth account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "resume": "webhook",
-        "httpMethod": "GET",
-        "responseMode": "responseNode",
-        "limitWaitTime": true,
-        "limitType": "afterTimeInterval",
-        "resumeAmount": 24,
-        "resumeUnit": "hours",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3660,
-        200
-      ],
-      "id": "104b5506-6c34-cb62-ea94-3edc48e8b379",
-      "name": "Chờ duyệt",
-      "webhookId": "a9e0b372-9331-5929-a085-597d27608ff6"
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "9b344264-35c1-5b4c-b83a-1a8efb41af2d",
-                    "leftValue": "={{ $('Chờ duyệt').first().json.query?.action }}",
-                    "rightValue": "approve",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "approve"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "9560215d-331d-09d6-38eb-81baaca029d0",
-                    "leftValue": "={{ $('Chờ duyệt').first().json.query?.action }}",
-                    "rightValue": "reschedule",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "reschedule"
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra",
-          "renameFallbackOutput": "Hết giờ"
-        }
-      },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [
-        4100,
-        200
-      ],
-      "id": "70c2fc47-5216-f69a-38db-07e917337b03",
-      "name": "Kết quả duyệt"
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã gửi email cho khách.</h2></body></html>",
-        "options": {
-          "responseHeaders": {
-            "entries": [
-              {
-                "name": "Content-Type",
-                "value": "text/html; charset=utf-8"
-              }
-            ]
-          }
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.4,
-      "position": [
-        4580,
-        20
-      ],
-      "id": "81005e0b-0ae3-aec7-d3ad-3b103a8d75e1",
-      "name": "Trả lời duyệt"
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Đã ghi nhận</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Đã ghi nhận. Hệ thống đã báo khách là nhân viên sẽ gọi lại để hẹn giờ khác.</h2></body></html>",
-        "options": {
-          "responseHeaders": {
-            "entries": [
-              {
-                "name": "Content-Type",
-                "value": "text/html; charset=utf-8"
-              }
-            ]
-          }
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.4,
-      "position": [
-        4580,
-        200
-      ],
-      "id": "f81e86f1-83fb-657d-ff63-fee668f01070",
-      "name": "Trả lời đổi giờ"
-    },
-    {
-      "parameters": {
-        "fromEmail": "nhadn2457@gmail.com",
-        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
-        "subject": "Xác nhận lịch xem nhà",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#16a34a;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lịch xem nhà đã được xác nhận</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, nhân viên đã xác nhận lịch xem nhà của anh/chị. Rất mong được đón anh/chị đúng giờ.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO(new Date($('Kiểm tra lịch còn chờ duyệt').first().json.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n    {{ $('Kiểm tra lịch còn chờ duyệt').first().json.manage_token ? '<p style=\"margin-top:20px\">Nếu cần huỷ hoặc đổi lịch, anh/chị bấm: <a href=\"' + $('Cấu hình').first().json.publicWebUrl + '/lich/' + $('Kiểm tra lịch còn chờ duyệt').first().json.manage_token + '\" style=\"color:#2563eb;font-weight:bold\">Huỷ / xin đổi lịch</a></p>' : '' }}\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        4800,
-        20
-      ],
-      "id": "c63a7407-03a6-aa07-8978-80ccaaf2fff5",
-      "name": "Email chốt lịch",
-      "credentials": {
-        "smtp": {
-          "id": "hfJ9bBGUGsjH8qDP",
-          "name": "SMTP account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "fromEmail": "nhadn2457@gmail.com",
-        "toEmail": "={{ $('Chuẩn hoá').first().json.email }}",
-        "subject": "Cần hẹn lại giờ xem nhà",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#f59e0b;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Cần hẹn lại giờ xem nhà</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn hoá').first().json.name }}, khung giờ anh/chị đăng ký chưa phù hợp với lịch của nhân viên. Nhân viên sẽ gọi lại để hẹn một giờ khác thuận tiện cho anh/chị.</p>\n    <table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div>\n</div>",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        4800,
-        200
-      ],
-      "id": "55db36a3-49a1-6ab0-8d00-cd995df3d78e",
-      "name": "Email báo đổi giờ",
-      "credentials": {
-        "smtp": {
-          "id": "hfJ9bBGUGsjH8qDP",
-          "name": "SMTP account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "fromEmail": "nhadn2457@gmail.com",
-        "toEmail": "={{ $('Cấu hình').first().json.managerEmail }}",
-        "subject": "=[CẢNH BÁO] {{ $('Chuẩn hoá').first().json.name }} chưa được duyệt lịch sau 24 giờ",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#dc2626;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Lead chưa được nhân viên duyệt sau 24 giờ</div>\n  <div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\">\n    <p style=\"margin-top:0\">Nhân viên chưa bấm Duyệt hay Đổi giờ cho yêu cầu dưới đây sau 24 giờ.</p>\n    <table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\">\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Mã lead</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.leadId }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Ghép dữ liệu').first().json.property.name }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Ghép dữ liệu').first().json.property.address }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ DateTime.fromISO($('Chuẩn hoá').first().json.viewingTime).toFormat(\"HH:mm 'ngày' dd/MM/yyyy\") }}</b></td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.name }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn hoá').first().json.phone }}</td></tr>\n      <tr><td style=\"padding:10px;color:#6b7280\">Mức AI</td><td style=\"padding:10px\">{{ $('Basic LLM Chain').first().json.output.level }} ({{ $('Basic LLM Chain').first().json.output.score }} điểm)</td></tr>\n    </table>\n  </div>\n  <div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ luồng 1.</div>\n</div>",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        4580,
-        420
-      ],
-      "id": "351610fb-49f7-6934-0fca-bda8fab90001",
-      "name": "Email cảnh báo quản lý",
-      "credentials": {
-        "smtp": {
-          "id": "hfJ9bBGUGsjH8qDP",
-          "name": "SMTP account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/status",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"status\": \"CONFIRMED\", \"note\": \"Nhân viên duyệt qua email\" } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        5020,
-        20
-      ],
-      "id": "e9522c19-4b97-77be-b497-01f4b3554260",
-      "name": "Cập nhật CONFIRMED",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "iYLrhsH8b8dDkZ0n",
-          "name": "Header Auth account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"type\": \"APPROVED\", \"note\": \"Nhân viên duyệt lịch qua email\" } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        5240,
-        20
-      ],
-      "id": "6ae67374-a3d0-4aac-ac5a-6bb2fcab6170",
-      "name": "Ghi log APPROVED",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "iYLrhsH8b8dDkZ0n",
-          "name": "Header Auth account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"type\": \"RESCHEDULE_REQUESTED\", \"note\": \"Nhân viên yêu cầu đổi giờ qua email\" } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        5020,
-        200
-      ],
-      "id": "e3a66216-b58a-3b86-9772-3757d5a57116",
-      "name": "Ghi log RESCHEDULE_REQUESTED",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "iYLrhsH8b8dDkZ0n",
-          "name": "Header Auth account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"type\": \"APPROVAL_TIMEOUT\", \"note\": \"Quá 24 giờ chưa duyệt\" } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        4800,
-        420
-      ],
-      "id": "c6379c12-99aa-172b-a744-cc3fc2bae03a",
-      "name": "Ghi log APPROVAL_TIMEOUT",
       "credentials": {
         "httpHeaderAuth": {
           "id": "iYLrhsH8b8dDkZ0n",
@@ -901,321 +562,6 @@
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT COALESCE(json_agg(push_token), '[]'::json) AS tokens FROM users WHERE push_token IS NOT NULL;",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        2520,
-        200
-      ],
-      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a01",
-      "name": "Lấy push token nhân viên",
-      "credentials": {
-        "postgres": {
-          "id": "postgres_account_id",
-          "name": "Postgres account"
-        }
-      },
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 3000
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "c1f7a3b2-has-token",
-              "leftValue": "={{ ($json.tokens ?? []).length }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        2740,
-        200
-      ],
-      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a02",
-      "name": "Có app nhận thông báo?"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://exp.host/--/api/v2/push/send",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.tokens.map(t => ({ to: t, sound: 'default', title: ($('Basic LLM Chain').first().json.output.level === 'HOT' ? '[ƯU TIÊN] ' : '') + 'Khách mới: ' + $('Chuẩn hoá').first().json.name, body: $('Basic LLM Chain').first().json.output.level + ' ' + $('Basic LLM Chain').first().json.output.score + ' điểm. ' + $('Basic LLM Chain').first().json.output.reason, data: { leadId: $('Chuẩn hoá').first().json.leadId } })) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        2960,
-        120
-      ],
-      "id": "c1f7a3b2-5d41-4e0a-9a35-1b7e0d6f2a03",
-      "name": "Gửi thông báo đẩy",
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 3000,
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Sau khi duyệt / đổi giờ / quá hạn: sửa lại tin Telegram đã gửi (thêm dòng trạng thái, bỏ nút Duyệt/Đổi giờ)\nconst sent = $('Thông báo nhân viên').first().json;\nconst d = $('Dữ liệu thông báo').first().json;\nconst now = DateTime.now().setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM\");\nlet statusLine;\nif ($('Ghi log APPROVED').isExecuted) statusLine = '✅ ĐÃ DUYỆT lúc ' + now + ' — đã gửi email chốt lịch cho khách';\nelse if ($('Ghi log RESCHEDULE_REQUESTED').isExecuted) statusLine = '🕓 ĐÃ YÊU CẦU ĐỔI GIỜ lúc ' + now + ' — đặt giờ mới trên web admin rồi duyệt lại';\nelse statusLine = '⏰ QUÁ 24 GIỜ CHƯA DUYỆT (' + now + ') — đã báo quản lý, duyệt tiếp trên web admin';\n\nreturn [{\n  json: {\n    mode: 'update',\n    leadId: d.leadId,\n    level: d.level,\n    title: d.title,\n    fields: d.fields,\n    note: d.note,\n    statusLine,\n    actions: [{ label: '📋 Xem chi tiết', url: d.detailUrl }],\n    telegramMessageId: sent.telegramMessageId,\n    telegramChatId: sent.telegramChatId,\n  },\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        5460,
-        220
-      ],
-      "id": "c2a7d003-0000-4000-8000-000000000000",
-      "name": "Trạng thái Telegram"
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "thongBaoNhanVien",
-          "mode": "id"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {
-          "waitForSubWorkflow": true
-        }
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
-      "position": [
-        5680,
-        220
-      ],
-      "id": "c2a7d004-0000-4000-8000-000000000000",
-      "name": "Cập nhật Telegram",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Đọc lại lịch ngay lúc duyệt: khách có thể đã tự huỷ, hoặc lịch đã được duyệt / đổi giờ ở nơi khác\nSELECT l.status AS lead_status, v.status AS viewing_status, v.viewing_time, v.manage_token\nFROM leads l\nJOIN LATERAL (SELECT * FROM viewings WHERE lead_id = l.id ORDER BY id DESC LIMIT 1) v ON true\nWHERE l.id = $1::int;",
-        "options": {
-          "queryReplacement": "={{ $('Webhook').first().json.body.leadId }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        3880,
-        200
-      ],
-      "id": "458a630d-9bdb-42e9-bd08-01b387971148",
-      "name": "Kiểm tra lịch còn chờ duyệt",
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "postgres_account_id",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "02ab8351-a106-424b-b832-c798e33be786",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            },
-            {
-              "id": "afc8b49b-e4fe-439f-a1f7-e9f65c189557",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        4340,
-        20
-      ],
-      "id": "2e9d3217-b4cf-4ae7-87db-280a24aef2d6",
-      "name": "Lịch còn chờ duyệt?"
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Không duyệt được</title></head><body style=\"font-family:Arial,sans-serif;text-align:center;padding:60px\"><h2>Lịch này đã bị huỷ hoặc đã được xử lý. Không gửi email cho khách.</h2></body></html>",
-        "options": {
-          "responseHeaders": {
-            "entries": [
-              {
-                "name": "Content-Type",
-                "value": "text/html; charset=utf-8"
-              }
-            ]
-          }
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.4,
-      "position": [
-        4580,
-        -160
-      ],
-      "id": "774751f4-c36a-48d9-853a-15136098e3c4",
-      "name": "Trả lời lịch đã xử lý"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "63ac412f-5a68-46dd-81c2-3a278deb257e",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            },
-            {
-              "id": "fd98ccde-6f1d-4a2e-84f0-123242f25898",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        4340,
-        200
-      ],
-      "id": "573322f3-357b-487e-a36f-3ef1d85630ee",
-      "name": "Lịch còn chờ (đổi giờ)?"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "9c25ab1e-7850-428a-961d-c8d9deae330f",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.lead_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            },
-            {
-              "id": "9e821c4c-183f-4b84-ab4d-18b4ff7ecb8f",
-              "leftValue": "={{ $('Kiểm tra lịch còn chờ duyệt').first().json.viewing_status }}",
-              "rightValue": "NEW",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        4340,
-        380
-      ],
-      "id": "ac43eead-779b-471e-b41e-128e92e4af2c",
-      "name": "Lịch còn chờ (hết giờ)?"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        4580,
-        560
-      ],
-      "id": "c2c56ca1-ba21-4947-a5a7-c43bd83bf42e",
-      "name": "Bỏ qua cảnh báo (lịch đã xử lý)"
     },
     {
       "parameters": {
@@ -1283,9 +629,9 @@
     },
     {
       "parameters": {
-        "content": "## 5. Báo nhân viên",
+        "content": "## 5. Báo sale phụ trách",
         "height": 1020,
-        "width": 920,
+        "width": 720,
         "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -1301,65 +647,17 @@
       "parameters": {
         "content": "## 6. Lưu kết quả AI",
         "height": 1020,
-        "width": 400,
+        "width": 480,
         "color": 1
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3160,
+        2940,
         -290
       ],
       "name": "Nhóm 6. Lưu kết quả AI",
       "id": "ec6f1d1f-bb62-50d2-a500-cb453b80356c"
-    },
-    {
-      "parameters": {
-        "content": "## 7. Chờ sale duyệt (human-in-the-loop)",
-        "height": 1020,
-        "width": 620,
-        "color": 2
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        3620,
-        -290
-      ],
-      "name": "Nhóm 7. Chờ sale duyệt (human-in-the-loop)",
-      "id": "b0f6e287-daa7-5be8-abd7-f81052c87aba"
-    },
-    {
-      "parameters": {
-        "content": "## 8. Lịch còn chờ?",
-        "height": 1020,
-        "width": 180,
-        "color": 6
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        4300,
-        -290
-      ],
-      "name": "Nhóm 8. Lịch còn chờ?",
-      "id": "6c019b6b-bd01-5de2-9b57-343cd8733b29"
-    },
-    {
-      "parameters": {
-        "content": "## 9. Chốt lịch, đổi giờ, cảnh báo quá hạn",
-        "height": 1020,
-        "width": 1280,
-        "color": 1
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        4540,
-        -290
-      ],
-      "name": "Nhóm 9. Chốt lịch, đổi giờ, cảnh báo quá hạn",
-      "id": "57760e5a-0ac5-5d2f-8387-a779f1aa2dfb"
     },
     {
       "parameters": {
@@ -1392,6 +690,36 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/viewings/{{ Number($('Webhook').first().json.body.viewingId) || 0 }}/staff-links",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        200
+      ],
+      "id": "fe35-1-staff-links",
+      "name": "Lấy link duyệt",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     }
   ],
   "pinData": {},
@@ -1556,7 +884,7 @@
       "main": [
         [
           {
-            "node": "Dữ liệu thông báo",
+            "node": "Lấy link duyệt",
             "type": "main",
             "index": 0
           }
@@ -1574,7 +902,7 @@
       "main": [
         [
           {
-            "node": "Dữ liệu thông báo",
+            "node": "Lấy link duyệt",
             "type": "main",
             "index": 0
           }
@@ -1592,7 +920,7 @@
       "main": [
         [
           {
-            "node": "Dữ liệu thông báo",
+            "node": "Lấy link duyệt",
             "type": "main",
             "index": 0
           }
@@ -1626,162 +954,14 @@
     },
     "Ghi log AI_SCORED": {
       "main": [
-        [
-          {
-            "node": "Chờ duyệt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chờ duyệt": {
-      "main": [
-        [
-          {
-            "node": "Kiểm tra lịch còn chờ duyệt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Kết quả duyệt": {
-      "main": [
-        [
-          {
-            "node": "Lịch còn chờ duyệt?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Lịch còn chờ (đổi giờ)?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Lịch còn chờ (hết giờ)?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trả lời duyệt": {
-      "main": [
-        [
-          {
-            "node": "Email chốt lịch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email chốt lịch": {
-      "main": [
-        [
-          {
-            "node": "Cập nhật CONFIRMED",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Cập nhật CONFIRMED": {
-      "main": [
-        [
-          {
-            "node": "Ghi log APPROVED",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trả lời đổi giờ": {
-      "main": [
-        [
-          {
-            "node": "Email báo đổi giờ",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email báo đổi giờ": {
-      "main": [
-        [
-          {
-            "node": "Ghi log RESCHEDULE_REQUESTED",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email cảnh báo quản lý": {
-      "main": [
-        [
-          {
-            "node": "Ghi log APPROVAL_TIMEOUT",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lấy push token nhân viên": {
-      "main": [
-        [
-          {
-            "node": "Có app nhận thông báo?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Có app nhận thông báo?": {
-      "main": [
-        [
-          {
-            "node": "Gửi thông báo đẩy",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Lưu kết quả AI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Gửi thông báo đẩy": {
-      "main": [
-        [
-          {
-            "node": "Lưu kết quả AI",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Thông báo nhân viên": {
       "main": [
         [
           {
-            "node": "Lấy push token nhân viên",
+            "node": "Lưu kết quả AI",
             "type": "main",
             "index": 0
           }
@@ -1806,109 +986,11 @@
         ]
       ]
     },
-    "Ghi log APPROVED": {
+    "Lấy link duyệt": {
       "main": [
         [
           {
-            "node": "Trạng thái Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log RESCHEDULE_REQUESTED": {
-      "main": [
-        [
-          {
-            "node": "Trạng thái Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ghi log APPROVAL_TIMEOUT": {
-      "main": [
-        [
-          {
-            "node": "Trạng thái Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trạng thái Telegram": {
-      "main": [
-        [
-          {
-            "node": "Cập nhật Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Kiểm tra lịch còn chờ duyệt": {
-      "main": [
-        [
-          {
-            "node": "Kết quả duyệt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lịch còn chờ duyệt?": {
-      "main": [
-        [
-          {
-            "node": "Trả lời duyệt",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Trả lời lịch đã xử lý",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lịch còn chờ (đổi giờ)?": {
-      "main": [
-        [
-          {
-            "node": "Trả lời đổi giờ",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Trả lời lịch đã xử lý",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Lịch còn chờ (hết giờ)?": {
-      "main": [
-        [
-          {
-            "node": "Email cảnh báo quản lý",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Bỏ qua cảnh báo (lịch đã xử lý)",
+            "node": "Dữ liệu thông báo",
             "type": "main",
             "index": 0
           }

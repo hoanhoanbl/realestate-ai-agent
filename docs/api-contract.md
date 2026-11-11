@@ -1,40 +1,51 @@
-# Hop dong API giua Backend, n8n va Web
+# Hợp đồng API giữa Backend, n8n và Web
 
-File nay la "luat chung" cua ca nhom (n8n, backend, web).
+File này là "luật chung" của cả nhóm (n8n, backend, web).
 
-Doi gi trong file nay thi phai: (1) tao nhanh `docs/...` rieng, (2) mo Pull Request, (3) nguoi kia bam Approve roi moi merge, (4) ghi mot dong vao muc "Lich su thay doi" o cuoi file. Khong sua thang tren `main`.
+Đổi gì trong file này thì phải: (1) tạo nhánh `docs/...` riêng, (2) mở Pull Request, (3) người kia bấm Approve rồi mới merge, (4) ghi một dòng vào mục "Lịch sử thay đổi" ở cuối file. Không sửa thẳng trên `main`.
 
-## Quy uoc chung
+Tài liệu từng luồng n8n: [docs/luong/](luong/README.md). Quy tắc nghiệp vụ: [docs/nghiep-vu/](nghiep-vu/).
 
-- Backend NestJS chay o cong **8081**, tien to `/api` (vi du `http://localhost:8081/api/leads`). Swagger: `/api/docs`.
-- n8n chay o cong `5678`. Web (Next.js) chay o cong `3000`.
-- JSON dung **camelCase** (`createdAt`, `propertyId`, `automationStatus`). Ten cot trong database la snake_case, chi la chi tiet noi bo cua backend.
-- `X-Webhook-Secret`: hai ben dung chung mot gia tri `WEBHOOK_SECRET`. Dat trong `.env` cua backend va trong credential Header Auth cua n8n. Khong dua len GitHub.
-- Dat `WEBHOOK_SECRET` la chuoi ngau nhien dai khi dua len host (gia tri dev chi de test).
+## Quy ước chung
 
-## Tong quan luong
+- Backend NestJS chạy ở cổng **8081**, tiền tố `/api` (ví dụ `http://localhost:8081/api/leads`). Swagger: `/api/docs`.
+- n8n chạy ở cổng `5678`. Web (Next.js) chạy ở cổng `3000`.
+- JSON dùng **camelCase** (`createdAt`, `propertyId`, `automationStatus`). Tên cột trong database là snake_case, chỉ là chi tiết nội bộ của backend.
+- `X-Webhook-Secret`: hai bên dùng chung một giá trị `WEBHOOK_SECRET`. Đặt trong `.env` của backend và trong credential Header Auth của n8n. Không đưa lên GitHub.
+- Đặt `WEBHOOK_SECRET` là chuỗi ngẫu nhiên dài khi đưa lên host (giá trị dev chỉ để test).
+- Cột "Quyền" trong các bảng bên dưới: **JWT** là header `Authorization: Bearer <accessToken>` từ `POST /api/auth/login`; **Quản lý** là JWT và vai trò `MANAGER` (sale nhận `403`); **Secret** là header `X-Webhook-Secret`; **Công khai** là không cần đăng nhập.
+
+**Cập nhật gần đây (đã vào `dev`):**
+
+- **FE-39:** `GET /api/users/me/routing` có JWT trả cấu hình nhận khách của chính người đăng nhập (`id, name, email, role, telegramChatId, acceptingLeads`), không trả hash hay push token. Sale vẫn không được xem `/users` hay sửa routing của người khác. Xem [FE-39](fe-39-admin-phu-trach.md).
+- **FE-38:** `POST /feedback/link/:leadId` nhận body tùy chọn `{viewingId}` cho buổi ATTENDED; mỗi buổi có link riêng, link hex cũ thuộc buổi đầu. `/stats` thêm `bySource`, `byAssignee`, `overdueResponses`. `/followups/claim` dùng `type: STAFF_NUDGE, viewingId: 0, viewingTime: assignedAt` cho cảnh báo phản hồi theo phiên; lịch xem vẫn dùng ID và giờ thật. Triển khai, quyền readonly và checkpoint cũ: [FE-38](fe-38-han-phan-hoi.md).
+- **FE-33:** [Hợp đồng API tiếp nhận và phân công sale](fe-33-nen-tiep-nhan.md#hợp-đồng-api) bổ sung `POST /leads`, `POST /leads/intake`, lookup theo số điện thoại, chuyển người phụ trách, ghi chú và cấu hình nhận khách. Lead có trạng thái `CONSULTING`; email và ngân sách có thể `null` với khách chưa đặt lịch. Các API đặt lịch cũ giữ đầu vào bắt buộc; phần chuyển tiếp chống trùng số được ghi tại tài liệu FE-33.
+
+## Tổng quan luồng
 
 ```
-Khach dang ky xem nha (web khu khach; app chi danh cho nhan vien)
-  -> Backend luu lead + viewing (lead.status = NEW, automationStatus = PENDING)
-  -> Backend POST webhook sang n8n (luong 1)
-  -> n8n: AI cham diem, gui email "da nhan yeu cau" cho khach,
-          gui email nhan vien (moi muc, kem 2 link Duyet / Doi gio)
-  -> n8n goi nguoc Backend de cap nhat diem (automationStatus = COMPLETED, kem approvalUrl)
-  -> Nhan vien bam Duyet -> n8n gui email chot lich, PUT status = CONFIRMED
-  -> Neu n8n hong giua chung (truoc khi cap nhat diem): n8n bao Backend automationStatus = FAILED
-Luong 2 (moi gio): doc DB, gui email nhac lich / hoi cam nhan / nhac khach WARM, ghi lead_events.
-Luong 7: Backend goi webhook lead-changed -> n8n dong bo sang Mautic contact -> goi PUT /leads/:id/mautic luu mauticContactId.
+Khách đăng ký xem nhà (web khu khách; app chỉ dành cho nhân viên)
+  -> Backend lưu lead + viewing (lead.status = NEW, automationStatus = PENDING)
+  -> Backend POST webhook sang n8n (luồng 1)
+  -> n8n: AI chấm điểm, gửi email "đã nhận yêu cầu" cho khách,
+          báo sale phụ trách (email, Telegram, push; kèm link Duyệt / Đổi giờ)
+  -> n8n gọi ngược Backend để cập nhật điểm (automationStatus = COMPLETED); luồng 1 kết thúc, không chờ duyệt
+  -> Nhân viên bấm Duyệt (link /duyet/<mã> hoặc web admin) -> Backend gọi luồng 1b
+     -> n8n gửi email chốt lịch, PUT status = CONFIRMED
+  -> Nếu n8n hỏng giữa chừng (trước khi cập nhật điểm): n8n báo Backend automationStatus = FAILED
+Luồng 2 (mỗi giờ): đọc DB, gửi email nhắc lịch / hỏi cảm nhận / nhắc khách WARM, ghi lead_events.
+Luồng 7: Backend gọi webhook lead-changed -> n8n đồng bộ sang Mautic contact -> gọi PUT /leads/:id/mautic lưu mauticContactId.
 ```
 
-## 1. Backend -> n8n (webhook)
+## 1. Backend → n8n (webhook)
 
 - Method: `POST`
-- Local test: `http://localhost:5678/webhook-test/viewing-requested` (chi nhan 1 request moi lan bam Listen)
-- Production (workflow da Publish): `http://localhost:5678/webhook/viewing-requested`
-- Trong Docker Compose, backend goi: `http://n8n:5678/webhook/viewing-requested`
-- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`; n8n kiem tra header nay, **sai thi tra 403**.
-- n8n tra `200` ngay (Respond Immediately), sau do moi xu ly AI.
+- Local test: `http://localhost:5678/webhook-test/viewing-requested` (chỉ nhận 1 request mỗi lần bấm Listen)
+- Production (workflow đã Publish): `http://localhost:5678/webhook/viewing-requested`
+- Trong Docker Compose, backend gọi: `http://n8n:5678/webhook/viewing-requested`
+- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`; n8n kiểm tra header này, **sai thì trả 403**.
+- n8n trả `200` ngay (Respond Immediately), sau đó mới xử lý AI.
+- Từ FE-35 payload thêm `assignedUserId` (sale phụ trách, `null` nếu chưa có); luồng 1 dùng để báo đúng sale.
 
 Body:
 
@@ -43,6 +54,7 @@ Body:
   "event": "viewing_requested",
   "eventId": "b7f3c1a2-0f4e-4a55-9d1e-1c2f3a4b5c6d",
   "leadId": 12,
+  "viewingId": 7,
   "name": "Nguyen Van A",
   "email": "a@example.com",
   "phone": "0900000000",
@@ -50,25 +62,39 @@ Body:
   "needs": "Can ho 2 phong ngu gan Da Nang",
   "propertyId": 5,
   "viewingTime": "2026-10-12T09:00:00+07:00",
-  "source": "facebook"
+  "source": "facebook",
+  "manageToken": "…",
+  "assignedUserId": 3
 }
 ```
 
-- `eventId`: UUID duy nhat moi su kien (de truy vet; chong xu ly trung la tuy chon).
-- `budget`: don vi VND, so nguyen (kieu **so**).
-- `needs`: chuoi rong neu khach khong nhap.
-- `viewingTime`: ISO 8601, gio Viet Nam. Backend tu them `+07:00` neu web gui khong kem mui gio, nen n8n luon nhan duoc chuoi co mui gio.
-- `source`: nguon khach (`facebook`, `zalo`, `google`, `direct`...).
+- `eventId`: UUID duy nhất mỗi sự kiện (để truy vết; chống xử lý trùng là tùy chọn).
+- `viewingId`: buổi xem vừa tạo; luồng 1 dùng để xin link Duyệt / Đổi giờ và để nút cũ không chốt nhầm buổi xem mới.
+- `budget`: đơn vị VND, số nguyên (kiểu **số**).
+- `needs`: chuỗi rỗng nếu khách không nhập.
+- `viewingTime`: ISO 8601, giờ Việt Nam. Backend tự thêm `+07:00` nếu web gửi không kèm múi giờ, nên n8n luôn nhận được chuỗi có múi giờ.
+- `source`: nguồn khách (`facebook`, `zalo`, `google`, `direct`...).
+- `manageToken`: mã link quản lý lịch của khách (`/lich/<mã>`).
 
-## 2. n8n -> Backend (callback)
+Các webhook khác backend gọi sang n8n (cùng header `X-Webhook-Secret`):
 
-Chung cho moi callback:
+| Webhook | Luồng | Khi nào |
+|---|---|---|
+| `viewing-admin-action` | [1b](luong/luong-1b-chot-lich-thu-cong.md) | Duyệt, đổi giờ hoặc yêu cầu hẹn lại: `{event: approved \| rescheduled \| reschedule_requested, leadId, viewingId?, by}` |
+| `contract-requested` | [3](luong/luong-3-hop-dong.md) | Nhân viên lập hợp đồng: `{contractId}` |
+| `feedback-submitted` | [5](luong/luong-5-cam-nhan.md) | Khách gửi cảm nhận: `{feedbackId, leadId}` |
+| `report-requested` | [4](luong/luong-4-bao-cao.md) | Quản lý bấm "Tạo báo cáo ngay" |
+| `lead-changed` | [7](luong/luong-7-dong-bo-mautic.md) | Lead đổi kết quả AI hoặc trạng thái: `{leadId}` |
 
-- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`; **sai hoac thieu thi Backend tra 401**.
-- Dev (backend chay tren may that, n8n trong Docker): `http://host.docker.internal:8081/api/...`
-- Trong Docker Compose, n8n goi: `http://backend:8081/api/...` (compose da dat san bien `BACKEND_URL=http://backend:8081` cho n8n; workflow nen doc dia chi tu bien nay de khong phai sua file khi doi moi truong).
+## 2. n8n → Backend (callback)
 
-### 2.1. Ket qua AI (thanh cong)
+Chung cho mọi callback:
+
+- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`; **sai hoặc thiếu thì Backend trả 401**.
+- Dev (backend chạy trên máy thật, n8n trong Docker): `http://host.docker.internal:8081/api/...`
+- Trong Docker Compose, n8n gọi: `http://backend:8081/api/...` (compose đã đặt sẵn biến `BACKEND_URL=http://backend:8081` cho n8n; workflow nên đọc địa chỉ từ biến này để không phải sửa file khi đổi môi trường).
+
+### 2.1. Kết quả AI (thành công)
 
 `PUT /api/leads/{leadId}/ai-result`
 
@@ -79,18 +105,17 @@ Chung cho moi callback:
   "reason": "Ngan sach ro rang, co lich xem nha cu the",
   "aiReply": "Noi dung email xac nhan da soan",
   "emailSent": true,
-  "staffNotified": true,
-  "approvalUrl": "http://<dia-chi-n8n>/webhook-waiting/123"
+  "staffNotified": true
 }
 ```
 
 - `level`: `HOT` | `WARM` | `COLD` (HOT khi score >= 70, WARM 40-69, COLD < 40)
-- `score`: so nguyen 0-100
-- `staffNotified`: `true` neu da thong bao nhan vien bang email; `false` neu khong gui. Tu tuan 2, luong 1 gui email nhan vien (kem link duyet) cho **moi** muc, nen thuong la `true`.
-- `approvalUrl` (tuan 2, tuy chon): gia tri `$execution.resumeUrl` cua lan chay dang cho duyet. Them `?action=approve` hoac `?action=reschedule` la duyet / doi gio.
-- Backend luu cac truong tren va dat `automationStatus = COMPLETED`.
+- `score`: số nguyên 0-100
+- `staffNotified`: `true` nếu ít nhất một kênh (email, Telegram hoặc push) báo được cho nhân viên; `false` nếu không kênh nào gửi được. Luồng 1 báo sale phụ trách ở **mọi** mức, nên thường là `true`.
+- `approvalUrl` (tùy chọn, **bỏ từ FE-35**): luồng 1 không còn chờ duyệt nên không gửi nữa; backend vẫn nhận trường này cho các lần chạy cũ đang chờ lúc deploy.
+- Backend lưu các trường trên và đặt `automationStatus = COMPLETED`.
 
-### 2.2. Bao loi (n8n hong giua chung)
+### 2.2. Báo lỗi (n8n hỏng giữa chừng)
 
 `PUT /api/leads/{leadId}/automation-status`
 
@@ -101,11 +126,11 @@ Chung cho moi callback:
 }
 ```
 
-- `status`: n8n chi gui `FAILED`.
-- `error`: mo ta ngan (tuy chon). Backend luu vao cot `automationError` cua lead.
-- Backend dat `automationStatus = FAILED`.
+- `status`: n8n chỉ gửi `FAILED`.
+- `error`: mô tả ngắn (tùy chọn). Backend lưu vào cột `automationError` của lead.
+- Backend đặt `automationStatus = FAILED`.
 
-### 2.3. Doi trang thai ban hang cua lead (tuan 2)
+### 2.3. Đổi trạng thái bán hàng của lead (tuần 2)
 
 `PUT /api/leads/{leadId}/status`
 
@@ -116,13 +141,13 @@ Chung cho moi callback:
 }
 ```
 
-- `status`: `NEW` | `CONFIRMED` | `VIEWED` | `DEPOSIT` | `SIGNED` | `LOST`. Gia tri khac: `400`.
-- `note`: tuy chon.
-- Backend luu `leads.status` va **tu ghi** mot dong `lead_events` voi `type = STATUS_CHANGED`, `note = "<cu> -> <moi>: <note>"`.
-- Neu trang thai moi **trung** trang thai cu: khong doi gi, khong ghi `STATUS_CHANGED`, van tra `200`.
-- Lead dang `DEPOSIT` khong chuyen thang sang `LOST` duoc: tra `400` (BF-06). Quan ly phai tu choi hop dong truoc, lead tu ve `VIEWED`. Ap dung ca cho `PUT /api/leads/{leadId}/admin-status` cua web admin.
+- `status`: `CONSULTING` | `NEW` | `CONFIRMED` | `VIEWED` | `DEPOSIT` | `SIGNED` | `LOST`. Giá trị khác: `400`.
+- `note`: tùy chọn.
+- Backend lưu `leads.status` và **tự ghi** một dòng `lead_events` với `type = STATUS_CHANGED`, `note = "<cũ> -> <mới>: <note>"`.
+- Nếu trạng thái mới **trùng** trạng thái cũ: không đổi gì, không ghi `STATUS_CHANGED`, vẫn trả `200`.
+- Lead đang `DEPOSIT` không chuyển thẳng sang `LOST` được: trả `400` (BF-06). Quản lý phải từ chối hợp đồng trước, lead tự về `VIEWED`. Áp dụng cả cho `PUT /api/leads/{leadId}/admin-status` của web admin.
 
-### 2.4. Ghi su kien cua lead (tuan 2)
+### 2.4. Ghi sự kiện của lead (tuần 2)
 
 `POST /api/leads/{leadId}/events`
 
@@ -133,10 +158,10 @@ Chung cho moi callback:
 }
 ```
 
-- `type`: mot trong cac gia tri o bang `lead_events` (muc 4). Gia tri khac: `400`.
-- Tra `201` va dong vua tao `{ "id", "leadId", "type", "note", "createdAt" }`. Lead khong ton tai: `404`.
+- `type`: một trong các giá trị ở bảng `lead_events` (mục 4). Giá trị khác: `400`.
+- Trả `201` và dòng vừa tạo `{ "id", "leadId", "type", "note", "createdAt" }`. Lead không tồn tại: `404`.
 
-### 2.5. Cap nhat thong tin Mautic (L7 dong bo)
+### 2.5. Cập nhật thông tin Mautic (L7 đồng bộ)
 
 `PUT /api/leads/{leadId}/mautic`
 
@@ -148,9 +173,9 @@ Chung cho moi callback:
 ```
 
 - Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`.
-- `mauticContactId`: ID contact ben Mautic sau khi L7 tao / cap nhat contact thanh cong.
-- `mauticPoints`: Diem tuong tac Mautic (L8 dong bo ve).
-- Tra `200` va lead sau khi cap nhat.
+- `mauticContactId`: ID contact bên Mautic sau khi L7 tạo / cập nhật contact thành công.
+- `mauticPoints`: điểm tương tác Mautic (L8 đồng bộ về).
+- Trả `200` và lead sau khi cập nhật.
 
 ### 2.6. Tra cứu lead theo Mautic contact (L8 Mautic báo về)
 
@@ -158,80 +183,274 @@ Chung cho moi callback:
 
 - Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`.
 - Query param: `email` (tùy chọn).
-- Tra `200` và Object `Lead` nếu tìm thấy, hoặc `null` nếu chưa liên kết.
+- Trả `200` và object `Lead` nếu tìm thấy, hoặc `null` nếu chưa liên kết.
 
-## 3. API backend (toi thieu cho demo)
+### 2.7. Hồ sơ đồng bộ Mautic (L7, FE-40)
 
-| Method | Duong dan | Mo ta |
+`GET /api/leads/{leadId}/mautic-context`
+
+- Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`.
+- Trả `leadId`, `name`, `email` (có thể `null`), `phone`, `phoneNormalized`, `level`, `status`, `source`, `score`, `mauticContactId`. Không trả link duyệt hay mã bí mật.
+- L7 đọc lại hồ sơ hiện tại bằng API này để đồng bộ contact kể cả khách chưa có email. Xem [FE-40](fe-40-l7-khong-email.md).
+
+## 3. API backend
+
+Bảng tóm tắt các API chính; chi tiết từng nhóm ở các mục 3.1 đến 3.9 và trong Swagger (`/api/docs`).
+
+| Method | Đường dẫn | Mô tả |
 |---|---|---|
-| POST | `/api/viewings` | Khach dang ky xem nha; tao lead + viewing, goi webhook n8n (nhan kem `source`) |
-| GET | `/api/leads` | Danh sach khach (loc theo `?level=HOT`), moi nhat truoc |
-| GET | `/api/leads/{id}` | Chi tiet mot khach (tra them viewing, property, source, mauticContactId) |
-| GET | `/api/leads/by-mautic/{contactId}` | n8n tra cuu lead theo Mautic contact (muc 2.6, can `X-Webhook-Secret`) |
-| PUT | `/api/leads/{id}/ai-result` | n8n cap nhat ket qua AI (muc 2.1) |
-| PUT | `/api/leads/{id}/automation-status` | n8n bao loi (muc 2.2) |
-| GET | `/api/properties` | Danh sach bat dong san (ban gon: khong co `images`, `panoramas`, thay bang `imageCount`, `panoramaCount`) |
-| GET | `/api/stats` | Dem lead theo muc, tra `{ "total": 0, "hot": 0, "warm": 0, "cold": 0 }` |
-| GET | `/api/viewings` | Danh sach lich xem nha |
-| GET | `/api/properties/{id}` | Mot bat dong san (tuan 2). Khong co: `404` |
-| PUT | `/api/leads/{id}/status` | n8n doi trang thai ban hang (muc 2.3, can `X-Webhook-Secret`) |
-| PUT | `/api/leads/{id}/mautic` | n8n cap nhat ID / diem Mautic (muc 2.5, can `X-Webhook-Secret`) |
-| POST | `/api/leads/{id}/events` | n8n ghi su kien (muc 2.4, can `X-Webhook-Secret`) |
-| GET | `/api/leads/{id}/events` | Dong thoi gian cua lead, cu nhat truoc |
+| POST | `/api/viewings` | Khách đăng ký xem nhà; tạo lead + viewing, gọi webhook n8n (nhận kèm `source`) |
+| GET | `/api` | Công khai. Kiểm tra backend đang chạy |
+| GET | `/api/leads` | Danh sách khách (lọc theo `?level=HOT`), mới nhất trước |
+| GET | `/api/leads/{id}` | Chi tiết một khách (trả thêm viewing, property, source, mauticContactId) |
+| GET | `/api/leads/by-mautic/{contactId}` | n8n tra cứu lead theo Mautic contact (mục 2.6, cần `X-Webhook-Secret`) |
+| PUT | `/api/leads/{id}/ai-result` | n8n cập nhật kết quả AI (mục 2.1) |
+| PUT | `/api/leads/{id}/automation-status` | n8n báo lỗi (mục 2.2) |
+| GET | `/api/properties` | Danh sách bất động sản (bản gọn: không có `images`, `panoramas`, thay bằng `imageCount`, `panoramaCount`) |
+| GET | `/api/stats` | Đếm lead theo mức, trả `{ "total": 0, "hot": 0, "warm": 0, "cold": 0 }` (thêm trường ở mục 3.8) |
+| GET | `/api/viewings` | Danh sách lịch xem nhà |
+| GET | `/api/viewings/slots?propertyId={id}` | Công khai. Các khung giờ khách đặt được của một căn, đánh dấu khung đã kín (mục 3.1) |
+| GET | `/api/properties/{id}` | Một bất động sản (tuần 2). Không có: `404` |
+| PUT | `/api/leads/{id}/status` | n8n đổi trạng thái bán hàng (mục 2.3, cần `X-Webhook-Secret`) |
+| PUT | `/api/leads/{id}/mautic` | n8n cập nhật ID / điểm Mautic (mục 2.5, cần `X-Webhook-Secret`) |
+| POST | `/api/leads/{id}/events` | n8n ghi sự kiện (mục 2.4, cần `X-Webhook-Secret`) |
+| GET | `/api/leads/{id}/events` | Dòng thời gian của lead, cũ nhất trước |
 
-## 4. Du lieu (4 bang)
+### 3.1. Khung giờ đặt lịch xem nhà (FE-34)
 
-| Bang | Truong chinh |
+`GET /api/viewings/slots?propertyId=5` (không cần đăng nhập, không trả dữ liệu khách):
+
+```json
+{
+  "earliest": "2026-11-11T03:00:00.000Z",
+  "latest": "2026-11-24T12:16:17.655Z",
+  "days": [
+    {
+      "date": "2026-11-11",
+      "slots": [
+        { "time": "10:00", "start": "2026-11-11T03:00:00.000Z", "available": true },
+        { "time": "11:00", "start": "2026-11-11T04:00:00.000Z", "available": false }
+      ]
+    }
+  ]
+}
+```
+
+- `date`, `time`: ngày và giờ Việt Nam (UTC+7). `start`: giờ bắt đầu dạng ISO UTC, gửi lại nguyên giá trị này vào `viewingTime` khi đặt lịch.
+- `available: false`: đã có khách hẹn căn này trong vòng dưới 60 phút.
+- Căn không nhận đặt lịch (đã giữ cọc, đã bán, ẩn): `400`. Không có căn: `404`. `propertyId` không phải số: `400`.
+
+Quy tắc giờ cho `POST /api/viewings` (khách, bot) và `PUT /api/viewings/{id}` (nhân viên). Sai thì trả `400`, không lưu gì:
+
+| Quy tắc | Áp dụng | Thông báo |
+|---|---|---|
+| Trong khoảng 08:00-19:00 giờ Việt Nam | Mọi người | `Giờ xem nhà phải trong khoảng 08:00–19:00` |
+| Tròn giờ (phút và giây bằng 0) | Khách, bot | `Giờ xem nhà phải tròn giờ (ví dụ 09:00, 10:00)` |
+| Đặt trước ít nhất 3 giờ làm việc (08:00-21:00), làm tròn lên giờ chẵn | Khách, bot | `Cần đặt trước ít nhất 3 giờ làm việc. Khung sớm nhất còn đặt được: 10:00 11/11/2026` |
+| Không quá 14 ngày tới | Khách, bot | `Chỉ nhận đặt lịch trong vòng 14 ngày tới` |
+| Ở tương lai | Nhân viên | `viewingTime phải ở trong tương lai` |
+
+Hai lịch cùng một căn vẫn phải cách nhau ít nhất 60 phút, sai thì trả `409` như trước.
+
+Chặn đặt trùng và lạm dụng cho `POST /api/viewings` (khách, bot):
+
+| Tình huống | Mã | Thông báo (rút gọn) |
+|---|---|---|
+| Ô ẩn `website` (honeypot) có chữ. Form web luôn gửi rỗng; không lưu gì | `400` | `Yêu cầu không hợp lệ` |
+| Căn không còn `AVAILABLE` (đã giữ cọc, đã bán, ẩn), kể cả khi vừa đổi trạng thái lúc đặt | `400` | `Căn nhà này hiện không nhận đặt lịch xem` |
+| Căn đã có lịch cách dưới 60 phút (kiểm tra có khoá theo căn nên hai yêu cầu cùng lúc không cùng lọt) | `409` | `Khung giờ này đã có khách hẹn xem căn này (lúc …)` |
+| Cùng email đã có lịch chờ cho căn này | `409` | `Bạn đã có lịch xem căn này lúc …` |
+| Khách đang có hợp đồng cọc | `409` | `Bạn đang làm hợp đồng đặt cọc với chúng tôi…` |
+| Quá giới hạn theo IP | `429` | Mặc định 5 lần mỗi 10 phút (`BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS`) |
+
+- Request có header `X-Webhook-Secret` đúng (luồng 6) được miễn giới hạn `429`, vì mọi khách Telegram đi chung IP của n8n.
+- IP khách là `req.ip` sau khi backend tin `TRUST_PROXY_HOPS` proxy (mặc định 1). Đặt sai số này thì mọi khách bị tính chung một IP, hoặc IP bị giả được.
+- `PUT /api/viewings/{id}` (đổi giờ) cũng kiểm tra `409` khung 60 phút, bỏ qua chính buổi xem đó.
+
+### 3.2. Link Duyệt / Đổi giờ cho nhân viên (FE-35)
+
+| Method | Đường dẫn | Quyền | Kết quả |
+|---|---|---|---|
+| POST | `/api/viewings/{id}/staff-links` | Secret | `{approveUrl, rescheduleUrl}` trỏ tới `/duyet/<mã>` trên web; 404 nếu buổi xem không có |
+| GET | `/api/viewings/staff-links/{token}` | Công khai (token có chữ ký) | Tóm tắt `{action, leadName, propertyName, propertyAddress, viewingTime, leadStatus, viewingStatus, canAct, refusal}`; không trả SĐT/email, không đổi gì. Token sai: 404 |
+| POST | `/api/viewings/staff-links/{token}/confirm` | Công khai (token có chữ ký) | `{ok, action, already?}`; 400 kèm lý do khi khách đã hủy, đã duyệt, có buổi xem mới hơn, quá giờ hẹn, hoặc AI chưa chấm (chỉ với duyệt); 502 nếu n8n lỗi |
+| GET | `/api/users/{id}/notify-target` | Secret | `{id, name, email, role, telegramChatId, pushToken}` cho sub-workflow thông báo; không trả hash |
+
+Token là `base64url({v: viewingId, a: approve|reschedule}).HMAC-SHA256(WEBHOOK_SECRET)`; hạn dùng tính theo giờ hẹn hiện tại của buổi xem lúc bấm, không nằm trong token. Xác nhận gọi webhook `viewing-admin-action` với `event` = `approved` | `reschedule_requested` và `viewingId` (luồng 1b). Xem [FE-35](fe-35-thong-bao-phu-trach.md).
+
+### 3.3. Lịch sử chat Telegram của lead (FE-36)
+
+| Method | Đường dẫn | Nội dung |
+|---|---|---|
+| GET | `/api/leads/{id}/chat-logs` | Cần đăng nhập (JWT). Trả `[{id, createdAt, route, question, reply, escalated}]`, cũ nhất trước, tối đa 200 log mới nhất; không có `chatId` và `executionId`. Lead không tồn tại: 404 |
+| POST | `/api/leads/intake` | Thêm `chatId?` (chuỗi, tối đa 40 ký tự). Sau khi lead lưu xong, mọi log cũ của chat đó chưa thuộc lead nào được gắn vào lead. Chỉ đọc khi có `X-Webhook-Secret`; `POST /api/leads` (JWT) bỏ qua `chatId` |
+| POST | `/api/viewings` | Thêm `chatId?` (chuỗi, tối đa 40 ký tự). Chỉ gắn chat khi request có `X-Webhook-Secret` (bot Telegram); form web công khai gửi `chatId` thì bị bỏ qua |
+
+Log đã thuộc lead khác giữ nguyên. Lỗi khi gắn chỉ ghi log ở backend, không làm thất bại lead hay lịch xem.
+
+### 3.4. Đăng nhập
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| POST | `/api/auth/login` | Công khai | `{email, password}`; trả `200` với `{accessToken, user}` |
+| GET | `/api/auth/me` | JWT | Thông tin người đang đăng nhập |
+
+### 3.5. Khách, người phụ trách và nhân viên
+
+Quy tắc nghiệp vụ: [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md). Chi tiết FE-33: [fe-33-nen-tiep-nhan.md](fe-33-nen-tiep-nhan.md).
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| POST | `/api/leads` | JWT | Nhân viên thêm khách ngoài hệ thống (FE-33, FE-37) |
+| POST | `/api/leads/intake` | Secret | Bot và n8n tạo khách; tra trùng theo số điện thoại; nhận thêm `chatId?` (mục 3.3) |
+| GET | `/api/leads/lookup?phone=` | JWT | Tra khách theo số điện thoại; trả `{lead}` (`null` nếu chưa có) |
+| PUT | `/api/leads/{id}/assignee` | Quản lý | `{assignedUserId, note?}`: chuyển khách sang sale khác |
+| POST | `/api/leads/{id}/notes` | JWT | `{note}`: ghi chú kết quả liên hệ vào dòng thời gian |
+| POST | `/api/leads/{id}/approve` | JWT | Duyệt lịch từ web admin (gọi luồng 1b) |
+| PUT | `/api/leads/{id}/admin-status` | JWT | Đổi trạng thái từ web admin; cùng quy tắc mục 2.3 |
+| GET | `/api/users` | Quản lý | Danh sách tài khoản |
+| POST | `/api/users` | Quản lý | `{email, name, password, role: MANAGER \| SALE}` tạo tài khoản |
+| GET | `/api/users/assignees` | JWT | `[{id, name, role, acceptingLeads}]` danh sách người nhận khách |
+| GET | `/api/users/me/routing` | JWT | Cấu hình nhận khách của chính mình (FE-39) |
+| PUT | `/api/users/{id}/routing` | JWT | `{acceptingLeads?, telegramChatId?}`; chỉ sửa được của mình, quản lý sửa được của người khác (FE-39) |
+| POST | `/api/users/me/push-token` | JWT | Lưu push token của app (trả `200`) |
+| DELETE | `/api/users/me/push-token` | JWT | Xoá push token (trả `200`) |
+
+### 3.6. Hợp đồng đặt cọc (luồng 3)
+
+Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-dat-lich-den-dat-coc.md](nghiep-vu/02-dat-lich-den-dat-coc.md) mục 4. Cách luồng n8n chạy: [luong-3-hop-dong.md](luong/luong-3-hop-dong.md).
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| POST | `/api/contracts` | JWT | `{leadId, depositAmount}`: lập hợp đồng, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
+| GET | `/api/contracts` | JWT | Danh sách hợp đồng |
+| GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl`) |
+| POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
+| POST | `/api/contracts/{id}/reject` | Quản lý | `{reason}`: từ chối |
+| POST | `/api/contracts/{id}/deposit-received` | Quản lý | Xác nhận đã nhận tiền cọc; chỉ khi hợp đồng đã ký, và chỉ một lần |
+| PUT | `/api/contracts/{id}/draft` | Secret | Luồng 3 lưu bản nháp: `{title, content, aiReview, resumeUrl}`. Đã có bản nháp: `400` |
+| POST | `/api/contracts/{id}/issue-token` | Secret | Luồng 3 phát link ký sau khi duyệt |
+| PUT | `/api/contracts/{id}/rejected` | Secret | Luồng 3 đánh dấu từ chối: `{reason}` |
+| PUT | `/api/contracts/{id}/expired` | Secret | Luồng 3 đánh dấu hết hạn: `{reason?}` |
+| GET | `/api/sign/{token}` | Công khai | Khách xem hợp đồng để ký |
+| POST | `/api/sign/{token}` | Công khai | `{signerName, signature, agree}`: khách ký; backend lưu thêm giờ ký và IP |
+
+### 3.7. Cảm nhận sau buổi xem (luồng 5)
+
+Cách luồng n8n chạy: [luong-5-cam-nhan.md](luong/luong-5-cam-nhan.md).
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| GET | `/api/feedback/{token}` | Công khai | Tên khách, căn nhà, giờ xem; không lộ email, SĐT |
+| POST | `/api/feedback/{token}` | Công khai | `{rating, interest, comment?}`; chỉ gửi được một lần, lần hai trả `409` |
+| POST | `/api/feedback/link/{leadId}` | Secret | Luồng 2 xin link cảm nhận; body tùy chọn `{viewingId}` (FE-38) |
+| PUT | `/api/feedback/{id}/ai-result` | Secret | Luồng 5 lưu `{sentiment, summary, nextAction}` |
+| GET | `/api/feedback/lead/{leadId}` | JWT | Cảm nhận gần nhất của khách (thẻ trên trang chi tiết) |
+
+### 3.8. Báo cáo và thống kê (luồng 4)
+
+Cách luồng n8n chạy: [luong-4-bao-cao.md](luong/luong-4-bao-cao.md).
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| POST | `/api/reports` | Secret | Luồng 4 lưu báo cáo: `{periodStart, periodEnd, metrics, analysis, alerts}` |
+| GET | `/api/reports` | Quản lý | Danh sách báo cáo |
+| GET | `/api/reports/{id}` | Quản lý | Một báo cáo. Không có: `404` |
+| POST | `/api/reports/run` | Quản lý | Tạo báo cáo ngay (gọi webhook `report-requested`) |
+| GET | `/api/stats` | JWT | `{total, hot, warm, cold, bySource, byAssignee, overdueResponses}` |
+| GET | `/api/stats/tasks` | JWT | `{pendingAttendance, wantsDeposit, notInterested, reservedBackups, customerRequests}`: việc cần làm trên trang tổng quan |
+| GET | `/api/stats/funnel` | JWT | `{total, byStatus, noShow, conversionRate, pendingApproval, failedAutomation, viewingsToday}`: phễu bán hàng |
+
+### 3.9. Lịch xem và nhà (web admin, khách tự quản lý)
+
+| Method | Đường dẫn | Quyền | Nội dung |
+|---|---|---|---|
+| GET | `/api/viewings/schedule` | JWT | Lịch xem kèm khách và căn: `[{id, viewingTime, viewingStatus, leadId, leadName, leadPhone, leadLevel, leadStatus, propertyId, propertyName, propertyAddress, propertyStatus}]`, theo giờ xem tăng dần |
+| PUT | `/api/viewings/{id}` | JWT | `{viewingTime}`: nhân viên đổi giờ (quy tắc mục 3.1) |
+| PUT | `/api/viewings/{id}/attendance` | JWT | `{outcome: ATTENDED \| NO_SHOW, next?, viewingTime?, note?}`. Với `NO_SHOW`: `next` là `RESCHEDULE` (kèm `viewingTime`) hoặc `CLOSE`. `NO_SHOW` chỉ ghi nhận được khi khách đã chốt lịch (`CONFIRMED`). Buổi xem đã ghi nhận rồi: `400` |
+| GET | `/api/viewings/manage/{token}` | Công khai | Khách xem thông tin lịch qua link trong email (`/lich/<mã>`) |
+| POST | `/api/viewings/manage/{token}/cancel` | Công khai | Khách tự hủy lịch |
+| POST | `/api/viewings/manage/{token}/reschedule-request` | Công khai | `{note?}`: khách xin đổi lịch |
+| GET | `/api/properties/admin/all` | JWT | Mọi căn kể cả căn ẩn, cho trang Quản lý nhà |
+| POST | `/api/properties` | Quản lý | Thêm căn. `status` chỉ nhận `AVAILABLE` hoặc `HIDDEN` (mặc định `AVAILABLE`); `SOLD`: `400` |
+| PUT | `/api/properties/{id}` | Quản lý | Sửa căn, gồm đổi `status` (quy tắc bên dưới) |
+| DELETE | `/api/properties/{id}` | Quản lý | Ẩn căn (xoá mềm, đặt `HIDDEN`); cùng quy tắc đổi trạng thái |
+
+Trạng thái căn (`properties.status`): `AVAILABLE` (mở bán), `RESERVED` (đang giữ cọc), `SOLD` (đã bán), `HIDDEN` (ẩn). Danh sách công khai không trả căn `HIDDEN` và `SOLD`; căn `RESERVED` vẫn hiện nhưng không nhận đặt lịch.
+
+- `RESERVED` do hợp đồng quyết định: tạo hợp đồng đặt căn sang `RESERVED`; hợp đồng bị từ chối hoặc hết hạn thì trả về `AVAILABLE` nếu không còn hợp đồng nào khác.
+- Căn đang có hợp đồng còn hiệu lực không đổi trạng thái thủ công được: `409` `Căn này đang có hợp đồng #<id> (<trạng thái>), không đổi trạng thái được`.
+- `SOLD` chỉ đặt được khi căn đang `RESERVED` và hợp đồng đã `SIGNED`; sai thì `400` `Chỉ đánh dấu "đã bán" được khi căn đang giữ cọc và hợp đồng đã ký`. Thành công thì ghi sự kiện `PROPERTY_SOLD` cho lead của hợp đồng.
+- Những lịch xem đã đặt trước khi căn thành `RESERVED` vẫn giữ nguyên; nhân viên gọi báo khách.
+
+## 4. Dữ liệu (bảng chính)
+
+| Bảng | Trường chính |
 |---|---|
-| `properties` | id, name, address, price, area, type, status, imageUrl, description; chi tiet (FE-31): bedrooms, bathrooms, floors, landArea, floorArea, roadWidth, direction, legalStatus, furnishing, occupancy (ma trong `backend/src/properties/property-options.ts`); mang: images (link), features, furniture, nearby (`{ category, name, distance }`), panoramas (`{ title, url }`). Mang `null` = chua nhap, `[]` = da xoa het |
-| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl |
-| `viewings` | id, propertyId, leadId, viewingTime, status |
+| `properties` | id, name, address, price, area, type, status, imageUrl, description; chi tiết (FE-31): bedrooms, bathrooms, floors, landArea, floorArea, roadWidth, direction, legalStatus, furnishing, occupancy (mã trong `backend/src/properties/property-options.ts`); mảng: images (link), features, furniture, nearby (`{ category, name, distance }`), panoramas (`{ title, url }`). Mảng `null` = chưa nhập, `[]` = đã xoá hết |
+| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl; FE-33: phone_normalized, assigned_user_id, assigned_at, response_due_at, first_response_at; lost_reason (lý do mất khách, `null` nếu chưa mất) |
+| `viewings` | id, propertyId, leadId, viewingTime, status, manage_token |
+| `contracts` | Ngoài các trường lập và ký hợp đồng: `deposit_received_at`, `deposit_received_by` (ai nhận cọc, lúc nào). Chỉ mục duy nhất một phần `uq_contracts_active_property` trên `property_id` khi trạng thái là `DRAFTING`, `PENDING_APPROVAL`, `SENT` hoặc `SIGNED`: mỗi căn tối đa một hợp đồng còn hiệu lực |
 | `lead_events` | id, leadId, type, note, createdAt |
 
-Gia tri `lead_events.type`:
-- `AI_SCORED`, `APPROVED`, `RESCHEDULE_REQUESTED`, `APPROVAL_TIMEOUT`
-- `REMINDER_SENT`, `FEEDBACK_ASKED`, `WARM_NUDGE_SENT`, `WARM_NURTURE_STARTED`, `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED`
-- `VIEWING_RESCHEDULED`, `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`
-- `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`
-- `MAUTIC_SYNCED`, `MAUTIC_SCORE_CHANGED`, `STATUS_CHANGED`
+Các bảng khác do backend tự tạo khi khởi động (TypeORM `synchronize`): `users`, `contracts`, `feedbacks`, `followup_tasks` (mục 6), `chat_logs` (mục 7), `weekly_reports`. Hai bảng `kb_documents` và `rag_chunks` phục vụ luồng 6 và 6b (xem [luong-6b-nap-tri-thuc.md](luong/luong-6b-nap-tri-thuc.md)).
 
-## 5. Xu ly loi
+Giá trị `viewings.status`: `NEW` (chờ xử lý), `ATTENDED` (khách đã đến), `NO_SHOW` (khách không đến), `CANCELLED` (đã huỷ). Lead chuyển `VIEWED` chỉ khi nhân viên ghi nhận `ATTENDED`; luồng 2 không tự chuyển.
 
-- Backend: neu goi n8n that bai, thu lai toi da 3 lan (cach nhau 2 giay), van loi thi dat `automationStatus = FAILED` va ghi log.
-- n8n: bat Retry On Fail (3 lan, cho 5 giay) cho **moi** node co the loi. Cac node goi Mautic bat `continueErrorOutput` de re nhanh sang node "Bao loi Backend" ghi `FOLLOWUP_FAILED`.
+Giá trị `leads.status`: `CONSULTING`, `NEW`, `CONFIRMED`, `VIEWED`, `DEPOSIT`, `SIGNED`, `LOST`. Lý do mất khách (`LOST`): `NO_SHOW`, `NOT_INTERESTED`, `CUSTOMER_CANCELLED`, `EXPIRED`, `OTHER`.
 
-## 6. L2: giu tac vu va checkpoint gui
+Giá trị `lead_events.type` (danh sách đầy đủ ở `backend/src/leads/lead.constants.ts`):
+- Tiếp nhận và phân công: `LEAD_CREATED`, `LEAD_ASSIGNED`, `LEAD_REASSIGNED`, `LEAD_REOPENED`, `NOTE_ADDED`, `RESPONSE_OVERDUE`
+- Luồng 1: `AI_SCORED`, `APPROVED`, `RESCHEDULE_REQUESTED`, `APPROVAL_TIMEOUT`
+- Luồng 2: `REMINDER_SENT`, `FEEDBACK_ASKED`, `WARM_NUDGE_SENT`, `WARM_NURTURE_STARTED`, `HOT_NUDGE_SENT`, `COLD_NURTURE_STARTED`, `LEAD_EXPIRED`, `LEAD_EXPIRED_NOTIFIED`, `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED`, `ATTENDANCE_CHECK_SENT`, `ATTENDANCE_ESCALATED`
+- Lịch xem: `VIEWING_RESCHEDULED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `CUSTOMER_RESCHEDULE_REQUESTED`
+- Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`
+- Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
+- Mautic và trạng thái: `MAUTIC_SYNCED`, `MAUTIC_SCORE_CHANGED`, `STATUS_CHANGED`
 
-Tat ca endpoint sau can `X-Webhook-Secret`. Chi deploy workflow L2 moi sau khi backend da co module Followups va bang `followup_tasks`.
+## 5. Xử lý lỗi
 
-| Method | Duong dan | Noi dung |
+- Backend: nếu gọi n8n thất bại, thử lại tối đa 3 lần (cách nhau 2 giây), vẫn lỗi thì đặt `automationStatus = FAILED` và ghi log.
+- n8n: bật Retry On Fail (3 lần, chờ 5 giây) cho **mọi** node có thể lỗi. Các node gọi Mautic bật `continueErrorOutput` để rẽ nhánh sang node "Báo lỗi Backend" ghi `FOLLOWUP_FAILED`. Lỗi không được bắt sẽ kích hoạt [Error workflow](luong/error-workflow.md) báo quản lý; xem cách hai cơ chế bổ trợ nhau ở tài liệu đó.
+
+## 6. L2: giữ tác vụ và checkpoint gửi
+
+Tất cả endpoint sau cần `X-Webhook-Secret`. Chỉ deploy workflow L2 mới sau khi backend đã có module Followups và bảng `followup_tasks`.
+
+| Method | Đường dẫn | Nội dung |
 |---|---|---|
-| POST | `/api/followups/claim` | `{leadId, viewingId, viewingTime, type, owner}`; backend kiem tra dieu kien va tra `{claimed, taskId?, token?, resume?}` |
-| POST | `/api/followups/{id}/start` | `{token}`; tra `{allowed}`; ghi ACTION_STARTED truoc khi goi dich vu ngoai |
-| POST | `/api/followups/{id}/action-done` | `{token, mauticContactId?}`; checkpoint sau khi dich vu ngoai xac nhan; contact ID bat buoc voi WARM |
-| POST | `/api/followups/{id}/complete` | `{token}`; transaction luu event, trang thai tac vu va contact ID; khong tu doi khach sang VIEWED; lap lai khong tao them event |
-| POST | `/api/followups/{id}/fail` | `{token, error}`; FAILED truoc khi gui, REVIEW khi khong chac ket qua gui, giu ACTION_DONE de chi thu lai metadata |
-| POST | `/api/followups/{id}/resolve` | Xu ly REVIEW sau khi kiem tra nha cung cap: `{token, resolution: "delivered" / "not-delivered", mauticContactId?}` |
+| POST | `/api/followups/claim` | `{leadId, viewingId, viewingTime, type, owner}`; backend kiểm tra điều kiện và trả `{claimed, taskId?, token?, resume?}` |
+| POST | `/api/followups/{id}/start` | `{token}`; trả `{allowed}`; ghi ACTION_STARTED trước khi gọi dịch vụ ngoài |
+| POST | `/api/followups/{id}/action-done` | `{token, mauticContactId?}`; checkpoint sau khi dịch vụ ngoài xác nhận; contact ID bắt buộc với WARM |
+| POST | `/api/followups/{id}/complete` | `{token}`; transaction lưu event, trạng thái tác vụ và contact ID; không tự đổi khách sang VIEWED; lặp lại không tạo thêm event |
+| POST | `/api/followups/{id}/fail` | `{token, error}`; FAILED trước khi gửi, REVIEW khi không chắc kết quả gửi, giữ ACTION_DONE để chỉ thử lại metadata |
+| POST | `/api/followups/{id}/resolve` | Xử lý REVIEW sau khi kiểm tra nhà cung cấp: `{token, resolution: "delivered" / "not-delivered", mauticContactId?}` |
 
-`owner` la execution ID n8n. Token tac vu la bi mat quyen so huu, khong tra ve API cong khai. REMINDER, ATTENDANCE_CHECK va ATTENDANCE_ESCALATE dung khoa theo lead + viewing + thoi gian xem; cac loai con lai theo lead + loai. FEEDBACK chi chon VIEWED + viewing ATTENDED; lich qua gio chua ghi nhan duoc nhac xac nhan, khong tu xem la da den. Hai execution cung nhan mot tac vu bi chan bang row lock va unique task key. SMTP khong ho tro giao dich chung voi PostgreSQL: mat phan hoi sau khi gui thi giu REVIEW, khong tu gui lai. Chi state ACTION_DONE duoc tu tiep tuc hoan tat database.
+`owner` là execution ID n8n. Token tác vụ là bí mật quyền sở hữu, không trả về API công khai. REMINDER, ATTENDANCE_CHECK và ATTENDANCE_ESCALATE dùng khóa theo lead + viewing + thời gian xem; các loại còn lại theo lead + loại. FEEDBACK chỉ chọn VIEWED + viewing ATTENDED; lịch quá giờ chưa ghi nhận được nhắc xác nhận, không tự xem là đã đến. Hai execution cùng nhận một tác vụ bị chặn bằng row lock và unique task key. SMTP không hỗ trợ giao dịch chung với PostgreSQL: mất phản hồi sau khi gửi thì giữ REVIEW, không tự gửi lại. Chỉ state ACTION_DONE được tự tiếp tục hoàn tất database.
 
-Chi tiet cau hinh va cach kiem tra: `docs/luong/luong-2-follow-up.md`.
+Chi tiết cấu hình và cách kiểm tra: [luong/luong-2-follow-up.md](luong/luong-2-follow-up.md).
 
-## 7. L6: ghi log hoi thoai bot Telegram
+## 7. L6: ghi log hội thoại bot Telegram
 
-Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `synchronize`).
+Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi động (TypeORM `synchronize`). FE-36: log mới của một chat đã gắn lead tự mang `lead_id` của log gắn gần nhất (không cần gửi).
 
-| Method | Duong dan | Noi dung |
+| Method | Đường dẫn | Nội dung |
 |---|---|---|
-| POST | `/api/chat-logs` | `{chatId, route, question, reply, channel?, usedFallback?, escalated?, staffNotified?, executionId?}`; tra `{id}` |
+| POST | `/api/chat-logs` | `{chatId, route, question, reply, channel?, usedFallback?, escalated?, staffNotified?, executionId?}`; trả `{id}` |
 
-`route`: `COMMAND` (lenh /start, tin khong phai chu), `BLOCKED` (Guardrails chan), `AGENT` (AI Agent tra loi), `STAFF` (khach muon gap nhan vien), `OUT_OF_SCOPE` (ngoai pham vi). Backend che email va day so bat dau bang 0 hoac +84 dai 9-12 chu so (so dien thoai, CCCD) trong `question`, `reply` truoc khi luu.
+`route`: `COMMAND` (lệnh /start, tin không phải chữ), `BLOCKED` (Guardrails chặn), `AGENT` (AI Agent trả lời), `STAFF` (khách muốn gặp nhân viên), `OUT_OF_SCOPE` (ngoài phạm vi). Backend che email và dãy số bắt đầu bằng 0 hoặc +84 dài 9-12 chữ số (số điện thoại, CCCD) trong `question`, `reply` trước khi lưu. Cách luồng 6 chạy: [luong/luong-6-telegram-agent.md](luong/luong-6-telegram-agent.md).
 
-## Lich su thay doi
+## Lịch sử thay đổi
 
-| Ngay | Ai sua | Noi dung |
+| Ngày | Ai sửa | Nội dung |
 |---|---|---|
-| 09/10/2026 | Ca nhom | Dong bo code tren `main` |
-| 12/10/2026 | Hoang (Hau duyet) | Tuan 2: them `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `lead_events` |
-| 21/10/2026 | Hau | Them cot `source`, `mautic_contact_id`, `mautic_points`, endpoint `PUT /api/leads/{id}/mautic`, webhook `lead-changed` |
-| 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |
+| 09/10/2026 | Cả nhóm | Đồng bộ code trên `main` |
+| 12/10/2026 | Hoàng (Hậu duyệt) | Tuần 2: thêm `PUT /leads/{id}/status`, `POST`/`GET /leads/{id}/events`, `lead_events` |
+| 21/10/2026 | Hậu | Thêm cột `source`, `mautic_contact_id`, `mautic_points`, endpoint `PUT /api/leads/{id}/mautic`, webhook `lead-changed` |
+| 06/11/2026 | Hoàng | FE-32: `POST /api/chat-logs`, bảng `chat_logs` cho log hội thoại luồng 6 |
+| 10/11/2026 | Hậu | FE-33: API tiếp nhận/tra trùng theo SĐT, gán/chuyển sale, ghi chú, cấu hình nhận khách; CONSULTING, email/ngân sách nullable; chi tiết trong `fe-33-nen-tiep-nhan.md` |
+| 10/11/2026 | Hoàng | FE-34: `GET /api/viewings/slots`, quy tắc khung giờ đặt lịch (mục 3.1) |
+| 11/11/2026 | Hoàng | FE-35: link Duyệt/Đổi giờ (mục 3.2), `GET /api/users/{id}/notify-target`, payload `viewing_requested` thêm `assignedUserId`, bỏ `approvalUrl` |
+| 11/11/2026 | Hoàng | FE-36: `GET /api/leads/{id}/chat-logs` (mục 3.3), `chatId?` cho `POST /api/leads/intake` và `POST /api/viewings` (chỉ đọc khi có `X-Webhook-Secret`), log mới của chat đã gắn lead tự theo lead |
+| 10/11/2026 | Hậu | FE-40: `GET /api/leads/{id}/mautic-context` (mục 2.7) |
+| 11/11/2026 | Hoàng | DC-03: chuyển toàn bộ sang tiếng Việt có dấu, sắp lại số mục (3.2, 3.3 lên mục 3), thêm các mục 3.4 đến 3.9 (đăng nhập, khách và người phụ trách, hợp đồng, cảm nhận, báo cáo và thống kê, lịch xem), bảng webhook backend gọi n8n, danh sách đầy đủ `lead_events.type` và trạng thái lead |

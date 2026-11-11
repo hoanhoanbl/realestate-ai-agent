@@ -26,13 +26,15 @@ import {
 import { useSession } from "@/lib/auth";
 import { contractCode } from "@/lib/contract";
 import { formatTime, vnDayKey } from "@/lib/time";
+import { isHotLead } from "@/lib/mautic";
 
 const POLL_MS = 15000;
 
 // Thứ tự phễu bán hàng (LOST tách riêng vì là nhánh rời)
-const FUNNEL_ORDER: LeadStatus[] = ["NEW", "CONFIRMED", "VIEWED", "DEPOSIT", "SIGNED"];
+const FUNNEL_ORDER: LeadStatus[] = ["CONSULTING", "NEW", "CONFIRMED", "VIEWED", "DEPOSIT", "SIGNED"];
 
 const BAR: Record<LeadStatus, string> = {
+  CONSULTING: "bg-cyan-400",
   NEW: "bg-slate-400",
   CONFIRMED: "bg-blue-500",
   VIEWED: "bg-violet-500",
@@ -161,7 +163,7 @@ interface Matrix {
 function buildMatrix(leads: Lead[]): Matrix {
   const m: Matrix = { vipHot: 0, coolingHot: 0, breakthrough: 0, nurturing: 0 };
   for (const l of leads) {
-    const isHot = l.level === "HOT";
+    const isHot = isHotLead(l);
     const isHigh = (l.mauticPoints ?? 0) >= ENGAGED_POINTS;
     if (isHot && isHigh) m.vipHot++;
     else if (isHot) m.coolingHot++;

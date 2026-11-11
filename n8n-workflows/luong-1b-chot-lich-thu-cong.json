@@ -56,7 +56,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const b = $('Webhook').first().json.body ?? {};\nconst leadId = Number(b.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) throw new Error('leadId không hợp lệ: ' + b.leadId);\nif (!['approved', 'rescheduled'].includes(b.event)) throw new Error('event không hợp lệ: ' + b.event);\nreturn [{ json: { leadId, event: b.event, by: String(b.by ?? 'nhân viên').slice(0, 100) } }];"
+        "jsCode": "const b = $('Webhook').first().json.body ?? {};\nconst leadId = Number(b.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) throw new Error('leadId không hợp lệ: ' + b.leadId);\nif (!['approved', 'rescheduled', 'reschedule_requested'].includes(b.event)) throw new Error('event không hợp lệ: ' + b.event);\n// FE-35: nút Duyệt / Đổi giờ trong thông báo gửi kèm viewingId; web admin không gửi (0 = buổi xem mới nhất)\nconst viewingId = b.viewingId == null ? 0 : Number(b.viewingId);\nif (!Number.isInteger(viewingId) || viewingId < 0) throw new Error('viewingId không hợp lệ: ' + b.viewingId);\nreturn [{ json: { leadId, viewingId, event: b.event, by: String(b.by ?? 'nhân viên').slice(0, 100) } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -70,9 +70,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT l.id AS lead_id, l.name, l.email, l.phone, l.status, v.viewing_time,\n       v.status AS viewing_status, v.manage_token,\n       p.name AS property_name, p.address AS property_address\nFROM leads l\nJOIN viewings v ON v.lead_id = l.id\nJOIN properties p ON p.id = v.property_id\nWHERE l.id = $1::int\nORDER BY v.id DESC LIMIT 1;",
+        "query": "SELECT l.id AS lead_id, l.name, l.email, l.phone, l.status, v.id AS viewing_id, v.viewing_time,\n       v.status AS viewing_status, v.manage_token,\n       p.name AS property_name, p.address AS property_address,\n       (SELECT max(id) FROM viewings WHERE lead_id = l.id) AS latest_viewing_id\nFROM leads l\nJOIN viewings v ON v.lead_id = l.id\nJOIN properties p ON p.id = v.property_id\nWHERE l.id = $1::int AND ($2::int = 0 OR v.id = $2::int)\nORDER BY v.id DESC LIMIT 1;",
         "options": {
-          "queryReplacement": "={{ $json.leadId }}"
+          "queryReplacement": "={{ [$json.leadId, $json.viewingId] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
@@ -143,7 +143,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const q = $input.first().json;\nconst k = $('Chuẩn hoá').first().json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst timeText = DateTime.fromISO(new Date(q.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\");\nreturn [{ json: { leadId: k.leadId, event: k.event, by: k.by, email: q.email, nameHtml: esc(q.name), phoneHtml: esc(q.phone),\n  propertyNameHtml: esc(q.property_name), addressHtml: esc(q.property_address), timeText,\n  // lịch chỉ còn hiệu lực khi khách NEW/CONFIRMED và buổi xem chưa kết thúc / chưa huỷ\n  leadStatus: q.status, viewingStatus: q.viewing_status,\n  manageUrl: q.manage_token ? $('Cấu hình').first().json.publicWebUrl + '/lich/' + q.manage_token : '' } }];"
+        "jsCode": "const q = $input.first().json;\nconst k = $('Chuẩn hoá').first().json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst timeText = DateTime.fromISO(new Date(q.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\");\nreturn [{ json: { leadId: k.leadId, event: k.event, by: k.by, email: q.email, nameHtml: esc(q.name), phoneHtml: esc(q.phone),\n  propertyNameHtml: esc(q.property_name), addressHtml: esc(q.property_address), timeText,\n  // lịch chỉ còn hiệu lực khi khách NEW/CONFIRMED và buổi xem chưa kết thúc / chưa huỷ\n  leadStatus: q.status, viewingStatus: q.viewing_status,\n  // buổi xem này phải là buổi mới nhất của khách, để link cũ không chốt nhầm buổi xem mới\n  viewingId: q.viewing_id, isLatest: Number(q.latest_viewing_id) === Number(q.viewing_id),\n  manageUrl: q.manage_token ? $('Cấu hình').first().json.publicWebUrl + '/lich/' + q.manage_token : '' } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -181,7 +181,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1340,
+        1560,
         200
       ],
       "id": "d455b6a6-9780-4f3e-8e7d-a28ff3502abb",
@@ -252,7 +252,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"type\": \"APPROVED\", \"note\": \"Duyệt lịch từ web admin bởi \" + $('Chuẩn bị').first().json.by } }}",
+        "jsonBody": "={{ { \"type\": \"APPROVED\", \"note\": $('Chuẩn bị').first().json.by === 'thông báo của nhân viên' ? \"Duyệt lịch qua link trong thông báo\" : \"Duyệt lịch từ web admin bởi \" + $('Chuẩn bị').first().json.by } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -330,6 +330,16 @@
                 "operation": "equals",
                 "name": "filter.operator.equals"
               }
+            },
+            {
+              "id": "fe35-latest",
+              "leftValue": "={{ $('Chuẩn bị').first().json.isLatest }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -358,7 +368,7 @@
     },
     {
       "parameters": {
-        "content": "## 1. Tiếp nhận hành động duyệt",
+        "content": "## 1. Tiếp nhận hành động duyệt\n\nFE-35: nhận thêm `viewingId` và sự kiện `reschedule_requested` (nút Duyệt / Đổi giờ trong thông báo, qua backend).",
         "height": 700,
         "width": 840,
         "color": 5
@@ -390,8 +400,8 @@
     },
     {
       "parameters": {
-        "content": "## 3. Chốt lịch hoặc báo giờ mới",
-        "height": 700,
+        "content": "## 3. Chốt lịch, báo giờ mới hoặc báo khách hẹn lại giờ",
+        "height": 860,
         "width": 620,
         "color": 1
       },
@@ -435,6 +445,151 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "reschedule_requested",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              },
+              "id": "fe35-is-req"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        200
+      ],
+      "id": "fe35-1b-is-request",
+      "name": "Yêu cầu đổi giờ?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Chuẩn bị').first().json.leadStatus }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              },
+              "id": "fe35-s1"
+            },
+            {
+              "leftValue": "={{ $('Chuẩn bị').first().json.viewingStatus }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              },
+              "id": "fe35-s2"
+            },
+            {
+              "id": "fe35-s3",
+              "leftValue": "={{ $('Chuẩn bị').first().json.isLatest }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        640
+      ],
+      "id": "fe35-1b-still-pending",
+      "name": "Còn chờ đổi giờ?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "nhadn2457@gmail.com",
+        "toEmail": "={{ $('Chuẩn bị').first().json.email }}",
+        "subject": "Cần hẹn lại giờ xem nhà",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\"><div style=\"background:#f59e0b;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Cần hẹn lại giờ xem nhà</div><div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\"><p style=\"margin-top:0\">Chào anh/chị {{ $('Chuẩn bị').first().json.nameHtml }}, khung giờ anh/chị đăng ký chưa phù hợp với lịch của nhân viên. Nhân viên sẽ gọi lại để hẹn một giờ khác thuận tiện cho anh/chị.</p><table style=\"margin-top:20px;width:100%;border-collapse:collapse;background:#f3f4f6\"><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Căn nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.propertyNameHtml }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Địa chỉ</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.addressHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Thời gian xem nhà</td><td style=\"padding:10px\"><b>{{ $('Chuẩn bị').first().json.timeText }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Khách hàng</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.nameHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:35%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Chuẩn bị').first().json.phoneHtml }}</td></tr></table></div><div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Đây là email tự động. Vui lòng liên hệ nhân viên nếu cần thay đổi lịch.</div></div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2020,
+        640
+      ],
+      "id": "fe35-1b-resched-mail",
+      "name": "Email báo hẹn lại giờ",
+      "credentials": {
+        "smtp": {
+          "id": "hfJ9bBGUGsjH8qDP",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị').first().json.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"RESCHEDULE_REQUESTED\", \"note\": \"Nhân viên yêu cầu đổi giờ qua link trong thông báo\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2240,
+        640
+      ],
+      "id": "fe35-1b-resched-log",
+      "name": "Ghi log RESCHEDULE_REQUESTED",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     }
   ],
   "pinData": {},
@@ -505,7 +660,7 @@
       "main": [
         [
           {
-            "node": "Duyệt hay đổi giờ?",
+            "node": "Yêu cầu đổi giờ?",
             "type": "main",
             "index": 0
           }
@@ -564,6 +719,53 @@
         [
           {
             "node": "Bỏ qua (lịch đã huỷ hoặc đã xử lý)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yêu cầu đổi giờ?": {
+      "main": [
+        [
+          {
+            "node": "Còn chờ đổi giờ?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Duyệt hay đổi giờ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Còn chờ đổi giờ?": {
+      "main": [
+        [
+          {
+            "node": "Email báo hẹn lại giờ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bỏ qua (lịch đã huỷ hoặc đã xử lý)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email báo hẹn lại giờ": {
+      "main": [
+        [
+          {
+            "node": "Ghi log RESCHEDULE_REQUESTED",
             "type": "main",
             "index": 0
           }

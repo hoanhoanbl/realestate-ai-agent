@@ -15,6 +15,9 @@ export class LeadEvent {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  @Column({ name: 'actor_user_id', type: 'integer', nullable: true })
+  actorUserId: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

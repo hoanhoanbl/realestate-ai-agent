@@ -1,8 +1,11 @@
 # Luồng 5: Khách gửi cảm nhận, AI phân tích và báo nhân viên
 
-File n8n: `n8n-workflows/luong-5-cam-nhan.json` · Trigger: **Webhook** `POST /webhook/feedback-submitted` (do backend gọi khi khách bấm "Gửi cảm nhận")
+File: `n8n-workflows/luong-5-cam-nhan.json` (17 node, không tính ghi chú; id `luong5Realestat0`).
+Kích hoạt: **Webhook** `POST /webhook/feedback-submitted`, có header `X-Webhook-Secret`. Backend gọi khi khách bấm "Gửi cảm nhận".
 
-## 1. Ngoài đời luồng này giải quyết việc gì?
+Khung chung của các tài liệu luồng: [README.md](README.md).
+
+## 1. Làm gì trong thực tế
 
 Sau khi dẫn khách đi xem nhà, nhân viên thường chỉ hỏi miệng "anh/chị thấy sao?" rồi quên, hoặc khách trả lời qua tin nhắn lẻ tẻ không ai tổng hợp. Điểm quyết định mua hay không lại nằm đúng ở lúc này.
 
@@ -16,11 +19,13 @@ Luồng này làm cho phản hồi của khách **thành việc cần làm cụ 
 
 AI **không** tự đổi trạng thái khách hay tự soạn hợp đồng. Nó chỉ gợi ý; nhân viên quyết định (human-in-the-loop).
 
-## 2. Ai tham gia?
+## 2. Ai tham gia
 
 Khách, Web (trang `/cam-nhan/[token]`), Backend, n8n (luồng 5), PostgreSQL (n8n đọc), Gemini, Email, Nhân viên, Quản lý.
 
-## 3. Sơ đồ swimlane
+## 3. Từng bước
+
+### Sơ đồ
 
 ```mermaid
 sequenceDiagram
@@ -61,7 +66,9 @@ sequenceDiagram
     end
 ```
 
-## 4. Từng bước
+### Các bước
+
+Workflow chia thành bốn nhóm bằng ghi chú: **1. Tiếp nhận cảm nhận**, **2. AI phân tích cảm nhận**, **3. Lưu kết quả và ghi log**, **4. Báo nhân viên, quản lý; cảm ơn khách**, và một nhóm **Xử lý lỗi**. Phần AI dùng hai node phụ trợ `Google Gemini Chat Model` và `Structured Output Parser`; nhánh "không có cảm nhận" đi tới node `Không có cảm nhận` để Error workflow báo.
 
 | Bước | Node | Làm gì |
 |---|---|---|
@@ -79,19 +86,37 @@ sequenceDiagram
 | 12 | Email cảm ơn khách | Nội dung đổi theo lựa chọn của khách |
 | 13 | Cần báo quản lý? → Email cảnh báo quản lý | Chỉ khi khách không hài lòng |
 
-## 5. Nối với hệ thống
+## 4. Nối với hệ thống
 
 - **Bảng mới `feedbacks`:** `leadId, token, rating, interest, comment, submittedAt, aiSentiment, aiSummary, aiNextAction`.
-- **API công khai:** `GET` và `POST /api/feedback/:token`. **Cho n8n:** `POST /api/feedback/link/:leadId`, `PUT /api/feedback/:id/ai-result`. **Cho admin:** `GET /api/feedback/lead/:leadId`. Xem `api-contract-dev.md` mục 3e.
+- **API công khai:** `GET` và `POST /api/feedback/:token`. **Cho n8n:** `POST /api/feedback/link/:leadId`, `PUT /api/feedback/:id/ai-result`. **Cho admin:** `GET /api/feedback/lead/:leadId`. Xem [api-contract.md](../api-contract.md).
 - **Web:** trang khách `/cam-nhan/[token]`; trang chi tiết khách ở admin có thẻ "Cảm nhận của khách".
 - **Log:** `FEEDBACK_ASKED` (luồng 2), `FEEDBACK_RECEIVED` (backend), `FEEDBACK_ANALYZED` (luồng 5).
 - **Bảo mật:** `token` là chuỗi ngẫu nhiên 32 ký tự, mỗi khách một link, chỉ gửi được một lần. Trang công khai không lộ email hay số điện thoại.
 
-## 6. Khi lỗi thì sao?
+## 5. Khi lỗi thì sao
+
+**Xử lý lỗi (nhóm cuối của workflow).** Lỗi cuối cùng làm lần chạy thất bại và kích hoạt [Error workflow](error-workflow.md); xem các mục dưới đây.
 
 - Gemini lỗi sau 3 lần thử: **không dừng**, dùng mẫu dự phòng từ số sao và lựa chọn của khách. Nhân viên vẫn nhận email.
 - Các node khác: thử lại 3 lần; lỗi cuối cùng thì Error workflow gửi email quản lý.
 - n8n lỗi hoặc tắt: cảm nhận của khách **vẫn được lưu**, chỉ thiếu phần AI. Backend ghi log cảnh báo.
+
+## 6. Triển khai lên server
+
+| Mục | Giá trị |
+|---|---|
+| Workflow id | `luong5Realestat0` |
+| Credential | Header Auth `iYLrhsH8b8dDkZ0n`, Postgres `postgres_account_id`, Gemini `wU5LeG7gXaoUdMXQ`, SMTP `hfJ9bBGUGsjH8qDP` |
+| Biến `.env` | `PUBLIC_WEB_URL` (link hồ sơ trong email), `WEBHOOK_SECRET` |
+| Cấu hình trong node `Cấu hình` | `backendUrl`, `webUrl`, `staffEmail`, `managerEmail` (hai email đang ghi sẵn trong node, kiểm tra trước khi dùng thật) |
+| Error workflow | Chọn `errorWfRealestat` trong Settings |
+
+Hiện trạng:
+
+- **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi luồng 5 đã bật. Luồng này không nằm trong danh sách import của `v0.3.0` và `v0.3.1`; khi cần import lại thì làm theo [mục 5](../trien-khai.md) (file đó ghi luồng 5 import lại được ngay sau khi release lên `main`).
+- **Phụ thuộc:** bảng `feedbacks` và các API `/api/feedback/*` của backend; lời hỏi cảm nhận và link do [luồng 2](luong-2-follow-up.md) gửi.
+- **Chưa kiểm trên server:** [trien-khai.md](../trien-khai.md) không có ghi nhận kiểm riêng cho luồng 5 sau lần import gần nhất.
 
 ## 7. Cách chạy thử
 

@@ -1,7 +1,69 @@
 # Luồng 2: Follow-up tự động
 
-File: `n8n-workflows/luong-2-follow-up.json`. Chạy mỗi giờ hoặc trigger Chạy tay.
-Backend API mới: `/api/followups`, bảo vệ bằng `X-Webhook-Secret`.
+File: `n8n-workflows/luong-2-follow-up.json` (51 node, không tính ghi chú; id `luong2Realestat0`).
+Kích hoạt: **mỗi giờ** (node `Mỗi giờ`) hoặc nút `Chạy tay` trong n8n. Không có webhook.
+Backend API: `/api/followups/*`, bảo vệ bằng `X-Webhook-Secret`.
+
+Khung chung của các tài liệu luồng: [README.md](README.md). Các mục từ "Chín loại tác vụ" trở xuống là phần chi tiết riêng của luồng này.
+
+## 1. Làm gì trong thực tế
+
+Sau khi khách đặt lịch, nhiều việc nhỏ dễ bị quên: nhắc khách trước giờ xem, hỏi cảm nhận sau buổi xem, nhắc sale ghi nhận khách có đến không, nhắc sale duyệt, đóng lead hẹn quá giờ mà không ai xử lý, chăm lại khách im lặng. Luồng 2 chạy mỗi giờ, tìm các việc đến hạn (chín loại, xem bảng bên dưới) và làm **mỗi việc đúng một lần**: gửi email, chuyển khách sang Mautic để nuôi dưỡng, hoặc nhắc nhân viên. Cuối mỗi lượt, một báo cáo tổng hợp gửi quản lý.
+
+Quy tắc nghiệp vụ: [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 2.3 và 3, [nghiep-vu/03-cham-soc-va-marketing.md](../nghiep-vu/03-cham-soc-va-marketing.md) mục 1, 2 và 7.
+
+## 2. Ai tham gia
+
+| Bên | Vai trò |
+|---|---|
+| Khách | Nhận email nhắc lịch, hỏi cảm nhận |
+| Sale phụ trách | Nhận nhắc điểm danh, nhắc gọi khách HOT (Telegram) |
+| Quản lý | Nhận cảnh báo quá hạn và báo cáo tổng hợp mỗi lượt |
+| Backend | Cấp, giữ và ghi checkpoint tác vụ (`followup_tasks`) |
+| Mautic | Nhận contact và tag nuôi dưỡng |
+| Gemini, SMTP | Soạn nội dung nuôi dưỡng; gửi email |
+
+## 3. Từng bước
+
+Workflow chia thành mười nhóm bằng ghi chú: **1. Lấy việc đến hạn**, **2. Giữ tác vụ (chống gửi trùng)**, **3. Chuẩn bị theo loại việc**, **4. AI soạn nội dung**, **5. Tìm contact Mautic**, **6. Xác nhận trước khi gửi**, **7. Gửi email khách, chuyển Mautic**, **8. Báo nhân viên**, **9. Hoàn tất tác vụ**, **10. Báo cáo quản lý**, và một nhóm **Xử lý lỗi**. Mô tả đầy đủ từng bước ở mục "Luồng xử lý" bên dưới.
+
+## 4. Nối với hệ thống
+
+| Hướng | Gọi gì |
+|---|---|
+| Luồng 2 → database | `Lấy lead cần follow-up`: một câu SQL chọn tối đa 50 tác vụ đến hạn (bản chỉ đọc: `backend/sql/preview-follow-up.sql`) |
+| Luồng 2 → backend | `POST /api/followups/claim`, `/:id/start`, `/:id/action-done`, `/:id/complete`, `/:id/fail`; `POST /api/followups/:id/resolve` (người vận hành gọi tay khi tác vụ `REVIEW`) |
+| Luồng 2 → backend | `POST /api/feedback/link/:leadId` (link cảm nhận, xem [luồng 5](luong-5-cam-nhan.md)); `GET /api/properties/:id`; `POST /api/leads/:id/events` |
+| Luồng 2 → Mautic | `GET /contacts`, rồi `PATCH` hoặc `POST` contact kèm tag `nuoi-warm` hoặc `ban-tin-hang-thang` |
+| Luồng 2 → sub-workflow | [Thông báo nhân viên](thong-bao-nhan-vien.md) |
+| Luồng 4 đọc kết quả | Số lead `EXPIRED` và số nhắc/báo quá hạn nằm trong [báo cáo tuần](luong-4-bao-cao.md) |
+
+## 5. Khi lỗi thì sao
+
+Luồng 2 dùng **checkpoint** để không bao giờ gửi một việc hai lần: `CLAIMED`, `ACTION_STARTED`, `ACTION_DONE`, `COMPLETED`, `FAILED`, `REVIEW`. Lỗi trước khi gửi thì tác vụ `FAILED` và chờ 6 giờ rồi kiểm tra lại điều kiện. Đã bắt đầu gửi mà mất phản hồi thì giữ `REVIEW`, **không tự gửi lại**, và người vận hành xử lý bằng `POST /api/followups/{id}/resolve`. Chi tiết ở hai mục "Chống trùng và phục hồi" và "Xử lý REVIEW" bên dưới. Lỗi cuối cùng làm lần chạy thất bại thì [Error workflow](error-workflow.md) báo quản lý.
+
+## 6. Triển khai lên server
+
+| Mục | Giá trị |
+|---|---|
+| Workflow id | `luong2Realestat0` |
+| Credential | Postgres `postgres_account_id`, Gemini `wU5LeG7gXaoUdMXQ`, SMTP `hfJ9bBGUGsjH8qDP`, Basic Auth Mautic `mautic_api_credential` (chọn đúng môi trường Local hoặc Server) |
+| Biến `.env` | `MAUTIC_URL` (`https://mautic.<PUBLIC_HOST>/api`), `PUBLIC_WEB_URL`, `WEBHOOK_SECRET`, `BACKEND_URL` (có mặc định) |
+| Cấu hình trong node `Cấu hình` | `backendUrl`, `mauticUrl`, `publicWebUrl`, `webhookSecret`, `staffEmail`, `managerEmail` (hai email đang ghi sẵn trong node, kiểm tra trước khi dùng thật) |
+| Error workflow | Chọn `errorWfRealestat` trong Settings |
+
+Hiện trạng:
+
+- **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi luồng 2 **tắt, bản cũ**. Bản mô tả ở đây (checkpoint FE-29, chín loại tác vụ của FE-30, hạn phản hồi FE-38) **chưa lên server**.
+- **Phát hành:** làm theo [trien-khai.md mục 9](../trien-khai.md) (bản `v0.3.1`): deploy backend trước, tạo credential Mautic, import luồng 2, rồi **chỉ bật ở bước cuối** sau khi đã kiểm tra lead mẫu. Không import vào hệ thống còn chạy backend cũ vì chưa có API `claim`.
+- **Đã kiểm:** hai script `check-followup-workflow.cjs`, `check-followup-report.cjs`, kiểm thử backend `test:followups`, và ca thử local ở mục "Ca kiểm thử FE-30" bên dưới.
+- **Chưa kiểm trên server:** cả luồng với Mautic server thật. Hướng dẫn từng bước: mục "Cập nhật local/server" bên dưới.
+
+## 7. Cách chạy thử
+
+1. Chạy hai script kiểm tra cấu trúc và SQL ở mục "Kiểm tra trong repo" bên dưới (không gửi email, không sửa dữ liệu).
+2. Nạp dữ liệu mẫu bằng `backend/sql/demo-follow-up.sql`, rồi trong n8n bấm `Chạy tay` của luồng 2 trên bản n8n **local**, không bật lịch.
+3. Làm theo "Ca kiểm thử FE-30 theo từng bước" để thử nhắc duyệt, đóng quá hạn, khách im lặng và báo cáo.
 
 ## Chín loại tác vụ sau FE-30
 
@@ -10,14 +72,14 @@ Backend API mới: `/api/followups`, bảo vệ bằng `X-Webhook-Secret`.
 | REMINDER | CONFIRMED + buổi xem NEW, giờ xem trong 24 giờ tới | Email nhắc lịch; HOT/WARM/COLD đều được |
 | FEEDBACK | VIEWED + buổi xem ATTENDED, giờ xem qua hơn 2 giờ, chưa hỏi và chưa phản hồi | Email có link cảm nhận; không tự đổi trạng thái khách |
 | WARM_NUDGE | WARM + VIEWED + buổi xem ATTENDED + đồng ý tiếp thị + được hỏi cảm nhận hơn 3 ngày + chưa phản hồi + chưa nuôi | Tìm contact đúng email, tạo/cập nhật ai_nudge_text và tag nuoi-warm |
-| STAFF_NUDGE | HOT/WARM/COLD + NEW + buổi xem NEW + tạo hơn 3 ngày, giờ hẹn chưa qua | Gọi sub-workflow nhắc nhân viên duyệt lịch |
+| STAFF_NUDGE | FE-38: quá responseDueAt, chưa firstResponseAt, khách còn đang xử lý; không cần buổi xem/email/điểm | Báo email quản lý, ghi RESPONSE_OVERDUE |
 | EXPIRE_LEAD | Lead NEW + buổi xem NEW + giờ hẹn đã qua, không cần AI chấm | Backend đóng LOST/EXPIRED, hủy buổi xem chờ và xóa link duyệt; báo quản lý |
 | HOT_NUDGE | HOT và cùng điều kiện im lặng/đồng ý như WARM | Nhắc sale gọi khách qua Telegram; không gửi email chăm sóc cho khách |
 | COLD_NURTURE | COLD và cùng điều kiện im lặng/đồng ý như WARM | Tìm contact đúng email, gắn `ban-tin-hang-thang`; không qua AI hoặc gửi email ngay |
 | ATTENDANCE_CHECK | CONFIRMED + buổi xem NEW + qua giờ hẹn hơn 2 giờ, chưa nhắc trong lịch hiện tại | Nhắc nhân viên ghi nhận khách có đến hay không |
 | ATTENDANCE_ESCALATE | Vẫn CONFIRMED + buổi xem NEW, đã nhắc xác nhận hơn 24 giờ và chưa báo quản lý trong lịch hiện tại | Thông báo tới email quản lý qua sub-workflow |
 
-Chỉ dùng lịch xem mới nhất của mỗi lead. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic của L7/L8 không chặn nhắc lịch. Khách đã gửi cảm nhận không được chọn để hỏi lại hoặc nuôi theo nhánh im lặng. Segment Mautic nhận `nuoi-warm`, không nhận riêng `WARM`.
+FE-38 phân biệt nhắc lịch/điểm danh/hỏi cảm nhận theo viewing ID và giờ hẹn; cảnh báo phản hồi theo phiên nhận khách, kể cả khi chưa có lịch. Link cảm nhận thuộc đúng buổi xem, link cũ vẫn hoạt động. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic L7/L8 không chặn nhắc lịch. Chi tiết triển khai và tương thích checkpoint: [FE-38](../fe-38-han-phan-hoi.md).
 
 ## Luồng xử lý
 

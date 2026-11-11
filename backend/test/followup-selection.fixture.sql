@@ -1,8 +1,8 @@
 BEGIN;
-CREATE TEMP TABLE leads(id int,name text,email text,phone text,needs text,level text,status text,created_at timestamptz,consent_marketing boolean,mautic_contact_id int,lost_reason text) ON COMMIT DROP;
+CREATE TEMP TABLE leads(id int,name text,email text,phone text,needs text,level text,status text,created_at timestamptz,consent_marketing boolean,mautic_contact_id int,lost_reason text,assigned_user_id int,assigned_at timestamptz,response_due_at timestamptz,first_response_at timestamptz) ON COMMIT DROP;
 CREATE TEMP TABLE viewings(id int,lead_id int,property_id int,viewing_time timestamptz,status text DEFAULT 'NEW') ON COMMIT DROP;
 CREATE TEMP TABLE lead_events(lead_id int,type text,note text,created_at timestamptz) ON COMMIT DROP;
-CREATE TEMP TABLE feedbacks(lead_id int,submitted_at timestamptz) ON COMMIT DROP;
+CREATE TEMP TABLE feedbacks(lead_id int,submitted_at timestamptz,token text) ON COMMIT DROP;
 CREATE TEMP TABLE followup_tasks(lead_id int,type text,viewing_id int,viewing_time timestamptz,state text,available_at timestamptz,lease_until timestamptz,task_key text) ON COMMIT DROP;
 
 INSERT INTO leads
@@ -11,6 +11,7 @@ SELECT id,'Test','test@example.invalid','0900000000','',
  CASE WHEN id=4 THEN 'NEW' WHEN id IN (2,3,5,9) THEN 'VIEWED' WHEN id=13 THEN 'SIGNED' ELSE 'CONFIRMED' END,
  now()-interval '4 days',id<>3,NULL
 FROM generate_series(1,13) id;
+UPDATE leads SET assigned_at=now()-interval '3 hours',response_due_at=now()-interval '1 hour' WHERE id=4;
 -- Only the intended cases have a viewing. Lead 6/10 were rescheduled.
 INSERT INTO viewings(id,lead_id,property_id,viewing_time)
 SELECT id,id,1,CASE WHEN id IN (2,3,9) THEN now()-interval '6 days'
@@ -79,6 +80,7 @@ INSERT INTO leads(id,name,email,phone,needs,level,status,created_at,consent_mark
  CASE WHEN id=43 THEN now()-interval '1 day' ELSE now()-interval '4 days' END,
  id NOT IN (46,47),CASE WHEN id IN (54,56,57) THEN 'EXPIRED' WHEN id=55 THEN 'NOT_INTERESTED' ELSE NULL END
  FROM generate_series(40,60) id;
+UPDATE leads SET assigned_at=now()-interval '3 hours',response_due_at=now()-interval '1 hour' WHERE id IN (40,53);
 INSERT INTO viewings(id,lead_id,property_id,viewing_time,status)
  SELECT id,id,1,CASE WHEN id IN (40,43) THEN now()+interval '2 days' WHEN id=53 THEN now() WHEN id=60 THEN NULL ELSE now()-interval '6 days' END,
  CASE WHEN id IN (44,45,46,47,48,49,50,51,59) THEN 'ATTENDED' WHEN id=52 OR id BETWEEN 54 AND 57 THEN 'CANCELLED' ELSE 'NEW' END

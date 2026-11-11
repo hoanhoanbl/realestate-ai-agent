@@ -26,11 +26,21 @@ export class StatsService {
       where: { level: 'COLD' },
     });
 
+    const bySource: { source: string; count: string }[] = await this.leadRepository.query(
+      `SELECT COALESCE(NULLIF(trim(source),''),'direct') AS source,count(*)::text AS count FROM leads GROUP BY 1 ORDER BY 1`);
+    const byAssignee: { assignedUserId: number | null; count: string }[] = await this.leadRepository.query(
+      `SELECT assigned_user_id AS "assignedUserId",count(*)::text AS count FROM leads GROUP BY 1 ORDER BY 1 NULLS LAST`);
+    const overdue: { count: string }[] = await this.leadRepository.query(
+      `SELECT count(*)::text AS count FROM leads WHERE status IN ('CONSULTING','NEW','CONFIRMED','VIEWED') AND first_response_at IS NULL AND response_due_at<=now()`);
+
     return {
       total,
       hot,
       warm,
       cold,
+      bySource: bySource.map(row => ({ source: row.source, count: Number(row.count) })),
+      byAssignee: byAssignee.map(row => ({ assignedUserId: row.assignedUserId, count: Number(row.count) })),
+      overdueResponses: Number(overdue[0]?.count ?? 0),
     };
   }
 
@@ -102,7 +112,7 @@ export class StatsService {
 
     // Đếm theo sự kiện để khách không đến rồi được hẹn lại vẫn được tính
     const noShow: { count: string }[] = await this.leadRepository.manager.query(
-      `SELECT COUNT(*) AS count FROM lead_events WHERE type = 'VIEWING_NO_SHOW'`,
+      `SELECT COUNT(DISTINCT lead_id) AS count FROM lead_events WHERE type = 'VIEWING_NO_SHOW'`,
     );
 
     return {

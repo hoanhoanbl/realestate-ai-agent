@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Logger,
   Get,
   Param,
   ParseIntPipe,
@@ -11,6 +12,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
+import { LeadIntakeService } from './lead-intake.service';
+import { AssignLeadDto, CreateLeadDto, IntakeLeadDto, LeadNoteDto } from './dto/create-lead.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { Lead } from './entities/lead.entity';
 import { LeadEvent } from './entities/lead-event.entity';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
@@ -22,10 +27,57 @@ import { UpdateMauticDto } from './dto/update-mautic.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthUser } from '../auth/auth.types';
 import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
+import { ChatLogsService } from '../chat-logs/chat-logs.service';
 
 @Controller('leads')
 export class LeadsController {
-  constructor(private readonly leadsService: LeadsService) {}
+  private readonly logger = new Logger(LeadsController.name);
+
+  constructor(
+    private readonly leadsService: LeadsService,
+    private readonly intake: LeadIntakeService,
+    private readonly chatLogs: ChatLogsService,
+  ) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() dto: CreateLeadDto, @Req() req: { user: AuthUser }) {
+    return this.intake.create(dto, req.user);
+  }
+
+  @Post('intake')
+  @UseGuards(WebhookSecretGuard)
+  async receive(@Body() dto: IntakeLeadDto) {
+    const { chatId, ...lead } = dto;
+    const result = await this.intake.create(lead);
+    // Gắn lịch sử chat sau khi lead đã commit: lỗi gắn chỉ ghi log, không làm mất lead
+    if (chatId) {
+      await this.chatLogs.linkChat(chatId, result.lead.id).catch((err: Error) =>
+        this.logger.error(`Không gắn được chat vào lead ${result.lead.id}: ${err.message}`),
+      );
+    }
+    return result;
+  }
+
+  // Đặt trước :id để không bị ParseIntPipe coi "lookup" là id.
+  @Get('lookup')
+  @UseGuards(JwtAuthGuard)
+  async lookup(@Query('phone') phone: string) {
+    return { lead: await this.intake.lookup(phone) };
+  }
+
+  @Put(':id/assignee')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  reassign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignLeadDto, @Req() req: { user: AuthUser }) {
+    return this.intake.reassign(id, dto, req.user);
+  }
+
+  @Post(':id/notes')
+  @UseGuards(JwtAuthGuard)
+  note(@Param('id', ParseIntPipe) id: number, @Body() dto: LeadNoteDto, @Req() req: { user: AuthUser }) {
+    return this.intake.addNote(id, dto.note, req.user);
+  }
 
   // --- Cho người dùng đăng nhập (web admin, app) ---
 
@@ -39,6 +91,14 @@ export class LeadsController {
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.leadsService.findDetail(id);
+  }
+
+  // Lịch sử chat Telegram của khách (đã che email/số dài), cũ trước
+  @Get(':id/chat-logs')
+  @UseGuards(JwtAuthGuard)
+  async findChatLogs(@Param('id', ParseIntPipe) id: number) {
+    await this.leadsService.findOne(id);
+    return this.chatLogs.findByLead(id);
   }
 
   @Get(':id/events')
@@ -64,6 +124,12 @@ export class LeadsController {
   }
 
   // --- Cho n8n (header X-Webhook-Secret) ---
+
+  @Get(':id/mautic-context')
+  @UseGuards(WebhookSecretGuard)
+  mauticContext(@Param('id', ParseIntPipe) id: number) {
+    return this.leadsService.findMauticContext(id);
+  }
 
   @Put(':id/ai-result')
   @UseGuards(WebhookSecretGuard)

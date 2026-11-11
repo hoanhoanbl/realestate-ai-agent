@@ -1,5 +1,6 @@
 import Link from "next/link";
 import MauticTracking from "@/components/MauticTracking";
+import { NEWSLETTER_FORM_URL } from "@/lib/newsletter";
 
 import { Icon } from "@/components/ui";
 import { TELEGRAM_BOT_URL } from "@/lib/site";
@@ -60,6 +61,11 @@ export default function KhachLayout({ children }: { children: React.ReactNode })
           </div>
           <div>
             <p className="font-semibold text-slate-900">Hỗ trợ</p>
+            {NEWSLETTER_FORM_URL && (
+              <Link href="/nhan-tin" className="mt-2 block text-blue-700 hover:underline">
+                Đăng ký nhận bản tin
+              </Link>
+            )}
             <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex min-h-11 items-center gap-2 text-sky-700 hover:underline sm:min-h-0">
               <TelegramIcon />
               Trợ lý AI trên Telegram

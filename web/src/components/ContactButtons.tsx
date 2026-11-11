@@ -1,5 +1,5 @@
 // Nút liên hệ nhanh với khách (UC-S10). Mở trên điện thoại thì bấm Gọi là gọi luôn.
-export default function ContactButtons({ phone, email }: { phone: string; email: string }) {
+export default function ContactButtons({ phone, email }: { phone: string; email: string | null }) {
   const tel = phone.replace(/[^\d+]/g, "");
   return (
     <div className="flex flex-wrap gap-2">

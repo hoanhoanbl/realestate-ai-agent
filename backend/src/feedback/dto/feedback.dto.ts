@@ -4,6 +4,11 @@ import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-va
 export const FEEDBACK_INTERESTS = ['DEPOSIT', 'OTHER', 'NONE'];
 export const SENTIMENTS = ['POSITIVE', 'NEUTRAL', 'NEGATIVE'];
 
+export class CreateFeedbackLinkDto {
+  @IsOptional() @IsInt() @Min(1)
+  viewingId?: number;
+}
+
 export class SubmitFeedbackDto {
   @IsInt()
   @Min(1)

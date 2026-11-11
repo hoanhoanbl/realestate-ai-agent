@@ -7,6 +7,7 @@ export type Level = "HOT" | "WARM" | "COLD";
 export type AutomationStatus = "PENDING" | "COMPLETED" | "FAILED";
 // Trạng thái bán hàng của khách (khác với AutomationStatus là trạng thái chạy của n8n)
 export type LeadStatus =
+  | "CONSULTING"
   | "NEW"
   | "CONFIRMED"
   | "VIEWED"
@@ -88,10 +89,16 @@ export interface NearbyPlace {
 export interface Lead {
   id: number;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   // GET trả chuỗi (bigint), POST có thể trả số: luôn dùng Number(...)
-  budget: string | number;
+  budget: string | number | null;
+  phoneNormalized: string | null;
+  assignedUserId: number | null;
+  assignedAt: string | null;
+  responseDueAt: string | null;
+  firstResponseAt: string | null;
+  interestedPropertyIds: number[] | null;
   needs: string | null;
   score: number | null;
   level: Level | null;
@@ -124,15 +131,27 @@ export interface LeadEvent {
   type: string;
   note: string | null;
   createdAt: string;
+  actorUserId?: number | null;
 }
 
 // GET /leads/:id trả thêm viewing và property (null nếu khách chưa có lịch)
 export type LeadDetail = Lead & {
+  assignedUser: { id: number; name: string; email: string; role: "SALE" | "MANAGER"; telegramChatId: string | null; acceptingLeads: boolean } | null;
   viewing: Viewing | null;
   property: Property | null;
-  // Các lần đặt lịch khác của cùng email (mỗi lần đặt là một lead)
+  // Bản ghi cũ trùng điện thoại; không tự gộp lịch sử trong FE-33.
   otherBookings: OtherBooking[];
+  // Mọi buổi xem của khách, mới nhất trước (FE-34)
+  viewings: ViewingHistoryItem[];
 };
+
+export interface ViewingHistoryItem {
+  id: number;
+  propertyId: number;
+  propertyName: string | null;
+  viewingTime: string | null;
+  status: ViewingStatus;
+}
 
 export interface OtherBooking {
   id: number;
@@ -144,6 +163,12 @@ export interface OtherBooking {
 
 // Tên tiếng Việt cho lead_events.type
 export const EVENT_LABELS: Record<string, string> = {
+  LEAD_CREATED: "Tiếp nhận khách",
+  LEAD_ASSIGNED: "Gán người phụ trách",
+  LEAD_REASSIGNED: "Chuyển người phụ trách",
+  LEAD_REOPENED: "Khách quay lại",
+  NOTE_ADDED: "Ghi chú",
+  RESPONSE_OVERDUE: "Quá hạn phản hồi",
   AI_SCORED: "AI chấm điểm",
   APPROVED: "Nhân viên duyệt lịch",
   RESCHEDULE_REQUESTED: "Nhân viên yêu cầu đổi giờ",
@@ -208,6 +233,9 @@ export interface Stats {
   hot: number;
   warm: number;
   cold: number;
+  bySource?: { source: string; count: number }[];
+  byAssignee?: { assignedUserId: number | null; count: number }[];
+  overdueResponses?: number;
 }
 
 export class ApiError extends Error {
@@ -400,7 +428,7 @@ export interface ContractDetail {
   expiresAt: string | null;
   createdAt: string;
   signUrl: string | null;
-  lead: { id: number; name: string; email: string; phone: string } | null;
+  lead: { id: number; name: string; email: string | null; phone: string } | null;
   property: Property | null;
 }
 
@@ -521,6 +549,82 @@ export function getLeadEvents(id: number): Promise<LeadEvent[]> {
   return request<LeadEvent[]>(`/leads/${id}/events`);
 }
 
+// Một lượt hỏi đáp của bot Telegram gắn với khách (FE-36); văn bản đã che email và số dài
+export type ChatRoute = "COMMAND" | "BLOCKED" | "AGENT" | "STAFF" | "OUT_OF_SCOPE";
+export interface LeadChatLog {
+  id: number;
+  createdAt: string;
+  route: ChatRoute;
+  question: string;
+  reply: string;
+  escalated: boolean;
+}
+
+export const CHAT_ROUTE_LABELS: Record<ChatRoute, string> = {
+  COMMAND: "Lệnh",
+  BLOCKED: "Bị chặn",
+  AGENT: "Bot tư vấn",
+  STAFF: "Chuyển nhân viên",
+  OUT_OF_SCOPE: "Ngoài phạm vi",
+};
+
+export function getLeadChatLogs(id: number): Promise<LeadChatLog[]> {
+  return request<LeadChatLog[]>(`/leads/${id}/chat-logs`);
+}
+
+export interface CreateLeadInput {
+  name: string;
+  phone: string;
+  source: string;
+  email?: string;
+  budget?: number;
+  needs?: string;
+  assignedUserId?: number;
+  interestedPropertyIds?: number[];
+  consentMarketing?: boolean;
+  note?: string;
+}
+
+export interface IntakeResult { lead: Lead; created: boolean; reopened: boolean }
+export interface LeadLookup {
+  id: number;
+  name: string;
+  status: LeadStatus;
+  assignedUserId: number | null;
+  assignedUserName: string | null;
+}
+
+export async function lookupLeadByPhone(phone: string): Promise<LeadLookup | null> {
+  const result = await request<{ lead: LeadLookup | null }>(`/leads/lookup?phone=${encodeURIComponent(phone)}`);
+  return result.lead;
+}
+
+// Admin nhập tay; trùng số điện thoại trả 409, không sửa lead cũ.
+export function createLead(input: CreateLeadInput): Promise<IntakeResult> {
+  return request("/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+}
+
+export function reassignLead(id: number, assignedUserId: number, note?: string): Promise<Lead> {
+  return request(`/leads/${id}/assignee`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assignedUserId, note }) });
+}
+
+export function addLeadNote(id: number, note: string): Promise<LeadEvent> {
+  return request(`/leads/${id}/notes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) });
+}
+
+export type AssigneeOption = Pick<UserAccount, "id" | "name" | "role" | "acceptingLeads">;
+export type UserRoutingInfo = Pick<UserAccount, "id" | "name" | "email" | "role" | "acceptingLeads" | "telegramChatId">;
+export function getMyRouting(): Promise<UserRoutingInfo> {
+  return request("/users/me/routing");
+}
+export function getAssignees(): Promise<AssigneeOption[]> {
+  return request("/users/assignees");
+}
+
+export function updateUserRouting(id: number, input: { acceptingLeads?: boolean; telegramChatId?: string | null }): Promise<UserAccount> {
+  return request(`/users/${id}/routing`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+}
+
 export function getStats(): Promise<Stats> {
   return request<Stats>("/stats");
 }
@@ -533,6 +637,26 @@ export function createViewing(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+}
+
+// Khung giờ khách đặt được của một căn (FE-34). date/time là giờ Việt Nam, start là ISO UTC gửi lại làm viewingTime.
+export interface ViewingSlot {
+  time: string;
+  start: string;
+  available: boolean;
+}
+export interface ViewingSlotDay {
+  date: string;
+  slots: ViewingSlot[];
+}
+export interface ViewingSlots {
+  earliest: string;
+  latest: string;
+  days: ViewingSlotDay[];
+}
+
+export function getViewingSlots(propertyId: number): Promise<ViewingSlots> {
+  return request<ViewingSlots>(`/viewings/slots?propertyId=${propertyId}`);
 }
 
 // ---- Khu quản trị (cần đăng nhập) ----
@@ -675,6 +799,27 @@ export function requestReschedule(token: string, note: string): Promise<{ ok: tr
   });
 }
 
+// FE-35: nhân viên bấm Duyệt / Đổi giờ từ thông báo (không đăng nhập, token có chữ ký)
+export interface StaffLinkInfo {
+  action: "approve" | "reschedule";
+  leadName: string;
+  propertyName: string | null;
+  propertyAddress: string | null;
+  viewingTime: string | null;
+  leadStatus: LeadStatus;
+  viewingStatus: ViewingStatus;
+  canAct: boolean;
+  refusal: string | null;
+}
+
+export function getStaffLink(token: string): Promise<StaffLinkInfo> {
+  return request<StaffLinkInfo>(`/viewings/staff-links/${encodeURIComponent(token)}`);
+}
+
+export function confirmStaffLink(token: string): Promise<{ ok: true; action: "approve" | "reschedule"; already?: true }> {
+  return request(`/viewings/staff-links/${encodeURIComponent(token)}/confirm`, { method: "POST" });
+}
+
 export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {
   return request<Viewing>(`/viewings/${viewingId}`, {
     method: "PUT",
@@ -690,7 +835,8 @@ export function toLocalInput(iso: string): string {
   return d.toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).replace(" ", "T").slice(0, 16);
 }
 
-export function formatVnd(value: string | number): string {
+export function formatVnd(value: string | number | null): string {
+  if (value === null) return "Chưa cung cấp";
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
   return `${n.toLocaleString("vi-VN")} đ`;
@@ -718,6 +864,9 @@ export interface UserAccount {
   name: string;
   role: "MANAGER" | "SALE";
   pushToken: string | null;
+  telegramChatId: string | null;
+  acceptingLeads: boolean;
+  lastAssignedAt: string | null;
   createdAt: string;
 }
 
@@ -740,6 +889,12 @@ export function createUser(data: {
 
 // Nhãn nguồn khách cho hiển thị
 export const SOURCE_LABELS: Record<string, string> = {
+  telegram: "Telegram",
+  hotline: "Gọi hotline",
+  property_sign: "Biển treo tại căn",
+  walk_in: "Đến văn phòng",
+  personal_zalo: "Zalo cá nhân",
+  other: "Khác",
   facebook: "Facebook",
   zalo: "Zalo",
   google: "Google",

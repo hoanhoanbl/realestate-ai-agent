@@ -1,9 +1,12 @@
-import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { hash } from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateRoutingDto } from './dto/update-routing.dto';
+import type { AuthUser } from '../auth/auth.types';
+import { ASSIGNMENT_LOCK_SQL } from '../leads/intake-rules';
 
 // Tài khoản mẫu cho bản dev. Mật khẩu lấy từ biến SEED_USER_PASSWORD, không ghi trong code.
 const SEED_USERS: { email: string; name: string; role: UserRole }[] = [
@@ -49,9 +52,46 @@ export class UsersService implements OnModuleInit {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  async findRoutingById(id: number) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Không tìm thấy nhân viên');
+    const { name, email, role, telegramChatId, acceptingLeads } = user;
+    return { id, name, email, role, telegramChatId, acceptingLeads };
+  }
+
   findAll(): Promise<User[]> {
     return this.userRepository.find({
       order: { id: 'ASC' },
+    });
+  }
+
+  // Dùng cho bộ chọn người phụ trách; không trả push token hay thông tin đăng nhập.
+  async findAssignees() {
+    const users = await this.userRepository.find({
+      select: { id: true, name: true, role: true, acceptingLeads: true }, order: { id: 'ASC' },
+    });
+    return users.map(({ id, name, role, acceptingLeads }) => ({ id, name, role, acceptingLeads }));
+  }
+
+  // Cho n8n (thong-bao-nhan-vien) biết gửi thông báo cho người phụ trách bằng kênh nào. Không bao giờ trả passwordHash.
+  async findNotifyTarget(id: number) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Không tìm thấy nhân viên');
+    const { name, email, role, telegramChatId, pushToken } = user;
+    return { id, name, email, role, telegramChatId, pushToken };
+  }
+
+  async updateRouting(id: number, dto: UpdateRoutingDto, actor: AuthUser): Promise<User> {
+    if (actor.role !== 'MANAGER' && actor.id !== id) throw new ForbiddenException('Chỉ được sửa cấu hình nhận khách của mình');
+    return this.userRepository.manager.transaction(async em => {
+      await em.query(ASSIGNMENT_LOCK_SQL);
+      const repo = em.getRepository(User);
+      const user = await repo.findOneBy({ id });
+      if (!user) throw new NotFoundException('Không tìm thấy nhân viên');
+      // Không truyền null vào cột boolean (IsOptional chấp nhận null).
+      if (typeof dto.acceptingLeads === 'boolean') user.acceptingLeads = dto.acceptingLeads;
+      if (dto.telegramChatId !== undefined) user.telegramChatId = dto.telegramChatId;
+      return repo.save(user);
     });
   }
 

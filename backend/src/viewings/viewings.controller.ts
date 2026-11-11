@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Logger, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
 import { AttendanceDto, RescheduleRequestDto, UpdateViewingDto } from './dto/update-viewing.dto';
 import type { AuthUser } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,17 +8,33 @@ import { CreateViewingDto } from './dto/create-viewing.dto';
 import { Viewing } from './entities/viewing.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { BookingThrottlerGuard } from './booking-throttler.guard';
+import { ChatLogsService } from '../chat-logs/chat-logs.service';
 
 @Controller('viewings')
 export class ViewingsController {
-  constructor(private readonly viewingsService: ViewingsService) {}
+  private readonly logger = new Logger(ViewingsController.name);
+
+  constructor(
+    private readonly viewingsService: ViewingsService,
+    private readonly chatLogs: ChatLogsService,
+  ) {}
 
   @Post()
   @UseGuards(BookingThrottlerGuard)
-  create(
+  async create(
     @Body() createViewingDto: CreateViewingDto,
+    @Headers('x-webhook-secret') secret?: string,
   ): Promise<{ viewing: Viewing; lead: Lead }> {
-    return this.viewingsService.create(createViewingDto);
+    const { chatId, ...booking } = createViewingDto;
+    const result = await this.viewingsService.create(booking);
+    // Endpoint công khai: chỉ n8n (có secret) mới được gắn chat; khách ngoài gửi chatId thì bỏ qua
+    const expected = process.env.WEBHOOK_SECRET;
+    if (chatId && expected && secret === expected) {
+      await this.chatLogs.linkChat(chatId, result.lead.id).catch((err: Error) =>
+        this.logger.error(`Không gắn được chat vào lead ${result.lead.id}: ${err.message}`),
+      );
+    }
+    return result;
   }
 
   // Công khai: danh sách khung giờ của một căn để form đặt lịch hiện khung đã kín
@@ -53,6 +70,27 @@ export class ViewingsController {
   @Post('manage/:token/reschedule-request')
   customerRescheduleRequest(@Param('token') token: string, @Body() dto: RescheduleRequestDto) {
     return this.viewingsService.customerRescheduleRequest(token, dto.note);
+  }
+
+  // --- Nhân viên bấm Duyệt / Đổi giờ từ thông báo (không đăng nhập, token có chữ ký) ---
+
+  @Get('staff-links/:token')
+  previewStaffLink(@Param('token') token: string) {
+    return this.viewingsService.previewStaffLink(token);
+  }
+
+  @Post('staff-links/:token/confirm')
+  @HttpCode(200)
+  confirmStaffLink(@Param('token') token: string) {
+    return this.viewingsService.confirmStaffLink(token);
+  }
+
+  // n8n (luồng 1) xin link để gắn vào thông báo
+  @Post(':id/staff-links')
+  @HttpCode(200)
+  @UseGuards(WebhookSecretGuard)
+  issueStaffLinks(@Param('id', ParseIntPipe) id: number) {
+    return this.viewingsService.issueStaffLinks(id);
   }
 
   // --- Nhân viên ---

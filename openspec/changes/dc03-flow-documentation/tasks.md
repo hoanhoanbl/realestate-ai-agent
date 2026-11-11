@@ -47,7 +47,7 @@ Verification used below: **link check** = every relative Markdown link in the fi
 ## 8. Integration check and PR
 
 - [x] 8.1 Run a link check over `docs/` (script in the scratchpad, not committed) and a route comparison between `docs/api-contract.md` and the controllers; verify both report zero problems
-- [ ] 8.2 In the same PR, move the DC-03 row of `docs/danh-sach-task.md` to section 4 with the PR number and merge date; verify the table row is under "Tài liệu (DC)" and section 3 no longer lists it
+- [x] 8.2 In the same PR, move the DC-03 row of `docs/danh-sach-task.md` to section 4 with the PR number and merge date; verify the table row is under "Tài liệu (DC)" and section 3 no longer lists it
 - [ ] 8.3 Open the PR `docs/DC-03-tai-lieu-luong` into `dev` with title `[DC-03] Tài liệu 12 luồng, api-contract, tổng quan`; verify CI is green and Hậu has approved the parts for flows 2, 4, 5, 7, 8
 
 ## Workflow follow-up

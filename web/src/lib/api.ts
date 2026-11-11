@@ -792,6 +792,27 @@ export function requestReschedule(token: string, note: string): Promise<{ ok: tr
   });
 }
 
+// FE-35: nhân viên bấm Duyệt / Đổi giờ từ thông báo (không đăng nhập, token có chữ ký)
+export interface StaffLinkInfo {
+  action: "approve" | "reschedule";
+  leadName: string;
+  propertyName: string | null;
+  propertyAddress: string | null;
+  viewingTime: string | null;
+  leadStatus: LeadStatus;
+  viewingStatus: ViewingStatus;
+  canAct: boolean;
+  refusal: string | null;
+}
+
+export function getStaffLink(token: string): Promise<StaffLinkInfo> {
+  return request<StaffLinkInfo>(`/viewings/staff-links/${encodeURIComponent(token)}`);
+}
+
+export function confirmStaffLink(token: string): Promise<{ ok: true; action: "approve" | "reschedule"; already?: true }> {
+  return request(`/viewings/staff-links/${encodeURIComponent(token)}/confirm`, { method: "POST" });
+}
+
 export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {
   return request<Viewing>(`/viewings/${viewingId}`, {
     method: "PUT",

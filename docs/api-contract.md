@@ -37,6 +37,7 @@ Luong 7: Backend goi webhook lead-changed -> n8n dong bo sang Mautic contact -> 
 - Trong Docker Compose, backend goi: `http://n8n:5678/webhook/viewing-requested`
 - Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`; n8n kiem tra header nay, **sai thi tra 403**.
 - n8n tra `200` ngay (Respond Immediately), sau do moi xu ly AI.
+- Tu FE-35 payload them `assignedUserId` (sale phu trach, `null` neu chua co); luong 1 dung de bao dung sale.
 
 Body:
 
@@ -81,15 +82,14 @@ Chung cho moi callback:
   "reason": "Ngan sach ro rang, co lich xem nha cu the",
   "aiReply": "Noi dung email xac nhan da soan",
   "emailSent": true,
-  "staffNotified": true,
-  "approvalUrl": "http://<dia-chi-n8n>/webhook-waiting/123"
+  "staffNotified": true
 }
 ```
 
 - `level`: `HOT` | `WARM` | `COLD` (HOT khi score >= 70, WARM 40-69, COLD < 40)
 - `score`: so nguyen 0-100
 - `staffNotified`: `true` neu da thong bao nhan vien bang email; `false` neu khong gui. Tu tuan 2, luong 1 gui email nhan vien (kem link duyet) cho **moi** muc, nen thuong la `true`.
-- `approvalUrl` (tuan 2, tuy chon): gia tri `$execution.resumeUrl` cua lan chay dang cho duyet. Them `?action=approve` hoac `?action=reschedule` la duyet / doi gio.
+- `approvalUrl` (tuy chon, **bo tu FE-35**): luong 1 khong con cho duyet nen khong gui nua; backend van nhan truong nay cho cac lan chay cu dang cho luc deploy.
 - Backend luu cac truong tren va dat `automationStatus = COMPLETED`.
 
 ### 2.2. Bao loi (n8n hong giua chung)
@@ -266,6 +266,17 @@ Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `
 
 `route`: `COMMAND` (lenh /start, tin khong phai chu), `BLOCKED` (Guardrails chan), `AGENT` (AI Agent tra loi), `STAFF` (khach muon gap nhan vien), `OUT_OF_SCOPE` (ngoai pham vi). Backend che email va day so bat dau bang 0 hoac +84 dai 9-12 chu so (so dien thoai, CCCD) trong `question`, `reply` truoc khi luu.
 
+### 3.2. Link Duyet / Doi gio cho nhan vien (FE-35)
+
+| Method | Duong dan | Xac thuc | Ket qua |
+|---|---|---|---|
+| POST | `/api/viewings/{id}/staff-links` | `X-Webhook-Secret` | `{approveUrl, rescheduleUrl}` tro toi `/duyet/<ma>` tren web; 404 neu buoi xem khong co |
+| GET | `/api/viewings/staff-links/{token}` | Khong (token co chu ky) | Tom tat `{action, leadName, propertyName, propertyAddress, viewingTime, leadStatus, viewingStatus, canAct, refusal}`; khong tra SDT/email, khong doi gi. Token sai: 404 |
+| POST | `/api/viewings/staff-links/{token}/confirm` | Khong (token co chu ky) | `{ok, action, already?}`; 400 kem ly do khi khach da huy, da duyet, co buoi xem moi hon, qua gio hen, hoac AI chua cham (chi voi duyet); 502 neu n8n loi |
+| GET | `/api/users/{id}/notify-target` | `X-Webhook-Secret` | `{id, name, email, role, telegramChatId, pushToken}` cho sub-workflow thong bao; khong tra hash |
+
+Token la `base64url({v: viewingId, a: approve|reschedule}).HMAC-SHA256(WEBHOOK_SECRET)`; han dung tinh theo gio hen hien tai cua buoi xem luc bam, khong nam trong token. Xac nhan goi webhook `viewing-admin-action` voi `event` = `approved` | `reschedule_requested` va `viewingId` (luong 1b). Xem [FE-35](fe-35-thong-bao-phu-trach.md).
+
 ## Lich su thay doi
 
 | Ngay | Ai sua | Noi dung |
@@ -276,3 +287,4 @@ Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `
 | 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |
 | 10/11/2026 | Hau (local) | FE-33: API tiep nhan/tra trung theo SDT, gan/chuyen sale, ghi chu, cau hinh nhan khach; CONSULTING, email/ngan sach nullable; chi tiet trong `fe-33-nen-tiep-nhan.md` |
 | 10/11/2026 | Hoang | FE-34: `GET /api/viewings/slots`, quy tac khung gio dat lich (muc 3.1) |
+| 11/11/2026 | Hoang (local) | FE-35: link Duyet/Doi gio (muc 3.2), `GET /api/users/{id}/notify-target`, payload `viewing_requested` them `assignedUserId`, bo `approvalUrl` |

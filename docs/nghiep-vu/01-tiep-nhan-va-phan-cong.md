@@ -2,7 +2,7 @@
 
 Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3) và FE-37 (form "Thêm khách" ở mục 1.1). Còn lại: nối bot và workflow (FE-35, FE-36), giao diện người phụ trách (FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
+**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3) và FE-37 (form "Thêm khách" ở mục 1.1). FE-35 (thông báo gửi đúng sale phụ trách, nút Duyệt/Đổi giờ dùng tới giờ hẹn). Còn lại: nối bot (FE-36), giao diện người phụ trách (FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
 
 ## Tóm tắt thay đổi
 
@@ -13,7 +13,7 @@ Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ t
 | Nhận ra khách cũ bằng | Email | Số điện thoại |
 | Người phụ trách | Không có | Gán ngay khi tạo lead |
 | Ai nhận thông báo | Một email chung, một nhóm Telegram chung | Sale phụ trách |
-| Hạn phản hồi | 24 giờ báo quản lý, 3 ngày nhắc sale | 2 giờ làm việc, quá hạn báo quản lý |
+| Hạn phản hồi | 24 giờ báo quản lý, 3 ngày nhắc sale | 2 giờ làm việc, quá hạn báo quản lý (FE-38) |
 | Chọn giờ xem | Ô tự gõ, biết trùng lịch sau khi gửi | Chọn khung 1 tiếng, thấy ngay khung đã kín |
 | Giờ được hẹn | Bất kỳ, miễn ở tương lai | 8:00–19:00, sớm nhất sau 3 giờ, xa nhất 14 ngày |
 
@@ -175,7 +175,7 @@ Hệ thống **chỉ đo những gì xảy ra trong hệ thống**. Gọi điệ
 |---|---|---|
 | Hạn thao tác đầu tiên | Không có | **2 giờ**, chỉ tính trong giờ làm việc **8:00–21:00** |
 | Quá hạn | 24 giờ sau khi đặt mới báo quản lý; 3 ngày mới nhắc sale | Báo quản lý ngay khi quá hạn. Quản lý duyệt thay hoặc chuyển sale khác |
-| Nút Duyệt trong thông báo | Hết hiệu lực sau 24 giờ (node "Chờ duyệt" của luồng 1) | Dùng được tới giờ hẹn |
+| Nút Duyệt trong thông báo | Hết hiệu lực sau 24 giờ (node "Chờ duyệt" của luồng 1) | Dùng được tới giờ hẹn. **FE-35 đã làm ở local**: nút mở trang xác nhận trên web, luồng 1 không còn chờ. Xem [FE-35](../fe-35-thong-bao-phu-trach.md) |
 | Qua giờ hẹn mà chưa duyệt | Đóng "Không mua", lý do "Quá hạn không xử lý" | Giữ như hiện tại |
 
 - Khách đã đặt lịch thì "duyệt lịch" thường chính là thao tác đầu tiên, nên không cần một hạn duyệt riêng.

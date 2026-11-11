@@ -2,7 +2,7 @@
 
 Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3). Còn lại: nối bot và workflow (FE-35, FE-36), giao diện nhập tay và người phụ trách (FE-37, FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
+**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3) và FE-37 (form "Thêm khách" ở mục 1.1). Còn lại: nối bot và workflow (FE-35, FE-36), giao diện người phụ trách (FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
 
 ## Tóm tắt thay đổi
 
@@ -33,6 +33,8 @@ Không làm:
 
 ### 1.1. Nhân viên nhập tay
 
+**Đang chạy ở local từ FE-37:** trang `Thêm khách` (nút ở đầu danh sách khách, đường dẫn `/admin/leads/them`) cho mọi nhân viên đã đăng nhập. Chưa có ô "Đặt lịch xem luôn" (để task sau); sale đặt lịch hộ cho khách bằng cách vào hồ sơ khách sau khi lưu.
+
 Dành cho khách đến thẳng tay sale, không đi qua web hay bot. Trước đây những khách này chỉ nằm trong điện thoại của sale: công ty không biết, AI không chấm, báo cáo không đếm, sale nghỉ việc thì khách đi theo.
 
 Nguồn chọn trong form:
@@ -52,13 +54,13 @@ Các ô của form:
 |---|---|---|
 | Nguồn | Có | Danh sách ở trên |
 | Họ tên | Có | |
-| Số điện thoại | Có | Gõ xong thì kiểm tra trùng ngay (mục 2) |
+| Số điện thoại | Có | Gõ đủ số thì tự kiểm tra trùng sau 0,4 giây, báo "Số này đã có: lead #…" kèm link mở hồ sơ và khoá nút Lưu (mục 2) |
 | Email | Không | Khách Việt Nam nhiều người không dùng email |
 | Ngân sách | Không | Không có thì AI chấm với dữ liệu đang có |
 | Căn quan tâm | Không | Chọn được nhiều căn |
 | Ghi chú | Không | Nội dung cuộc gọi, nhu cầu |
-| Người phụ trách | Có | Mặc định là người nhập (mục 4) |
-| Đặt lịch xem luôn | Không | Chọn "có" thì hiện bộ chọn khung giờ (mục 6) |
+| Người phụ trách | Có | Mặc định là người nhập (mục 4). Danh sách chỉ có sale đang nhận khách và quản lý; người nhập đã tắt "Đang nhận khách" thì phải chọn người khác |
+| Đặt lịch xem luôn | Không | **Chưa làm** (task sau, khi đó dùng bộ chọn khung giờ ở mục 6) |
 
 ## 2. Nhận ra khách cũ
 

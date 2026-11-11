@@ -70,6 +70,12 @@ export class LeadsService {
     return lead;
   }
 
+  async findMauticContext(id: number) {
+    const lead = await this.findOne(id);
+    const { name, email, phone, phoneNormalized, level, status, source, score, mauticContactId } = lead;
+    return { leadId: id, name, email, phone, phoneNormalized, level, status, source, score, mauticContactId };
+  }
+
   // Cho GET /leads/:id: tra them viewing va property
   async findDetail(id: number) {
     const lead = await this.findOne(id);
@@ -358,6 +364,8 @@ export class LeadsService {
       name: lead.name,
       email: lead.email,
       phone: lead.phone,
+      phoneNormalized: lead.phoneNormalized,
+      mauticContactId: lead.mauticContactId,
       level: lead.level,
       status: lead.status,
       source: lead.source,

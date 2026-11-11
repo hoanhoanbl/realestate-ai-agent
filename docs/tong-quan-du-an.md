@@ -163,4 +163,6 @@ Nguyên tắc: **web làm trước, app làm sau**.
 - Các vai nhận email dùng bí danh dấu cộng:
   - Quản lý: `nhadn2457+quanly@gmail.com`
   - Nhân viên sale: `nhadn2457+nhanvien@gmail.com`
+  - 10 sale demo để thử chia khách lần lượt: `nhadn2457+nhanvien01@gmail.com` đến `+nhanvien10` (Nguyễn Minh Khang, Trần Thu Hà, Lê Quốc Bảo, Phạm Ngọc Anh, Võ Hoàng Long, Đặng Thị Mai, Bùi Văn Phúc, Hồ Thanh Tâm, Dương Gia Huy, Ngô Bảo Châu)
+- Các tài khoản trên do backend tự tạo khi khởi động (`SEED_USERS` trong `backend/src/users/users.service.ts`), ở mọi môi trường có biến `SEED_USER_PASSWORD`, kể cả server. Mật khẩu chung là giá trị biến đó. Backend chỉ tạo email còn thiếu, không đổi mật khẩu hay thông tin tài khoản đã có. Sale mới tạo đều ở trạng thái "Đang nhận khách", nên khách mới được chia vòng cho mọi sale; quản lý tắt bớt ở trang Phân quyền nếu không muốn.
   - Khách test: `nhadn2457+khach1@gmail.com`, `+khach2`, ...

@@ -82,6 +82,7 @@ Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep
 | FE-38 | `feature/FE-38-l2-han-phan-hoi` | Luồng 2 báo quản lý khi quá 2 giờ làm việc, bỏ mốc 3 ngày; luồng 4 và thống kê đếm theo khách, theo nguồn, theo sale | Hậu | Xong local, chưa PR/server. Có kiểm thử PostgreSQL và n8n với dịch vụ gửi giả lập. Xem [FE-38](fe-38-han-phan-hoi.md) |
 | FE-39 | `feature/FE-39-admin-phu-trach` | Web admin: người phụ trách, chuyển sale, ghi chú, công tắc "Đang nhận khách" | Hậu | Xong local, chưa PR/server. Đã kiểm tra quản lý/sale và màn hình 375px. Xem [FE-39](fe-39-admin-phu-trach.md) |
 | FE-40 | `feature/FE-40-l7-khong-email` | Luồng 7 đồng bộ lead không có email sang Mautic | Hậu | Xong code và kiểm thử local 10/11; chưa PR/chưa lên server. [FE-40](fe-40-l7-khong-email.md) |
+| FE-41 | `feature/FE-41-sale-mau` | Thêm 10 sale demo (`nhadn2457+nhanvien01..10@gmail.com`) vào `SEED_USERS` để thử chia khách lần lượt trên mọi môi trường, kể cả server | Hoàng | Đang làm (11/11) |
 
 ### Tuần 5 (16–22/11)
 

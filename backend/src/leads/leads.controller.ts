@@ -101,6 +101,12 @@ export class LeadsController {
 
   // --- Cho n8n (header X-Webhook-Secret) ---
 
+  @Get(':id/mautic-context')
+  @UseGuards(WebhookSecretGuard)
+  mauticContext(@Param('id', ParseIntPipe) id: number) {
+    return this.leadsService.findMauticContext(id);
+  }
+
   @Put(':id/ai-result')
   @UseGuards(WebhookSecretGuard)
   updateAiResult(

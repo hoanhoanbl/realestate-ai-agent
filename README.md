@@ -17,7 +17,7 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 | Dự án làm gì, các luồng, lộ trình | [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md) |
 | Ai làm gì tuần này, mã nhánh, mốc phát hành | [docs/danh-sach-task.md](docs/danh-sach-task.md) |
 | Quy tắc nghiệp vụ: vai trò và trạng thái, quy trình 1 tiếp nhận, 2 đặt lịch đến đặt cọc, 3 chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
-| Từng luồng n8n chạy thế nào | [docs/luong/](docs/luong/) |
+| Từng luồng n8n chạy thế nào (khung chung và bảng 12 luồng) | [docs/luong/README.md](docs/luong/README.md) |
 | Định dạng API giữa web, backend và n8n | [docs/api-contract.md](docs/api-contract.md) |
 | Quy ước giao diện web (component, điện thoại, icon, font) | [docs/giao-dien-web.md](docs/giao-dien-web.md) |
 | Cách tạo nhánh, mở PR, phát hành | [docs/quy-trinh-git.md](docs/quy-trinh-git.md) |

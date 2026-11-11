@@ -20,7 +20,7 @@ Triển khai local trên nền FE-33 và FE-35, chưa phát hành server. Phạm
 
 ## API
 
-Xem [api-contract.md mục 7](api-contract.md#7-l6-ghi-log-hoi-thoai-bot-telegram) và [mục 3.3](api-contract.md#33-lich-su-chat-telegram-cua-lead-fe-36).
+Xem [api-contract.md mục 7](api-contract.md#7-l6-ghi-log-hội-thoại-bot-telegram) và [mục 3.3](api-contract.md#33-lịch-sử-chat-telegram-của-lead-fe-36).
 
 ## Triển khai
 

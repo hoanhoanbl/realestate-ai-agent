@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Viewing } from './entities/viewing.entity';
 import { ChatLog } from '../chat-logs/chat-log.entity';
+import { ChatLogsService } from '../chat-logs/chat-logs.service';
 import { LeadIntakeService } from '../leads/lead-intake.service';
 import { LeadsService } from '../leads/leads.service';
 import { UsersService } from '../users/users.service';
@@ -55,6 +56,7 @@ const url = process.env.FE33_TEST_DATABASE_URL;
       controllers: [ViewingsController, UsersNotifyController],
       providers: [
         { provide: ViewingsService, useValue: viewings },
+        { provide: ChatLogsService, useValue: {} },
         { provide: UsersService, useValue: users },
         { provide: JwtService, useValue: new JwtService({ secret: 'fe35-local-test-only' }) },
       ],

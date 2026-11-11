@@ -31,7 +31,7 @@ Cập nhật lần cuối: 10/11/2026.
 
 | Mã | Lỗ hổng | Mức | Xong khi | Trạng thái |
 |---|---|---|---|---|
-| LH-01 | Lead chỉ được tạo khi khách đặt lịch. Khách chat Telegram, hỏi giá, để lại số mà chưa đặt thì không có trong hệ thống | Nghiêm trọng | Khách để lại số điện thoại trong bot thì có lead "Đang tư vấn" và sale được báo | Chưa làm |
+| LH-01 | Lead chỉ được tạo khi khách đặt lịch. Khách chat Telegram, hỏi giá, để lại số mà chưa đặt thì không có trong hệ thống | Nghiêm trọng | Khách để lại số điện thoại trong bot thì có lead "Đang tư vấn" và sale được báo | Xong ở local (FE-36), chưa lên server |
 | LH-02 | Không có cách đưa khách ngoài hệ thống vào (gọi hotline, biển treo tại căn, đến văn phòng, Zalo cá nhân, người quen giới thiệu). Admin không có nút tạo khách | Nghiêm trọng | Sale tạo được lead trên web admin, chọn được nguồn, lead hiện trong báo cáo theo nguồn | Xong ở local (FE-37), chưa lên server |
 | LH-03 | Mỗi lần đặt lịch là một lead. Một khách xem 2 căn thành 2 lead: AI chấm 2 lần, khách nhận 2 email, 2 sale có thể cùng xử lý, báo cáo đếm 2 khách | Nghiêm trọng | Một khách đặt 2 căn thì có 1 lead với 2 buổi xem; báo cáo đếm 1 khách | Chưa làm |
 | LH-04 | Lead không có người phụ trách. Ai bấm Duyệt trước thì người đó duyệt, không ai chịu trách nhiệm khách | Nghiêm trọng | Mọi lead có người phụ trách ngay khi tạo, theo quy tắc chia lần lượt; quản lý chuyển được | Chưa làm |
@@ -41,7 +41,7 @@ Cập nhật lần cuối: 10/11/2026.
 | LH-08 | Form đặt lịch không hiện các giờ đã có khách hẹn. Khách chỉ biết trùng sau khi gửi (lỗi 409) | Trung bình | Form hiện khung 1 tiếng, khung đã kín bị gạch trước khi khách gửi | Xong ở local (FE-34), chưa lên server |
 | LH-09 | Giờ hẹn không giới hạn: đặt được lúc 3:00 sáng, 1 phút sau lúc đặt, hay 2 năm sau. `parseViewingTime` chỉ kiểm tra giờ ở tương lai | Trung bình | Khách chỉ đặt được 8:00–19:00, sớm nhất sau 3 giờ làm việc, xa nhất 14 ngày; backend chặn cả khi gọi API thẳng | Xong ở local (FE-34), chưa lên server |
 | LH-10 | Nhận ra khách cũ bằng email (kiểm tra trùng lịch, "khách đã đặt N lần khác"). Khách đổi email hoặc không dùng email thì không nhận ra | Trung bình | Kiểm tra trùng bằng số điện thoại đã chuẩn hoá ở mọi kênh | Chưa làm |
-| LH-11 | Lịch sử chat Telegram (`chat_logs`) không gắn với lead. Sale muốn xem khách đã hỏi gì phải mở Executions của n8n | Nhỏ | Trang lead hiện lịch sử chat của khách đã để lại số | Chưa làm |
+| LH-11 | Lịch sử chat Telegram (`chat_logs`) không gắn với lead. Sale muốn xem khách đã hỏi gì phải mở Executions của n8n | Nhỏ | Trang lead hiện lịch sử chat của khách đã để lại số | Xong ở local (FE-36), chưa lên server |
 
 ## Quy trình 2, 3 và phần xuyên suốt: chưa rà
 

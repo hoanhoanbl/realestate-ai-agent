@@ -27,7 +27,7 @@ The tool body takes `name`, `phone`, optional `needs` from the model (`$fromAI`)
 - Alternative: new column `leads.telegram_chat_id`. Rejected: schema change and release SQL for something the link table (`chat_logs`) already expresses.
 
 ### D3. New logs inherit the lead from the chat's last linked log
-In `ChatLogsService.create`, when the DTO names no lead, the service selects the `lead_id` of the newest log of the same chat where `lead_id IS NOT NULL` and uses it. One lead per chat for new logs, newest link wins; old logs are never re-pointed. This keeps the flow's log node unchanged.
+In `ChatLogsService.create`, when the DTO names no lead, the service selects the `lead_id` of the newest log of the same chat where `lead_id IS NOT NULL` and uses it. One lead per chat for new logs: the first lead the chat was linked to keeps following it; old logs are never re-pointed. This keeps the flow's log node unchanged.
 
 ### D4. Notification is a separate branch after the agent, driven by the tool result
 The agent node gets `returnIntermediateSteps`. A code node after "Kiểm tra câu trả lời" reads the steps, finds the "Lưu liên hệ khách" observation, parses `{ lead, created, reopened }` and emits `{ captured, assigneeId, leadId, leadName, returning }`. If `captured`, "Báo sale khách mới" calls the FE-35 sub-workflow with `assigneeId`; the result joins the existing path to "Chuẩn bị trả lời". A failed alert does not block the customer's reply.
@@ -43,7 +43,7 @@ Confirmation, no email/budget, no repeated calls and no duplicate disclosure are
 ## Risks / Trade-offs
 
 - [Model calls the tool without confirmation] → backend validates and de-duplicates; staff see the full chat on the lead; the alert is a normal "new customer" alert.
-- [Two people share one Telegram chat] → latest link wins for new logs; older logs keep their lead.
+- [Two people share one Telegram chat] → the first lead keeps the chat; the second person's lead gets only logs still unlinked at link time. Accepted: taking over would need a column marking the chat's current lead (schema change), and the case is rare.
 - [Chat texts contain personal data the mask misses] → shown only to logged-in staff, already masked by FE-32; no new storage.
 - [Lead page conflicts with PR #63] → both add one import and one JSX line to the same file; merge #63 first or resolve by keeping both.
 - [Leads without email are skipped by flow 7] → until FE-40 (#65) is merged and its backend guard fixed, bot leads are not synced to Mautic. Not part of this change.

@@ -407,6 +407,15 @@ Chỉ phát hành cùng FE-38 (`v0.4.0`). Chi tiết: [FE-35](fe-35-thong-bao-ph
 4. Kiểm tra: đặt một lịch thử bằng khách nội bộ. Sale phụ trách nhận thông báo (email, và Telegram/push nếu đã cấu hình); Executions của luồng 1 là "success" và không có lần nào "waiting"; mở nút Duyệt thấy trang xác nhận, bấm thì khách nhận thư chốt lịch.
 5. Sale nào muốn nhận Telegram cá nhân: nhập chat id ở trang Tài khoản (FE-39). Chưa có thì chỉ nhận email.
 
+## 9e. Bot Telegram ghi nhận khách (FE-36)
+
+Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Chi tiết: [FE-36](fe-36-bot-ghi-nhan-khach.md). Không có SQL, không có biến `.env` mới.
+
+1. Deploy backend trước (thêm `chatId` cho `POST /api/leads/intake` và `POST /api/viewings`, endpoint `GET /api/leads/{id}/chat-logs`, trang lead có mục lịch sử chat).
+2. Sub-workflow `thong-bao-nhan-vien` bản FE-35 phải đã import. Import và publish `luong-6-telegram-agent.json`, restart n8n.
+3. Kiểm tra bằng bot nội bộ: nhắn hỏi nhà, nói "gọi lại cho tôi", đưa tên và số, xác nhận. Lead xuất hiện với nguồn Telegram, sale phụ trách nhận thông báo "Khách Telegram để lại số", trang lead hiện lịch sử chat. Nhắn lại bằng cùng số: thông báo "Khách cũ nhắn lại", không có lead thứ hai.
+4. Hoàn tác: import lại luồng 6 bản trước. Phần backend chỉ thêm trường tuỳ chọn và một endpoint đọc.
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

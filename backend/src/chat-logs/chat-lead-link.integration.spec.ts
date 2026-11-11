@@ -129,22 +129,36 @@ integration('FE-36: gắn lịch sử chat Telegram vào lead (PostgreSQL thật
     expect(await leadIdsOf('chat-1')).toEqual([a.body.lead.id]);
   });
 
-  // KHOẢNG TRỐNG THIẾT KẾ (chờ quyết định): spec yêu cầu log sau liên hệ mới thuộc B, nhưng D3 chỉ suy ra lead
-  // từ log đã gắn gần nhất, mà liên hệ B không để lại log nào mang B (mọi log cũ đã ở A) nên log sau vẫn theo A.
-  it.failing('chat đã gắn lead A, liên hệ mới tạo lead B: log viết sau thuộc B', async () => {
+  // Quyết định (đã sửa spec): chat theo lead đầu tiên; liên hệ thứ hai không chuyển chat sang lead mới
+  it('chat đã gắn lead A, liên hệ mới tạo lead B: log viết sau vẫn theo A', async () => {
     await log('chat-1');
-    await intakeWith({ ...person(1), chatId: 'chat-1' }).expect(201);
-    const b = await intakeWith({ ...person(2), chatId: 'chat-1' }).expect(201);
+    const a = await intakeWith({ ...person(1), chatId: 'chat-1' }).expect(201);
+    await intakeWith({ ...person(2), chatId: 'chat-1' }).expect(201);
     await log('chat-1');
-    expect((await leadIdsOf('chat-1')).at(-1)).toBe(b.body.lead.id);
+    expect(await leadIdsOf('chat-1')).toEqual([a.body.lead.id, a.body.lead.id]);
   });
 
-  it('intake không có chatId không gắn gì; chat chưa gắn thì log không có lead', async () => {
-    await log('chat-1');
-    await intakeWith(person(1)).expect(201);
-    expect(await leadIdsOf('chat-1')).toEqual([null]);
-    await log('chat-1');
-    expect(await leadIdsOf('chat-1')).toEqual([null, null]);
+  // Đúng dạng body mà công cụ "Lưu liên hệ khách" của luồng 6 gửi (chatId là chuỗi, needs có thể rỗng)
+  const toolBody = (phone: string, needs = '') => ({ name: 'Bình', phone, needs, source: 'telegram', chatId: '555' });
+
+  it('body của công cụ n8n: tạo lead không consent, gắn chat; số trùng khác định dạng dùng lại lead và không đổi chủ', async () => {
+    await log('555', 'cho mình xin tư vấn');
+    const first = await intakeWith(toolBody('0901 234 567')).expect(201);
+    expect(first.body).toMatchObject({ created: true, lead: { source: 'telegram', consentMarketing: false, status: 'CONSULTING' } });
+    expect(await leadIdsOf('555')).toEqual([first.body.lead.id]);
+    const again = await intakeWith({ ...toolBody('+84 901-234-567', 'căn 2PN'), name: 'Tên khác' }).expect(201);
+    expect(again.body.created).toBe(false);
+    expect(again.body.lead.id).toBe(first.body.lead.id);
+    expect(again.body.lead.name).toBe('Bình');
+    expect(again.body.lead.assignedUserId).toBe(first.body.lead.assignedUserId);
+    expect(await db.query('SELECT count(*)::int AS n FROM leads')).toEqual([{ n: 1 }]);
+  });
+
+  it('số điện thoại sai ("09012"): 400, không tạo lead, không gắn chat', async () => {
+    await log('555');
+    await intakeWith(toolBody('09012')).expect(400);
+    expect(await db.query('SELECT count(*)::int AS n FROM leads')).toEqual([{ n: 0 }]);
+    expect(await leadIdsOf('555')).toEqual([null]);
   });
 
   it('POST /leads (JWT) bỏ qua chatId trong body', async () => {

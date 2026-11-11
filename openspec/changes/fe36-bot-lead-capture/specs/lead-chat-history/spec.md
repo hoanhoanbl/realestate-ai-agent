@@ -15,10 +15,11 @@ When a lead is created, reopened or matched by a call that carries a Telegram ch
 
 #### Scenario: Chat already linked elsewhere
 - **WHEN** a chat's earlier logs are linked to lead 12 and a new contact in the same chat creates lead 30
-- **THEN** the earlier logs stay on lead 12 and only logs written afterwards belong to lead 30
+- **THEN** the earlier logs stay on lead 12 and no log is moved
+- **AND** logs written afterwards still follow lead 12, because the chat's newest linked log belongs to it (known limit: a second contact in the same chat does not take over the chat)
 
 ### Requirement: Later messages follow the lead
-A bot log written for a chat that has a linked lead SHALL be linked to the lead that the chat's most recent linked log belongs to, without the caller naming the lead.
+A bot log written for a chat that has a linked lead SHALL be linked to the lead that the chat's most recent linked log belongs to (the first lead the chat was linked to, since a later link moves no existing log), without the caller naming the lead.
 
 #### Scenario: Conversation continues
 - **WHEN** a chat linked to lead 30 produces another log

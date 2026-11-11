@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
 import StatusBadge from "@/components/StatusBadge";
-import { Alert, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
+import { Alert, buttonClass, CARD, EmptyState, Icon, INPUT, PageHeader, Skeleton, type IconName } from "@/components/ui";
 import {
   formatDateTime,
   formatVnd,
@@ -17,6 +17,7 @@ import {
   type Level,
 } from "@/lib/api";
 import { normalizeText } from "@/lib/property";
+import { isHotLead } from "@/lib/mautic";
 
 // Mức AI chấm + hai nhóm theo điểm tương tác Mautic (Hậu, trục thứ hai)
 type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
@@ -40,7 +41,7 @@ function isEngaged(lead: Lead): boolean {
 function matchesFilter(lead: Lead, filter: Filter): boolean {
   if (filter === "ALL") return true;
   if (filter === "HIGH_ENGAGEMENT") return isEngaged(lead);
-  if (filter === "VIP_HOT") return lead.level === "HOT" && isEngaged(lead);
+  if (filter === "VIP_HOT") return isHotLead(lead) && isEngaged(lead);
   return lead.level === filter;
 }
 
@@ -58,7 +59,7 @@ function MauticPoints({ lead }: { lead: Lead }) {
       >
         {engaged && <Icon name="flame" className="h-3.5 w-3.5" />}+{pts} pts
       </span>
-      {lead.level === "HOT" && engaged && (
+      {isHotLead(lead) && engaged && (
         <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-700">
           <Icon name="rocket" className="h-3.5 w-3.5" />
           Ưu tiên
@@ -191,7 +192,15 @@ function LeadsContent() {
             ? "Điểm và mức do AI chấm. Đang có khách chờ chấm điểm, trang tự cập nhật mỗi 5 giây."
             : "Điểm và mức do AI chấm. Trang tự cập nhật định kỳ."
         }
-        actions={updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+        actions={
+          <>
+            {updatedAt && <p className="text-xs text-slate-500">Cập nhật lúc {updatedAt.toLocaleTimeString("vi-VN")}</p>}
+            <Link href="/admin/leads/them" className={buttonClass("primary")}>
+              <Icon name="plus" className="h-4 w-4" />
+              Thêm khách
+            </Link>
+          </>
+        }
       />
 
       <div className={`mt-5 flex flex-wrap items-center gap-3 p-3 ${CARD}`}>

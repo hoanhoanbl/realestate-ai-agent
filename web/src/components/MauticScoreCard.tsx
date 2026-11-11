@@ -1,7 +1,7 @@
 import LevelBadge from "@/components/LevelBadge";
 import { Icon, type IconName } from "@/components/ui";
 import type { LeadDetail } from "@/lib/api";
-import { MAUTIC_PUBLIC_URL } from "@/lib/mautic";
+import { isHotLead, MAUTIC_PUBLIC_URL } from "@/lib/mautic";
 
 interface MauticScoreCardProps {
   lead: LeadDetail;
@@ -11,7 +11,7 @@ export default function MauticScoreCard({ lead }: MauticScoreCardProps) {
   const mauticUrl = MAUTIC_PUBLIC_URL;
   const points = lead.mauticPoints ?? 0;
   const score = lead.score ?? null;
-  const isHot = lead.level === "HOT" || (score !== null && score >= 75);
+  const isHot = isHotLead(lead);
   const isHighEngagement = points >= 20;
 
   // Ma trận 2 trục (Two-Axis Scoring Matrix)

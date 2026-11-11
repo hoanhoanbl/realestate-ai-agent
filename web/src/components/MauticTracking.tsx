@@ -12,21 +12,22 @@ declare global {
   }
 }
 
+function isPrivatePath(pathname: string) {
+  return ["/ky", "/cam-nhan", "/admin", "/lich", "/hop-dong"].some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function MauticTrackingInner() {
   const pathname = usePathname();
+  const canTrack = Boolean(
+    MAUTIC_PUBLIC_URL && pathname && !isPrivatePath(pathname),
+  );
 
   // Khi chuyển trang trong SPA Next.js, gửi sự kiện pageview mới cho Mautic
-  // Không theo dõi các đường dẫn chứa token nhạy cảm (ký HĐ, cảm nhận) hoặc trang admin
+  // Không gửi URL chứa token hoặc trang admin sang Mautic.
   useEffect(() => {
-    if (
-      !MAUTIC_PUBLIC_URL ||
-      !pathname ||
-      pathname.startsWith("/ky") ||
-      pathname.startsWith("/cam-nhan") ||
-      pathname.startsWith("/admin")
-    ) {
-      return;
-    }
+    if (!canTrack) return;
 
     if (typeof window !== "undefined") {
       // Đảm bảo hàng đợi mt luôn khả dụng kể cả khi useEffect chạy trước khi mtc.js tải xong
@@ -37,36 +38,38 @@ function MauticTrackingInner() {
           ((window.mt as unknown as { q: unknown[] }).q =
             (window.mt as unknown as { q: unknown[] }).q || []).push(args);
         };
-      window.mt("send", "pageview");
+      let referrer = document.referrer;
+      try {
+        if (referrer && isPrivatePath(new URL(referrer).pathname)) referrer = "";
+      } catch {
+        referrer = "";
+      }
+      // Chốt URL tại lúc gọi để hàng đợi tải chậm không đọc URL token sau khi chuyển trang.
+      window.mt("send", "pageview", { page_url: window.location.href, referrer });
     }
-  }, [pathname]);
+  }, [pathname, canTrack]);
 
-  return null;
-}
-
-export default function MauticTracking() {
-  // Biến trống (chưa cấu hình NEXT_PUBLIC_MAUTIC_URL) thì không tải script
-  if (!MAUTIC_PUBLIC_URL) {
-    return null;
-  }
-
+  if (!canTrack) return null;
   return (
-    <>
-      <Script
-        id="mautic-tracking"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+    <Script
+      id="mautic-tracking"
+      strategy="afterInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
             (function(w,d,t,u,n,a,m){w['MauticTrackingObject']=n;
                 w[n]=w[n]||function(){(w[n].q=w[n].q||[]).push(arguments)},a=d.createElement(t),
                 m=d.getElementsByTagName(t)[0];a.async=1;a.src=u;m.parentNode.insertBefore(a,m)
             })(window,document,'script','${MAUTIC_PUBLIC_URL}/mtc.js','mt');
           `,
-        }}
-      />
-      <Suspense fallback={null}>
-        <MauticTrackingInner />
-      </Suspense>
-    </>
+      }}
+    />
+  );
+}
+
+export default function MauticTracking() {
+  return (
+    <Suspense fallback={null}>
+      <MauticTrackingInner />
+    </Suspense>
   );
 }

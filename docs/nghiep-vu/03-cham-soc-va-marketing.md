@@ -85,12 +85,16 @@ Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang l
 
 | | Tương tác cao (từ 20 điểm) | Tương tác thấp |
 |---|---|---|
-| **Khách nóng** (HOT hoặc điểm AI từ 75; sẽ đổi thành 70 cho khớp mức HOT ở BF-07) | Ưu tiên số 1, chốt cọc ngay | Tiềm năng cao nhưng đang nguội |
+| **Khách nóng** (HOT hoặc điểm AI từ 70) | Ưu tiên số 1, chốt cọc ngay | Tiềm năng cao nhưng đang nguội |
 | **Khách khác** | Tương tác bứt phá, cần ưu tiên | Đang nuôi tự động (Mautic) |
+
+Trang tổng quan, thẻ chi tiết và bộ lọc "Ưu tiên chốt cọc" dùng chung quy tắc HOT hoặc điểm AI từ 70. Với hồ sơ cũ có điểm từ 70 nhưng nhãn mức chưa khớp, ba nơi vẫn xếp cùng nhóm ưu tiên. Các bộ lọc mức HOT/WARM/COLD tiếp tục dùng nhãn AI đã lưu; ma trận không tự sửa nhãn hoặc điểm khách.
 
 ## 5. Theo dõi hành vi trên web khách
 
-Web khách gắn script theo dõi của Mautic: mỗi lần khách chuyển trang, Mautic ghi một lượt xem. **Không** theo dõi các trang có mã riêng (`/ky`, `/cam-nhan`) và trang quản trị (`/admin`). Hai trang có mã riêng còn lại (`/lich`, `/hop-dong`) hiện vẫn bị theo dõi, sẽ bỏ ở BF-07.
+Web khách gắn script theo dõi của Mautic: mỗi lần khách chuyển trang công khai, ứng dụng gửi một lượt xem. **Không** tải script hoặc gửi lượt xem trên `/ky`, `/cam-nhan`, `/lich`, `/hop-dong`, `/admin` và các trang con của chúng. Nếu script đã tải từ trang công khai trước đó thì không tải lại hoặc gửi pageview mới khi vào trang bị loại trừ.
+
+URL lượt xem được chốt khi gửi vào hàng đợi; chuyển sang trang chứa token lúc script đang tải không làm lượt xem trước đó dùng URL mới. Khi quay về trang công khai, referrer thuộc các đường dẫn bị loại trừ được để trống để không chuyển mã riêng sang Mautic. Thay đổi BF-07 ngăn ghi mới qua component này, không tự xóa dữ liệu tracking đã lưu trước đó; Hoàng và Hậu cần kiểm tra dữ liệu cũ và xử lý riêng nếu có URL chứa token.
 
 Script hiện chạy cho mọi khách, chưa hỏi đồng ý theo dõi. Làm banner đồng ý hay ghi thành hạn chế đã biết: chưa chốt (xem `danh-sach-task.md`).
 

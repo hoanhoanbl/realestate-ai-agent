@@ -278,3 +278,7 @@ Can `X-Webhook-Secret`. Bang `chat_logs` tu tao khi backend khoi dong (TypeORM `
 | 06/11/2026 | Hoang | FE-32: `POST /api/chat-logs`, bang `chat_logs` cho log hoi thoai luong 6 |
 | 10/11/2026 | Hau (local) | FE-33: API tiep nhan/tra trung theo SDT, gan/chuyen sale, ghi chu, cau hinh nhan khach; CONSULTING, email/ngan sach nullable; chi tiet trong `fe-33-nen-tiep-nhan.md` |
 | 10/11/2026 | Hoang | FE-34: `GET /api/viewings/slots`, quy tac khung gio dat lich (muc 3.1) |
+
+### FE-40: hồ sơ đồng bộ Mautic
+
+GET /api/leads/:id/mautic-context dùng X-Webhook-Secret. Trả leadId, name, email (có thể null), phone, phoneNormalized, level, status, source, score, mauticContactId; không trả link duyệt. L7 đọc lại hồ sơ hiện tại để đồng bộ contact không email. Xem [FE-40](fe-40-l7-khong-email.md).

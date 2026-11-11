@@ -104,7 +104,7 @@ integration(
         controllers: [LeadsController, UsersController],
         providers: [
           { provide: LeadIntakeService, useValue: service },
-          { provide: LeadsService, useValue: {} },
+          { provide: LeadsService, useValue: new LeadsService(db.getRepository(Lead), db.getRepository(LeadEvent), db.getRepository(Viewing), db.getRepository(Property), {} as any) },
           { provide: UsersService, useValue: users },
           { provide: JwtService, useValue: jwt },
         ],
@@ -164,6 +164,11 @@ integration(
           .send(input(2))
           .expect(201);
         expect(received.body.lead.assignedUserId).toBe(sales[0].id);
+        await request(http).get(`/api/leads/${received.body.lead.id}/mautic-context`).expect(401);
+        const mauticContext = await request(http).get(`/api/leads/${received.body.lead.id}/mautic-context`)
+          .set('X-Webhook-Secret', process.env.WEBHOOK_SECRET).expect(200);
+        expect(mauticContext.body).toMatchObject({ leadId: received.body.lead.id, phoneNormalized: '0900000002', email: null, mauticContactId: null });
+        expect(mauticContext.body).not.toHaveProperty('approvalUrl');
         await request(http)
           .put(`/api/leads/${received.body.lead.id}/assignee`)
           .auth(saleToken, { type: 'bearer' })

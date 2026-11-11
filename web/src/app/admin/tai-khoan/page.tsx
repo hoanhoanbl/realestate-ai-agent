@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createUser, formatDateTime, getUsers, type UserAccount } from "@/lib/api";
+import { createUser, formatDateTime, getUsers, type UserAccount, type UserRoutingInfo } from "@/lib/api";
+import UserRoutingSettings from "@/components/UserRoutingSettings";
 import { useSession, type Role } from "@/lib/auth";
 import { Button, Icon, PageHeader } from "@/components/ui";
 
@@ -31,6 +32,9 @@ interface PermissionRow {
 
 // Khớp bảng "Vai trò và quyền" ở docs/nghiep-vu/vai-tro-va-trang-thai.md mục 3. Quyền thật do backend kiểm, bảng này để đối chiếu
 const PERMISSIONS_MATRIX: PermissionRow[] = [
+  { feature: "Ghi chú kết quả liên hệ", description: "Sale ghi chú cho khách mình phụ trách; quản lý ghi chú mọi khách", sale: true, manager: true },
+  { feature: "Chuyển người phụ trách", description: "Chuyển sale và đặt lại hạn phản hồi, có nhật ký", sale: false, manager: true },
+  { feature: "Cấu hình nhận khách", description: "Sale chỉnh công tắc và Telegram của mình; quản lý chỉnh mọi tài khoản", sale: true, manager: true },
   {
     feature: "Xem khách, lịch xem, hợp đồng, số liệu tổng quan",
     description: "Danh sách và chi tiết khách, mức AI chấm, lịch xem nhà, hợp đồng, việc cần làm trên trang Tổng quan",
@@ -107,6 +111,7 @@ export default function PermissionsPage() {
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
+    if (session?.user.role !== "MANAGER") return;
     let cancelled = false;
     getUsers()
       .then((data) => {
@@ -121,15 +126,18 @@ export default function PermissionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [version]);
+  }, [version, session?.user.role]);
+
+  function routingUpdated(value: UserRoutingInfo) {
+    setUsers(list => list?.map(user => user.id === value.id ? { ...user, ...value } : user) ?? null);
+    setSuccessMsg(`Đã lưu cấu hình nhận khách của ${value.name}.`);
+  }
 
   if (session && session.user.role !== "MANAGER") {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <h2 className="text-lg font-bold">Không có quyền truy cập</h2>
-        <p className="mt-2 text-sm">
-          Trang quản trị tài khoản và phân quyền chỉ dành riêng cho tài khoản có vai trò <b>Quản lý (MANAGER)</b>.
-        </p>
+      <div className="space-y-5">
+        <PageHeader title="Nhận khách và liên hệ" description="Cấu hình nhận khách mới và Telegram cá nhân của bạn." />
+        <section className="max-w-xl rounded-xl border border-slate-200 bg-white p-5 shadow-card"><UserRoutingSettings /></section>
       </div>
     );
   }
@@ -183,7 +191,7 @@ export default function PermissionsPage() {
       />
 
       {successMsg && (
-        <div className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200">
+        <div role="status" className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200">
           {successMsg}
         </div>
       )}
@@ -210,7 +218,7 @@ export default function PermissionsPage() {
             {/* Điện thoại: dạng thẻ */}
             <ul className="space-y-2 md:hidden">
               {users.map((u) => (
-                <li key={u.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+                <li key={u.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
                     {u.name.trim().charAt(0).toUpperCase()}
                   </span>
@@ -219,6 +227,7 @@ export default function PermissionsPage() {
                     <span className="block text-xs text-slate-600 [overflow-wrap:anywhere]">{u.email}</span>
                   </span>
                   <RoleBadge role={u.role} />
+                  <div className="w-full border-t border-slate-100 pt-3"><UserRoutingSettings key={`${u.id}:${u.acceptingLeads}:${u.telegramChatId}`} user={u} onUpdated={routingUpdated} /></div>
                 </li>
               ))}
             </ul>
@@ -231,6 +240,7 @@ export default function PermissionsPage() {
                     <th className="px-4 py-3">Email đăng nhập</th>
                     <th className="px-4 py-3">Vai trò</th>
                     <th className="px-4 py-3">Ngày tạo</th>
+                    <th className="min-w-64 px-4 py-3">Nhận khách và Telegram</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -242,6 +252,7 @@ export default function PermissionsPage() {
                         <RoleBadge role={u.role} />
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(u.createdAt)}</td>
+                      <td className="max-w-xs px-4 py-3"><UserRoutingSettings key={`${u.id}:${u.acceptingLeads}:${u.telegramChatId}`} user={u} onUpdated={routingUpdated} /></td>
                     </tr>
                   ))}
                 </tbody>

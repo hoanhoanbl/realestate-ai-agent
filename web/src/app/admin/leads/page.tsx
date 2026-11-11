@@ -11,6 +11,7 @@ import {
   formatDateTime,
   formatVnd,
   getLeads,
+  getAssignees,
   sourceLabel,
   type Lead,
   type LeadStatus,
@@ -136,6 +137,14 @@ function LeadsContent() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [owners, setOwners] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    getAssignees().then(users => { if (active) setOwners(Object.fromEntries(users.map(u => [u.id, u.name]))); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const ownerName = (lead: Lead) => lead.assignedUserId ? owners[lead.assignedUserId] ?? `Nhân viên #${lead.assignedUserId}` : "Chưa phân công";
 
   // Có lead nào đang PENDING (chờ AI chấm điểm) thì tự tải lại thường xuyên hơn
   const hasPending = useMemo(() => leads?.some((l) => l.automationStatus === "PENDING") ?? false, [leads]);
@@ -281,6 +290,7 @@ function LeadsContent() {
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Khách</th>
+                  <th className="px-4 py-3">Phụ trách</th>
                   <th className="px-4 py-3">Ngân sách</th>
                   <th className="px-4 py-3">AI chấm</th>
                   <th className="px-4 py-3">Mautic</th>
@@ -302,6 +312,7 @@ function LeadsContent() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{sourceLabel(lead.source)}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-slate-700">{ownerName(lead)}</td>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">{formatVnd(lead.budget)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -355,6 +366,7 @@ function LeadsContent() {
                     </div>
                   </div>
                   {lead.reason && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{lead.reason}</p>}
+                  <p className="mt-2 text-sm text-slate-600">Phụ trách: <span className="font-medium">{ownerName(lead)}</span></p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <LeadStatusBadge status={lead.status} />
                     <StatusBadge status={lead.automationStatus} />

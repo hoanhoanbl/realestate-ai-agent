@@ -20,6 +20,11 @@ class PushTokenDto {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('me/routing')
+  myRouting(@Req() req: { user: AuthUser }) {
+    return this.usersService.findRoutingById(req.user.id);
+  }
+
   @Get('assignees')
   findAssignees() {
     return this.usersService.findAssignees();

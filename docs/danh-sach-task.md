@@ -81,7 +81,7 @@ Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep
 | FE-36 | `feature/FE-36-l6-tao-lead` | Luồng 6: bot lưu liên hệ khi khách để lại số, báo sale phụ trách, gắn lịch sử chat vào lead; trang lead hiện lịch sử chat | Hoàng | Xong code ở local, chưa PR. Dựa trên FE-35. Change OpenSpec `fe36-bot-lead-capture`; xem [FE-36](fe-36-bot-ghi-nhan-khach.md). Còn chạy thử luồng 6 với Gemini và Telegram thật |
 | FE-37 | `feature/FE-37-them-khach` | Web admin: form "Thêm khách" cho khách ngoài hệ thống (nguồn, tra trùng số khi gõ, người phụ trách, căn quan tâm). Chưa có "Đặt lịch xem luôn". Change OpenSpec `fe37-staff-add-customer` | Hoàng | Xong code ở local, chưa PR |
 | FE-38 | `feature/FE-38-l2-han-phan-hoi` | Luồng 2 báo quản lý khi quá 2 giờ làm việc, bỏ mốc 3 ngày; luồng 4 và thống kê đếm theo khách, theo nguồn, theo sale | Hậu | Chờ FE-33 |
-| FE-39 | `feature/FE-39-admin-phu-trach` | Web admin: người phụ trách, chuyển sale, ghi chú, công tắc "Đang nhận khách" | Hậu | Chờ FE-33 |
+| FE-39 | `feature/FE-39-admin-phu-trach` | Web admin: người phụ trách, chuyển sale, ghi chú, công tắc "Đang nhận khách" | Hậu | Xong local, chưa PR/server. Đã kiểm tra quản lý/sale và màn hình 375px. Xem [FE-39](fe-39-admin-phu-trach.md) |
 | FE-40 | `feature/FE-40-l7-khong-email` | Luồng 7 đồng bộ lead không có email sang Mautic | Hậu | Xong code và kiểm thử local 10/11; chưa PR/chưa lên server. [FE-40](fe-40-l7-khong-email.md) |
 
 ### Tuần 5 (16–22/11)

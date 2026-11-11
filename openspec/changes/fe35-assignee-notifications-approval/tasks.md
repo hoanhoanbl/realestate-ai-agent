@@ -29,7 +29,8 @@
 ## 6. n8n: flow 1 stops waiting
 
 - [x] 6.1 In `luong-1-dat-lich.json` request the staff links from the backend and pass `assigneeId` plus the links into the notification; remove the push nodes, the Wait, "Kết quả duyệt" and every branch behind it (replies, customer emails, CONFIRMED update, approved/reschedule/timeout logs, Telegram status update); stop sending `approvalUrl`. Verify: `node scripts/check-*` for node references still passes and the JSON imports into local n8n with no dangling connection.
-- [ ] 6.2 Run flow 1 end to end on local n8n with a real booking: sale receives the notification with working links; execution finishes (no waiting execution). Verify: n8n Executions shows "success", none "waiting".
+- [x] 6.2 Run flow 1 end to end on local n8n with a real booking: sale receives the notification with working links; execution finishes (no waiting execution). Verify: n8n Executions shows "success", none "waiting".
+  - Ghi chú: chạy ngày 11/11 sau khi import bản repo (id `prt5invo7qugQx74`), publish, restart n8n và build lại backend từ `dev`. Đặt lịch qua `POST /api/viewings` (căn 4, lead 127, giao sale #2): execution `luong-1-dat-lich` #351 `success` sau 22 giây, không có `waitTill`; thông báo `thong-bao-nhan-vien` #352 `success`, Telegram trả `ok`, nội dung có link "Duyệt lịch" và "Đổi giờ"; lead có `AI_SCORED`, `automationStatus = COMPLETED`. Chỉ còn 1 execution "waiting" là #88 (17/10, bản flow cũ), không thuộc lần chạy này. Chưa bấm link Duyệt trong tin Telegram (phần đó đã kiểm ở các task 3 và 5.1). Dữ liệu thử đã xoá (lead 127, viewing 125); contact Mautic #3 của email thử vẫn còn.
 
 ## 7. End-to-end and release notes
 

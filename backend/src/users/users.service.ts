@@ -66,6 +66,14 @@ export class UsersService implements OnModuleInit {
     return users.map(({ id, name, role, acceptingLeads }) => ({ id, name, role, acceptingLeads }));
   }
 
+  // Cho n8n (thong-bao-nhan-vien) biết gửi thông báo cho người phụ trách bằng kênh nào. Không bao giờ trả passwordHash.
+  async findNotifyTarget(id: number) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Không tìm thấy nhân viên');
+    const { name, email, role, telegramChatId, pushToken } = user;
+    return { id, name, email, role, telegramChatId, pushToken };
+  }
+
   async updateRouting(id: number, dto: UpdateRoutingDto, actor: AuthUser): Promise<User> {
     if (actor.role !== 'MANAGER' && actor.id !== id) throw new ForbiddenException('Chỉ được sửa cấu hình nhận khách của mình');
     return this.userRepository.manager.transaction(async em => {

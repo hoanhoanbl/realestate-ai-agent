@@ -2,7 +2,7 @@
 
 Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ thống từ đâu, ai phụ trách, sale phải phản hồi trong bao lâu, khách được hẹn xem vào giờ nào. Quy trình sau: [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) (duyệt lịch, xem nhà, đặt cọc). Vai trò và trạng thái chung: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các lỗ hổng dẫn tới tài liệu này: [../danh-sach-lo-hong.md](../danh-sach-lo-hong.md), quy trình 1.
 
-**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3) và FE-37 (form "Thêm khách" ở mục 1.1). Còn lại: nối bot và workflow (FE-35, FE-36), giao diện người phụ trách (FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
+**Trạng thái:** đã chốt ngày 10/11/2026. Đã làm ở local, chưa triển khai server: FE-33 (dữ liệu, API nhận khách và tra trùng, chia và chuyển sale, ghi chú, hạn phản hồi; hợp đồng API và bước nâng cấp: [FE-33](../fe-33-nen-tiep-nhan.md)) và FE-34 (khung giờ đặt lịch ở mục 6, khách cũ đặt thêm lịch trên cùng lead ở mục 3) và FE-37 (form "Thêm khách" ở mục 1.1). FE-35 (thông báo gửi đúng sale phụ trách, nút Duyệt/Đổi giờ dùng tới giờ hẹn). FE-36 (bot Telegram lưu liên hệ khách, báo sale, gắn lịch sử chat vào lead ở mục 3.4). Còn lại: giao diện người phụ trách (FE-39), cảnh báo quá hạn và báo cáo (FE-38). Phần ghi "đang chạy" đã làm; phần còn lại là thiết kế đã chốt.
 
 ## Tóm tắt thay đổi
 
@@ -13,7 +13,7 @@ Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ t
 | Nhận ra khách cũ bằng | Email | Số điện thoại |
 | Người phụ trách | Không có | Gán ngay khi tạo lead |
 | Ai nhận thông báo | Một email chung, một nhóm Telegram chung | Sale phụ trách |
-| Hạn phản hồi | 24 giờ báo quản lý, 3 ngày nhắc sale | 2 giờ làm việc, quá hạn báo quản lý |
+| Hạn phản hồi | 24 giờ báo quản lý, 3 ngày nhắc sale | 2 giờ làm việc, quá hạn báo quản lý (FE-38) |
 | Chọn giờ xem | Ô tự gõ, biết trùng lịch sau khi gửi | Chọn khung 1 tiếng, thấy ngay khung đã kín |
 | Giờ được hẹn | Bất kỳ, miễn ở tương lai | 8:00–19:00, sớm nhất sau 3 giờ, xa nhất 14 ngày |
 
@@ -22,7 +22,7 @@ Quy tắc cho chặng đầu tiên của vòng đời khách: khách vào hệ t
 | Kênh | Tạo lead khi | Nguồn ghi vào lead |
 |---|---|---|
 | Web: form đặt lịch ở trang chi tiết nhà | Khách gửi form (giữ như hiện tại) | Lấy từ `?utm_source=`, không có thì "Trực tiếp" |
-| Telegram bot (luồng 6) | **Mới:** khách để lại số điện thoại trong chat, kể cả khi chưa đặt lịch. Hiện tại chỉ tạo khi khách đặt lịch qua bot | Telegram |
+| Telegram bot (luồng 6) | Khách để lại số điện thoại trong chat, kể cả khi chưa đặt lịch (FE-36, local); bot hỏi tên và số, nhắc lại, chờ khách xác nhận rồi mới lưu | Telegram |
 | Nhân viên nhập tay trên web admin | **Mới:** sale hoặc quản lý bấm "Thêm khách" | Một trong các nguồn ở mục 1.1 |
 
 Không làm:
@@ -118,7 +118,7 @@ Thêm một trạng thái đầu **"Đang tư vấn"** (`CONSULTING`), đứng t
 
 ### 3.4. Telegram
 
-Khi khách để lại số điện thoại trong bot, chat Telegram đó được gắn vào lead. Sale đọc lịch sử chat ngay trong trang lead, không phải mở n8n.
+Khi khách để lại số điện thoại trong bot (FE-36, đã làm ở local), chat Telegram đó được gắn vào lead: các log cũ của chat chưa thuộc lead nào chuyển sang lead, log sau tự theo lead. Một chat theo lead đầu tiên; để lại số thứ hai trong cùng chat không chuyển chat sang lead mới. Sale phụ trách nhận thông báo ngay ("Khách Telegram để lại số", hoặc "Khách cũ nhắn lại" nếu số đã có hồ sơ) và đọc lịch sử chat trong trang lead, không phải mở n8n. Bot không hỏi email, ngân sách và không thu đồng ý nhận tin quảng cáo. Chi tiết và giới hạn: [FE-36](../fe-36-bot-ghi-nhan-khach.md).
 
 ## 4. Gán sale
 
@@ -175,7 +175,7 @@ Hệ thống **chỉ đo những gì xảy ra trong hệ thống**. Gọi điệ
 |---|---|---|
 | Hạn thao tác đầu tiên | Không có | **2 giờ**, chỉ tính trong giờ làm việc **8:00–21:00** |
 | Quá hạn | 24 giờ sau khi đặt mới báo quản lý; 3 ngày mới nhắc sale | Báo quản lý ngay khi quá hạn. Quản lý duyệt thay hoặc chuyển sale khác |
-| Nút Duyệt trong thông báo | Hết hiệu lực sau 24 giờ (node "Chờ duyệt" của luồng 1) | Dùng được tới giờ hẹn |
+| Nút Duyệt trong thông báo | Hết hiệu lực sau 24 giờ (node "Chờ duyệt" của luồng 1) | Dùng được tới giờ hẹn. **FE-35 đã làm ở local**: nút mở trang xác nhận trên web, luồng 1 không còn chờ. Xem [FE-35](../fe-35-thong-bao-phu-trach.md) |
 | Qua giờ hẹn mà chưa duyệt | Đóng "Không mua", lý do "Quá hạn không xử lý" | Giữ như hiện tại |
 
 - Khách đã đặt lịch thì "duyệt lịch" thường chính là thao tác đầu tiên, nên không cần một hạn duyệt riêng.
@@ -241,7 +241,7 @@ FE-40 Luồng 7 lead không email (Hậu): chờ chốt mục 8
 | FE-33 | Hậu | **PR nền.** Mọi thay đổi dữ liệu của quy trình này, làm một lần: bảng lead (người phụ trách, `CONSULTING`, số điện thoại chuẩn hoá), bảng nhân viên (Telegram cá nhân, "Đang nhận khách"), loại sự kiện mới (gán sale, chuyển sale, ghi chú, quá hạn phản hồi). API tạo lead dùng chung cho mọi kênh có kiểm tra trùng số điện thoại; chia lần lượt; API chuyển sale; API ghi chú. Thêm sẵn hàm gọi API mới vào `web/src/lib/api.ts` | LH-03, LH-04, LH-10 |
 | FE-34 | Hoàng | Backend buổi xem: khách cũ đặt thêm lịch trên cùng lead (mỗi lúc tối đa một buổi xem đang mở), huỷ hoặc không đến không đóng lead, hợp đồng lấy buổi đã đến gần nhất. API khung giờ đã kín, chặn giờ hẹn ngoài 8:00–19:00, sớm hơn 3 giờ, xa hơn 14 ngày. Web khách: bộ chọn ngày và khung giờ. **Đã làm ở local** (change OpenSpec `fe34-repeat-viewings-time-slots`); chưa chạy thử luồng 1, 6, 7 trên n8n thật | LH-05, LH-08, LH-09 |
 | FE-35 | Hoàng | Luồng 1: chấm điểm khi tạo lead, tách khỏi duyệt lịch; nút Duyệt dùng được tới giờ hẹn; bỏ mốc 24 giờ. Luồng 1b theo buổi xem. Sub-workflow thông báo nhân viên gửi cho sale phụ trách (Telegram cá nhân, push, email) thay email cứng | LH-06 |
-| FE-36 | Hoàng | Luồng 6: khách để lại số điện thoại thì gọi API tạo lead; gắn `chat_logs` vào lead; trang lead hiện lịch sử chat | LH-01, LH-11 |
+| FE-36 | Hoàng | Luồng 6: khách để lại số điện thoại thì gọi API tạo lead; gắn `chat_logs` vào lead; trang lead hiện lịch sử chat. **Đã làm ở local** (change OpenSpec `fe36-bot-lead-capture`); chưa chạy thử với Gemini và Telegram thật | LH-01, LH-11 |
 | FE-37 | Hoàng | Web admin: form "Thêm khách" (mục 1.1), báo trùng số điện thoại ngay khi gõ | LH-02 |
 | FE-38 | Hậu | Luồng 2: báo quản lý khi quá 2 giờ làm việc chưa có thao tác đầu tiên, bỏ mốc nhắc 3 ngày; nhắc và điểm danh theo từng buổi xem. Luồng 4 và thống kê: đếm theo khách, thêm số lead theo nguồn và theo sale | LH-07 |
 | FE-39 | Hậu | Web admin: cột người phụ trách ở danh sách lead, khối người phụ trách, nút chuyển sale và ô ghi chú trên trang lead, công tắc "Đang nhận khách" ở trang tài khoản | LH-04 |

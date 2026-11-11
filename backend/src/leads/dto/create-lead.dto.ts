@@ -74,6 +74,17 @@ export class CreateLeadDto {
   note?: string;
 }
 
+// Chỉ POST /leads/intake (webhook secret) dùng lớp này; POST /leads (JWT) dùng CreateLeadDto nên chatId bị bỏ.
+export class IntakeLeadDto extends CreateLeadDto {
+  // Id cuộc chat Telegram do n8n truyền, để gắn lịch sử chat vào lead (FE-36)
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  chatId?: string;
+}
+
 export class AssignLeadDto {
   @IsInt()
   @Min(1)

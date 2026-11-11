@@ -8,6 +8,7 @@ import { ViewingsService } from './viewings.service';
 import { Viewing } from './entities/viewing.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { Property } from '../properties/entities/property.entity';
+import { ChatLogsModule } from '../chat-logs/chat-logs.module';
 import { LeadsModule } from '../leads/leads.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { LeadsModule } from '../leads/leads.module';
     TypeOrmModule.forFeature([Viewing, Lead, Property]),
     HttpModule,
     LeadsModule,
+    ChatLogsModule,
     // Giới hạn form đặt lịch: mặc định 5 lần / 10 phút / IP (BOOKING_RATE_LIMIT, BOOKING_RATE_TTL_MS)
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

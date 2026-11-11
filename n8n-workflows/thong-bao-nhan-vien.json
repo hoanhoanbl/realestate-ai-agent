@@ -33,8 +33,20 @@
             {
               "id": "b1f0a002-0000-4000-8000-000000000003",
               "name": "telegramEnabled",
-              "value": "={{ !!$env.TELEGRAM_BOT_TOKEN && !!$env.TELEGRAM_SALE_CHAT_ID }}",
+              "value": "={{ !!$env.TELEGRAM_BOT_TOKEN }}",
               "type": "boolean"
+            },
+            {
+              "id": "b1f0a002-0000-4000-8000-000000000004",
+              "name": "backendUrl",
+              "value": "http://backend:8081",
+              "type": "string"
+            },
+            {
+              "id": "b1f0a002-0000-4000-8000-000000000005",
+              "name": "managerEmail",
+              "value": "nhadn2457+quanly@gmail.com",
+              "type": "string"
             }
           ]
         },
@@ -51,12 +63,12 @@
     },
     {
       "parameters": {
-        "jsCode": "// Đầu vào (1 item):\n// {\n//   mode?: 'send' | 'update',          // mặc định 'send'\n//   leadId?, level?, title,\n//   fields?: [{ icon, label, value } | { sep: true }],   // các dòng thông tin\n//   message?, note?,                    // đoạn chữ thêm; note hiện trong khung trích dẫn\n//   actions?: [{ label, url }],         // nút bấm (Telegram chỉ nhận link https)\n//   emailTo?, emailHtml?,               // chỉ dùng khi mode = 'send'\n//   statusLine?, telegramMessageId?, telegramChatId?   // chỉ dùng khi mode = 'update'\n// }\nconst cfg = $('Cấu hình').first().json;\nconst input = $('Khi được gọi').first().json;\n\nconst mode = input.mode === 'update' ? 'update' : 'send';\nconst title = String(input.title ?? '').trim();\nconst message = String(input.message ?? '').trim();\nconst fields = Array.isArray(input.fields) ? input.fields : [];\nconst note = String(input.note ?? '').trim();\nif (!title || (!message && !fields.length)) {\n  throw new Error('Thông báo nhân viên: thiếu title, hoặc thiếu cả message lẫn fields');\n}\n\nconst level = ['HOT', 'WARM', 'COLD'].includes(input.level) ? input.level : null;\nconst actions = (Array.isArray(input.actions) ? input.actions : [])\n  .filter((a) => a && a.label && /^https?:\\/\\//.test(String(a.url ?? '')))\n  .map((a) => ({ label: String(a.label).slice(0, 40), url: String(a.url) }));\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst prefix = level === 'HOT' ? '[ƯU TIÊN] ' : '';\nconst subject = title.startsWith(prefix) ? title : prefix + title;\nconst rows = fields.filter((f) => f && (f.sep || String(f.value ?? '').trim() !== ''));\n\n// ---------- Telegram (HTML) ----------\nconst icon = { HOT: '🔴', WARM: '🟠', COLD: '⚪' }[level] ?? '🔔';\nconst lines = [];\nif (mode === 'update' && input.statusLine) lines.push('<b>' + esc(input.statusLine) + '</b>', '');\nlines.push(icon + ' <b>' + esc(subject) + '</b>', '━━━━━━━━━━━━━━━━');\nfor (const f of rows) {\n  if (f.sep) { if (lines[lines.length - 1] !== '') lines.push(''); continue; }\n  lines.push((f.icon ? f.icon + ' ' : '') + '<b>' + esc(f.label) + ':</b> ' + esc(f.value));\n}\nif (message) lines.push('', esc(message));\nif (note) lines.push('', '<blockquote>💡 ' + esc(note) + '</blockquote>');\nconst buttons = actions.filter((a) => a.url.startsWith('https://'));\nconst textLinks = actions.filter((a) => !a.url.startsWith('https://'));\nif (textLinks.length) lines.push('', ...textLinks.map((a) => '🔗 ' + esc(a.label) + ': ' + esc(a.url)));\nlet text = lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n');\nif (text.length > 4000) text = text.slice(0, 3990) + '…';\n\nconst chatId = String(input.telegramChatId || cfg.telegramChatId || '');\nconst telegram = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };\nif (mode === 'update') telegram.message_id = Number(input.telegramMessageId) || 0;\n// 2 nút mỗi hàng\nif (buttons.length) {\n  const kb = [];\n  for (let i = 0; i < buttons.length; i += 2) kb.push(buttons.slice(i, i + 2).map((b) => ({ text: b.label, url: b.url })));\n  telegram.reply_markup = { inline_keyboard: kb };\n}\nconst telegramMethod = mode === 'update' ? 'editMessageText' : 'sendMessage';\nconst telegramReady = !!chatId && (mode === 'send' || telegram.message_id > 0);\n\n// ---------- Email ----------\nconst emailHtml = input.emailHtml\n  ? String(input.emailHtml)\n  : '<div style=\"font-family:Arial,sans-serif;max-width:600px;line-height:1.6;color:#111827\">'\n    + '<p style=\"font-size:17px\"><b>' + esc(subject) + '</b></p>'\n    + (rows.length ? '<table style=\"border-collapse:collapse;width:100%;background:#f3f4f6\">'\n      + rows.filter((f) => !f.sep).map((f) => '<tr><td style=\"padding:8px;color:#6b7280;width:35%\">' + esc(f.label) + '</td><td style=\"padding:8px\">' + esc(f.value) + '</td></tr>').join('')\n      + '</table>' : '')\n    + (message ? '<p>' + esc(message).replace(/\\n/g, '<br>') + '</p>' : '')\n    + (note ? '<p style=\"padding:10px;background:#fffbeb;border-left:4px solid #f59e0b\">' + esc(note) + '</p>' : '')\n    + '<p>' + actions.map((a) => '<a href=\"' + esc(a.url) + '\" style=\"display:inline-block;margin-right:8px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">' + esc(a.label) + '</a>').join('') + '</p>'\n    + '</div>';\n\nreturn [{\n  json: {\n    mode,\n    leadId: input.leadId ?? null,\n    level,\n    emailTo: input.emailTo || cfg.staffEmail,\n    subject,\n    emailHtml,\n    telegramMethod,\n    telegramReady,\n    telegram,\n  },\n}];"
+        "jsCode": "// Đầu vào (1 item):\n// {\n//   mode?: 'send' | 'update',          // mặc định 'send'\n//   leadId?, level?, title,\n//   fields?: [{ icon, label, value } | { sep: true }],   // các dòng thông tin\n//   message?, note?,                    // đoạn chữ thêm; note hiện trong khung trích dẫn\n//   actions?: [{ label, url }],         // nút bấm (Telegram chỉ nhận link https)\n//   assigneeId?,                        // FE-35: gửi cho đúng sale phụ trách (email, Telegram cá nhân, push); không có thì dùng emailTo + nhóm Telegram chung như cũ\n//   emailTo?, emailHtml?,               // chỉ dùng khi mode = 'send'\n//   statusLine?, telegramMessageId?, telegramChatId?   // chỉ dùng khi mode = 'update'\n// }\nconst cfg = $('Cấu hình').first().json;\nconst input = $('Khi được gọi').first().json;\n\nconst mode = input.mode === 'update' ? 'update' : 'send';\nconst title = String(input.title ?? '').trim();\nconst message = String(input.message ?? '').trim();\nconst fields = Array.isArray(input.fields) ? input.fields : [];\nconst note = String(input.note ?? '').trim();\nif (!title || (!message && !fields.length)) {\n  throw new Error('Thông báo nhân viên: thiếu title, hoặc thiếu cả message lẫn fields');\n}\n\nconst level = ['HOT', 'WARM', 'COLD'].includes(input.level) ? input.level : null;\nconst actions = (Array.isArray(input.actions) ? input.actions : [])\n  .filter((a) => a && a.label && /^https?:\\/\\//.test(String(a.url ?? '')))\n  .map((a) => ({ label: String(a.label).slice(0, 40), url: String(a.url) }));\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst prefix = level === 'HOT' ? '[ƯU TIÊN] ' : '';\nconst subject = title.startsWith(prefix) ? title : prefix + title;\nconst rows = fields.filter((f) => f && (f.sep || String(f.value ?? '').trim() !== ''));\n\n// ---------- Người nhận (FE-35) ----------\n// Có assigneeId: chỉ gửi cho người đó bằng kênh riêng của họ; không có kênh nào dùng được thì báo email cho quản lý.\n// Không có assigneeId (luồng 2, 3...): giữ nguyên cách cũ, emailTo + nhóm Telegram chung.\n// Có khoá assigneeId (kể cả 0/null = chưa có người phụ trách) là kiểu gọi mới; thiếu khoá là kiểu cũ\nconst routed = Object.prototype.hasOwnProperty.call(input, 'assigneeId') && mode === 'send';\nconst assigneeId = Number(input.assigneeId) > 0 ? Math.trunc(Number(input.assigneeId)) : 0;\nlet emailTo = input.emailTo || cfg.staffEmail;\nlet chatId = String(input.telegramChatId || cfg.telegramChatId || '');\nlet pushToken = '';\nlet recipient = 'legacy';\nlet fallbackToManager = false;\nif (routed) {\n  let target = null;\n  if ($('Lấy kênh người phụ trách').isExecuted) {\n    const t = $('Lấy kênh người phụ trách').first().json;\n    if (t && !t.error && Number(t.id) === assigneeId) target = t;\n  }\n  const email = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(target?.email ?? '').trim()) ? String(target.email).trim() : '';\n  const tg = /^[1-9][0-9]{0,19}$/.test(String(target?.telegramChatId ?? '').trim()) ? String(target.telegramChatId).trim() : '';\n  const push = /^Expo(nent)?PushToken\\[[A-Za-z0-9_-]+\\]$/.test(String(target?.pushToken ?? '').trim()) ? String(target.pushToken).trim() : '';\n  if (email || tg || push) {\n    recipient = 'assignee'; emailTo = email; chatId = tg; pushToken = push;\n  } else {\n    recipient = 'manager'; fallbackToManager = true; emailTo = cfg.managerEmail; chatId = ''; pushToken = '';\n  }\n}\nconst pushBody = (message || rows.filter((f) => !f.sep).slice(0, 3).map((f) => f.label + ': ' + f.value).join(' · ')).slice(0, 180);\nconst push = { to: pushToken, sound: 'default', title: subject.slice(0, 100), body: pushBody, data: { leadId: input.leadId ?? null } };\n\n// ---------- Telegram (HTML) ----------\nconst icon = { HOT: '🔴', WARM: '🟠', COLD: '⚪' }[level] ?? '🔔';\nconst lines = [];\nif (mode === 'update' && input.statusLine) lines.push('<b>' + esc(input.statusLine) + '</b>', '');\nlines.push(icon + ' <b>' + esc(subject) + '</b>', '━━━━━━━━━━━━━━━━');\nfor (const f of rows) {\n  if (f.sep) { if (lines[lines.length - 1] !== '') lines.push(''); continue; }\n  lines.push((f.icon ? f.icon + ' ' : '') + '<b>' + esc(f.label) + ':</b> ' + esc(f.value));\n}\nif (message) lines.push('', esc(message));\nif (note) lines.push('', '<blockquote>💡 ' + esc(note) + '</blockquote>');\nconst buttons = actions.filter((a) => a.url.startsWith('https://'));\nconst textLinks = actions.filter((a) => !a.url.startsWith('https://'));\nif (textLinks.length) lines.push('', ...textLinks.map((a) => '🔗 ' + esc(a.label) + ': ' + esc(a.url)));\nlet text = lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n');\nif (text.length > 4000) text = text.slice(0, 3990) + '…';\n\nconst telegram = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };\nif (mode === 'update') telegram.message_id = Number(input.telegramMessageId) || 0;\n// 2 nút mỗi hàng\nif (buttons.length) {\n  const kb = [];\n  for (let i = 0; i < buttons.length; i += 2) kb.push(buttons.slice(i, i + 2).map((b) => ({ text: b.label, url: b.url })));\n  telegram.reply_markup = { inline_keyboard: kb };\n}\nconst telegramMethod = mode === 'update' ? 'editMessageText' : 'sendMessage';\nconst telegramReady = !!chatId && (mode === 'send' || telegram.message_id > 0);\n\n// ---------- Email ----------\nconst emailHtml = input.emailHtml\n  ? String(input.emailHtml)\n  : '<div style=\"font-family:Arial,sans-serif;max-width:600px;line-height:1.6;color:#111827\">'\n    + '<p style=\"font-size:17px\"><b>' + esc(subject) + '</b></p>'\n    + (rows.length ? '<table style=\"border-collapse:collapse;width:100%;background:#f3f4f6\">'\n      + rows.filter((f) => !f.sep).map((f) => '<tr><td style=\"padding:8px;color:#6b7280;width:35%\">' + esc(f.label) + '</td><td style=\"padding:8px\">' + esc(f.value) + '</td></tr>').join('')\n      + '</table>' : '')\n    + (message ? '<p>' + esc(message).replace(/\\n/g, '<br>') + '</p>' : '')\n    + (note ? '<p style=\"padding:10px;background:#fffbeb;border-left:4px solid #f59e0b\">' + esc(note) + '</p>' : '')\n    + '<p>' + actions.map((a) => '<a href=\"' + esc(a.url) + '\" style=\"display:inline-block;margin-right:8px;background:#2563eb;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">' + esc(a.label) + '</a>').join('') + '</p>'\n    + '</div>';\n\nreturn [{\n  json: {\n    mode,\n    leadId: input.leadId ?? null,\n    level,\n    emailTo,\n    sendEmail: mode === 'send' && !!emailTo,\n    recipient,\n    fallbackToManager,\n    pushToken,\n    push,\n    subject,\n    emailHtml,\n    telegramMethod,\n    telegramReady,\n    telegram,\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
+        880,
         300
       ],
       "id": "b1f0a003-0000-4000-8000-000000000000",
@@ -74,7 +86,7 @@
           "conditions": [
             {
               "id": "b1f0a009-0000-4000-8000-000000000000-1",
-              "leftValue": "={{ $json.mode === 'send' }}",
+              "leftValue": "={{ $json.sendEmail === true }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -90,7 +102,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        680,
+        1120,
         300
       ],
       "id": "b1f0a009-0000-4000-8000-000000000000",
@@ -109,7 +121,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        900,
+        1340,
         200
       ],
       "id": "b1f0a004-0000-4000-8000-000000000000",
@@ -122,7 +134,8 @@
       },
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -152,7 +165,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1120,
+        1560,
         300
       ],
       "id": "b1f0a005-0000-4000-8000-000000000000",
@@ -172,7 +185,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1340,
+        1780,
         200
       ],
       "id": "b1f0a006-0000-4000-8000-000000000000",
@@ -184,12 +197,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const n = $('Chuẩn hoá').first().json;\nconst ran = $('Gửi Telegram').isExecuted;\nconst tg = ran ? $('Gửi Telegram').first().json : null;\nreturn [{\n  json: {\n    mode: n.mode,\n    emailSent: $('Email nhân viên').isExecuted,\n    telegramSent: !!tg && tg.ok === true,\n    telegramSkipped: !ran,\n    telegramError: tg && tg.ok !== true ? (tg.error?.message ?? tg.description ?? 'Lỗi Telegram') : null,\n    telegramMessageId: tg?.result?.message_id ?? null,\n    telegramChatId: tg?.result?.chat?.id ?? null,\n  },\n}];"
+        "jsCode": "const n = $('Chuẩn hoá').first().json;\nconst ran = $('Gửi Telegram').isExecuted;\nconst tg = ran ? $('Gửi Telegram').first().json : null;\n\nconst emailRan = $('Email nhân viên').isExecuted;\nconst em = emailRan ? $('Email nhân viên').first().json : null;\nconst emailError = em && em.error ? String(em.error.message ?? em.error) : null;\n// Người gọi theo cách cũ (emailTo, không assigneeId) vẫn nhận lỗi khi email hỏng, như trước FE-35\nif (emailError && n.recipient === 'legacy') throw new Error('Gửi email nhân viên lỗi: ' + emailError);\n\nconst pushRan = $('Gửi thông báo đẩy').isExecuted;\nconst pu = pushRan ? $('Gửi thông báo đẩy').first().json : null;\nconst ticket = Array.isArray(pu?.data) ? pu.data[0] : pu?.data;\nconst pushSent = !!pu && !pu.error && (!ticket || ticket.status === 'ok');\nconst pushError = pushRan && !pushSent ? String(pu?.error?.message ?? ticket?.message ?? 'Lỗi gửi thông báo đẩy') : null;\n\nreturn [\n  {\n    json: {\n      mode: n.mode,\n      recipient: n.recipient,\n      fallbackToManager: n.fallbackToManager,\n      emailSent: emailRan && !emailError,\n      emailError,\n      telegramSent: !!tg && tg.ok === true,\n      telegramSkipped: !ran,\n      telegramError: tg && tg.ok !== true ? (tg.error?.message ?? tg.description ?? 'Lỗi Telegram') : null,\n      telegramMessageId: tg?.result?.message_id ?? null,\n      telegramChatId: tg?.result?.chat?.id ?? null,\n      pushSent,\n      pushSkipped: !pushRan,\n      pushError,\n    },\n  },\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
+        2440,
         300
       ],
       "id": "b1f0a007-0000-4000-8000-000000000000",
@@ -197,7 +210,7 @@
     },
     {
       "parameters": {
-        "content": "## Thông báo nhân viên (dùng chung)\nGọi bằng node **Execute Workflow** (1 item).\n\n**mode = 'send'** (mặc định): gửi email + tin Telegram, trả về `telegramMessageId`.\n**mode = 'update'**: sửa lại tin Telegram cũ (`telegramMessageId`), thêm `statusLine`, bỏ các nút không còn dùng. Không gửi email.\n\nĐầu vào: `{ mode?, leadId?, level?, title, fields?: [{icon,label,value}|{sep:true}], message?, note?, actions?: [{label,url}], emailTo?, emailHtml?, statusLine?, telegramMessageId?, telegramChatId? }`\n\n- Email lỗi thì sub-workflow báo lỗi cho luồng gọi; Telegram lỗi thì KHÔNG.\n- Telegram chỉ chạy khi có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID`. Nút chỉ nhận link https; link khác ghi thành chữ.",
+        "content": "## Thông báo nhân viên (dùng chung)\nGọi bằng node **Execute Workflow** (1 item).\n\n**mode = 'send'** (mặc định): gửi email + tin Telegram, trả về `telegramMessageId`.\n**mode = 'update'**: sửa lại tin Telegram cũ (`telegramMessageId`), thêm `statusLine`, bỏ các nút không còn dùng. Không gửi email.\n\nĐầu vào: `{ mode?, leadId?, level?, title, fields?: [{icon,label,value}|{sep:true}], message?, note?, actions?: [{label,url}], assigneeId?, emailTo?, emailHtml?, statusLine?, telegramMessageId?, telegramChatId? }`\n\n- **assigneeId** (FE-35; có khoá này, kể cả 0 = chưa có người phụ trách): gửi cho đúng sale đó bằng email, Telegram cá nhân và push của họ (lấy qua backend `/api/users/:id/notify-target`). Không có kênh nào dùng được thì gửi email cho quản lý, `fallbackToManager=true`. Mọi kênh lỗi đều KHÔNG dừng kênh khác; kết quả báo từng kênh `emailSent/telegramSent/pushSent` và lỗi.\n- Không có assigneeId (luồng 2, 3): như cũ. Email lỗi thì sub-workflow báo lỗi cho luồng gọi; Telegram lỗi thì KHÔNG.\n- Telegram chỉ chạy khi có `TELEGRAM_BOT_TOKEN` và có chat id (cá nhân của sale, hoặc `TELEGRAM_SALE_CHAT_ID` cho cách gọi cũ). Nút chỉ nhận link https; link khác ghi thành chữ.",
         "height": 360,
         "width": 600
       },
@@ -214,7 +227,7 @@
       "parameters": {
         "content": "## 1. Nhận yêu cầu thông báo",
         "height": 400,
-        "width": 620,
+        "width": 1040,
         "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -228,18 +241,18 @@
     },
     {
       "parameters": {
-        "content": "## 2. Gửi email và Telegram cho nhân viên",
+        "content": "## 2. Gửi email, Telegram và thông báo đẩy",
         "height": 400,
-        "width": 1060,
+        "width": 1540,
         "color": 1
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        640,
+        1080,
         70
       ],
-      "name": "Nhóm 2. Gửi email và Telegram cho nhân viên",
+      "name": "Nhóm 2. Gửi email, Telegram và push",
       "id": "494bead9-0ab3-53c7-a56d-f735be546592"
     },
     {
@@ -257,6 +270,129 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b1f0a010-0000-4000-8000-000000000001",
+              "leftValue": "={{ Number($('Khi được gọi').first().json.assigneeId) > 0 && $('Khi được gọi').first().json.mode !== 'update' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ],
+      "id": "b1f0a010-0000-4000-8000-000000000000",
+      "name": "Có người phụ trách?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/users/{{ Math.trunc(Number($('Khi được gọi').first().json.assigneeId)) }}/notify-target",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        200
+      ],
+      "id": "b1f0a011-0000-4000-8000-000000000000",
+      "name": "Lấy kênh người phụ trách",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b1f0a012-0000-4000-8000-000000000001",
+              "leftValue": "={{ !!$('Chuẩn hoá').first().json.pushToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        300
+      ],
+      "id": "b1f0a012-0000-4000-8000-000000000000",
+      "name": "Có push?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([$('Chuẩn hoá').first().json.push]) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2220,
+        200
+      ],
+      "id": "b1f0a013-0000-4000-8000-000000000000",
+      "name": "Gửi thông báo đẩy",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
     }
   ],
   "connections": {
@@ -275,7 +411,7 @@
       "main": [
         [
           {
-            "node": "Chuẩn hoá",
+            "node": "Có người phụ trách?",
             "type": "main",
             "index": 0
           }
@@ -333,7 +469,7 @@
         ],
         [
           {
-            "node": "Kết quả",
+            "node": "Có push?",
             "type": "main",
             "index": 0
           }
@@ -341,6 +477,64 @@
       ]
     },
     "Gửi Telegram": {
+      "main": [
+        [
+          {
+            "node": "Có push?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có người phụ trách?": {
+      "main": [
+        [
+          {
+            "node": "Lấy kênh người phụ trách",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chuẩn hoá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy kênh người phụ trách": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có push?": {
+      "main": [
+        [
+          {
+            "node": "Gửi thông báo đẩy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gửi thông báo đẩy": {
       "main": [
         [
           {

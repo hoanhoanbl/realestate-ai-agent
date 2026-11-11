@@ -17,7 +17,7 @@ Cập nhật lần cuối: 4/11/2026.
 | Khách và bot đặt xa nhất | 14 ngày | `BOOKING_MAX_DAYS` (cùng file) |
 | Hai lịch xem cùng căn phải cách nhau | 60 phút | `BOOKING_GAP_MINUTES` trong `backend/src/viewings/booking-rules.ts` |
 | Giới hạn đặt lịch mỗi IP | 5 lần / 10 phút | Biến môi trường `BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS` |
-| Chờ nhân viên duyệt trước khi báo quản lý | 24 giờ | Node "Chờ duyệt" của luồng 1 |
+| Nút Duyệt / Đổi giờ trong thông báo dùng được | Tới giờ hẹn (FE-35, local; trước đó 24 giờ) | Link do backend cấp, kiểm tra lại lúc bấm |
 | Nhắc sale duyệt lead chưa duyệt | Sau 3 ngày | Luồng 2 |
 | Nhắc lịch cho khách | Trong vòng 24 giờ trước giờ hẹn | Luồng 2 (chạy mỗi giờ) |
 | Được điểm danh | Từ 30 phút trước giờ hẹn | `ATTENDANCE_GRACE_MS` trong `backend/src/viewings/viewing-time.ts` |
@@ -67,8 +67,8 @@ Giờ sai quy tắc trả mã 400. Các lỗi trùng lịch và khách đã có 
 1. Backend tạo lead (hoặc dùng lại lead của khách cũ), tạo buổi xem "Chờ xem" và đặt lead về "Mới", rồi gọi luồng 1.
 2. Luồng 1 kiểm tra dữ liệu, cho AI chấm điểm và xếp mức HOT, WARM, COLD (thang điểm: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md) mục 4.1).
 3. Khách nhận thư báo **đã nhận yêu cầu**, nội dung theo mức. Thư không khẳng định lịch đã chốt.
-4. Nhân viên nhận thông báo qua email, Telegram, push trên app, ..., kèm điểm AI, gợi ý của AI và nút **Duyệt** / **Đổi giờ**.
-5. Luồng 1 chờ nhân viên bấm, tối đa 24 giờ.
+4. **Sale phụ trách** nhận thông báo qua email, Telegram cá nhân và push trên app của riêng mình, kèm điểm AI, gợi ý của AI và nút **Duyệt** / **Đổi giờ**. Không gửi nhóm chung hay mọi nhân viên. Lead chưa có sale phụ trách, hoặc sale không có kênh nào dùng được: báo email cho quản lý.
+5. Luồng 1 kết thúc sau khi báo; không còn chờ. Nút Duyệt / Đổi giờ mở trang xác nhận `/duyet/<mã>` và chỉ đổi lịch khi bấm nút xác nhận trên trang đó (FE-35).
 
 Nếu dữ liệu không hợp lệ hoặc bước AI lỗi, luồng 1 báo về backend và lead chuyển trạng thái xử lý AI sang `FAILED`. Nếu luồng dừng vì lỗi không lường trước, Error workflow gửi email cảnh báo cho quản lý. Cả hai trường hợp, nhân viên vẫn duyệt tay được trên web admin.
 
@@ -95,7 +95,7 @@ FE-39 local bổ sung thẻ người phụ trách và ghi chú trên trang chi t
 - Nhân viên bấm **Duyệt** trong thông báo (email, Telegram, ...) hoặc trên trang chi tiết lead.
 - Chỉ duyệt được lead "Mới" và AI đã chấm xong. Nếu AI chưa chấm xong: "AI chưa chấm điểm xong, chưa duyệt được".
 - Duyệt xong: lead "Đã chốt lịch", khách nhận **thư chốt lịch** có giờ xem và **link quản lý lịch**.
-- Quá 24 giờ hoặc đã bấm "Đổi giờ" trong thông báo thì nút trong thông báo hết hiệu lực; nút Duyệt trên web admin vẫn dùng được (đi qua luồng 1b).
+- Nút trong thông báo dùng được **tới giờ hẹn**. Trang xác nhận từ chối khi khách đã huỷ, lịch đã duyệt, khách đã có buổi xem mới hơn, hoặc đã tới giờ hẹn; ngoài ra vẫn duyệt được trên web admin. Cả hai đường đều đi qua luồng 1b.
 
 ### 2.2. Đổi giờ
 
@@ -109,8 +109,7 @@ FE-39 local bổ sung thẻ người phụ trách và ghi chú trên trang chi t
 
 | Khi nào | Hệ thống làm |
 |---|---|
-| 24 giờ sau khi đặt | Gửi email cảnh báo cho quản lý, ghi "Quá 24 giờ chưa duyệt". Lead vẫn "Mới" |
-| Hơn 3 ngày sau khi đặt, lead HOT/WARM/COLD vẫn "Mới", giờ hẹn chưa qua | Nhắc sale duyệt qua sub-workflow thông báo nhân viên |
+| Quá 2 giờ làm việc từ lúc sale nhận khách mà chưa có thao tác đầu tiên (FE-38) | Báo quản lý. Mốc "24 giờ" và "3 ngày" cũ đã bỏ (FE-35, FE-38); lead vẫn "Mới" |
 | Giờ hẹn đã qua mà lead vẫn "Mới", buổi xem còn "Chờ xem" | Chuyển "Không mua" với lý do "Quá hạn không xử lý" (`EXPIRED`), hủy buổi xem và vô hiệu link duyệt cũ; báo quản lý. Báo cáo tuần đếm theo thời điểm đóng. Không coi đây là khách không đến. |
 
 ## 3. Trước và trong buổi xem

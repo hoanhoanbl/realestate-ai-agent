@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   Logger,
@@ -30,6 +31,7 @@ import { LeadsService } from '../leads/leads.service';
 import { LeadIntakeService } from '../leads/lead-intake.service';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
+import { signStaffLink, staffLinkRefusal, staffLinkUrl, verifyStaffLink } from './staff-link';
 
 const fmt = (d: Date) => new Date(d).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
@@ -144,6 +146,7 @@ export class ViewingsService {
       viewingTime,
       viewingId, // luồng 1 so với buổi xem mới nhất để nút Duyệt cũ không chốt nhầm buổi xem mới
       manageToken,
+      assignedUserId: lead.assignedUserId ?? null, // FE-35: thông báo gửi đúng sale phụ trách
     };
 
     const maxRetries = 3;
@@ -424,5 +427,91 @@ export class ViewingsService {
       note: `Khách xin đổi lịch ${fmt(viewing.viewingTime)}${note ? ': ' + note.trim() : ''}`,
     });
     return { ok: true };
+  }
+
+  // ---- Link Duyệt / Đổi giờ cho nhân viên (FE-35) ----
+
+  // n8n (luồng 1) xin hai link cho buổi xem vừa đặt để gắn vào thông báo
+  async issueStaffLinks(viewingId: number) {
+    const viewing = await this.viewingRepository.findOne({ where: { id: viewingId } });
+    if (!viewing) throw new NotFoundException(`Viewing with id ${viewingId} not found`);
+    return {
+      approveUrl: staffLinkUrl(signStaffLink({ viewingId, action: 'approve' })),
+      rescheduleUrl: staffLinkUrl(signStaffLink({ viewingId, action: 'reschedule' })),
+    };
+  }
+
+  private async loadStaffLink(token: string) {
+    // Mọi lỗi (token hỏng, buổi xem không còn) đều trả cùng một thông báo, không lộ buổi xem có tồn tại hay không
+    const invalid = new NotFoundException('Liên kết không hợp lệ');
+    const parsed = verifyStaffLink(token);
+    if (!parsed) throw invalid;
+    const viewing = await this.viewingRepository.findOne({ where: { id: parsed.viewingId } });
+    if (!viewing) throw invalid;
+    const lead = await this.leadRepository.findOne({ where: { id: viewing.leadId } });
+    if (!lead) throw invalid;
+    const property = await this.propertyRepository.findOne({ where: { id: viewing.propertyId } });
+    const latest = await this.viewingRepository.findOne({ where: { leadId: lead.id }, order: { id: 'DESC' } });
+    const refusal = staffLinkRefusal({
+      action: parsed.action,
+      leadStatus: lead.status,
+      automationStatus: lead.automationStatus,
+      viewingStatus: viewing.status,
+      viewingTime: viewing.viewingTime,
+      isOpenViewing: latest?.id === viewing.id,
+    });
+    return { parsed, viewing, lead, property, refusal };
+  }
+
+  // Mở link chỉ xem tóm tắt, không đổi gì và không trả số điện thoại hay email
+  async previewStaffLink(token: string) {
+    const { parsed, viewing, lead, property, refusal } = await this.loadStaffLink(token);
+    return {
+      action: parsed.action,
+      leadName: lead.name,
+      propertyName: property?.name ?? null,
+      propertyAddress: property?.address ?? null,
+      viewingTime: viewing.viewingTime,
+      leadStatus: lead.status,
+      viewingStatus: viewing.status,
+      canAct: refusal === null,
+      refusal,
+    };
+  }
+
+  async confirmStaffLink(token: string): Promise<{ ok: true; action: string; already?: true }> {
+    const { parsed, viewing, lead, refusal } = await this.loadStaffLink(token);
+    if (refusal) throw new BadRequestException(refusal);
+
+    if (parsed.action === 'reschedule') {
+      // Bấm lại nhiều lần trong 10 phút chỉ gửi một thư cho khách
+      const recent: unknown[] = await this.leadRepository.query(
+        `SELECT 1 FROM lead_events WHERE lead_id = $1 AND type = 'RESCHEDULE_REQUESTED'
+            AND created_at > now() - interval '10 minutes' LIMIT 1`,
+        [lead.id],
+      );
+      if (recent.length > 0) return { ok: true, action: parsed.action, already: true };
+    }
+
+    try {
+      await this.n8nService.callWebhook('viewing-admin-action', {
+        event: parsed.action === 'approve' ? 'approved' : 'reschedule_requested',
+        leadId: lead.id,
+        viewingId: viewing.id,
+        by: 'thông báo của nhân viên',
+      });
+    } catch {
+      throw new BadGatewayException('Không gọi được n8n để xử lý, vui lòng thử lại hoặc dùng trang quản trị.');
+    }
+    // Ghi nhận phản hồi đầu tiên cho người phụ trách (nếu có): link không đăng nhập nên không biết ai bấm
+    if (lead.assignedUserId) {
+      await this.leadsService.recordFirstResponse(lead.id, {
+        id: lead.assignedUserId,
+        email: '',
+        name: 'thông báo của nhân viên',
+        role: 'SALE',
+      });
+    }
+    return { ok: true, action: parsed.action };
   }
 }

@@ -546,6 +546,29 @@ export function getLeadEvents(id: number): Promise<LeadEvent[]> {
   return request<LeadEvent[]>(`/leads/${id}/events`);
 }
 
+// Một lượt hỏi đáp của bot Telegram gắn với khách (FE-36); văn bản đã che email và số dài
+export type ChatRoute = "COMMAND" | "BLOCKED" | "AGENT" | "STAFF" | "OUT_OF_SCOPE";
+export interface LeadChatLog {
+  id: number;
+  createdAt: string;
+  route: ChatRoute;
+  question: string;
+  reply: string;
+  escalated: boolean;
+}
+
+export const CHAT_ROUTE_LABELS: Record<ChatRoute, string> = {
+  COMMAND: "Lệnh",
+  BLOCKED: "Bị chặn",
+  AGENT: "Bot tư vấn",
+  STAFF: "Chuyển nhân viên",
+  OUT_OF_SCOPE: "Ngoài phạm vi",
+};
+
+export function getLeadChatLogs(id: number): Promise<LeadChatLog[]> {
+  return request<LeadChatLog[]>(`/leads/${id}/chat-logs`);
+}
+
 export interface CreateLeadInput {
   name: string;
   phone: string;
@@ -771,6 +794,27 @@ export function requestReschedule(token: string, note: string): Promise<{ ok: tr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ note: note.trim() || undefined }),
   });
+}
+
+// FE-35: nhân viên bấm Duyệt / Đổi giờ từ thông báo (không đăng nhập, token có chữ ký)
+export interface StaffLinkInfo {
+  action: "approve" | "reschedule";
+  leadName: string;
+  propertyName: string | null;
+  propertyAddress: string | null;
+  viewingTime: string | null;
+  leadStatus: LeadStatus;
+  viewingStatus: ViewingStatus;
+  canAct: boolean;
+  refusal: string | null;
+}
+
+export function getStaffLink(token: string): Promise<StaffLinkInfo> {
+  return request<StaffLinkInfo>(`/viewings/staff-links/${encodeURIComponent(token)}`);
+}
+
+export function confirmStaffLink(token: string): Promise<{ ok: true; action: "approve" | "reschedule"; already?: true }> {
+  return request(`/viewings/staff-links/${encodeURIComponent(token)}/confirm`, { method: "POST" });
 }
 
 export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {

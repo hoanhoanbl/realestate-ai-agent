@@ -52,6 +52,13 @@ export class UsersService implements OnModuleInit {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  async findRoutingById(id: number) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Không tìm thấy nhân viên');
+    const { name, email, role, telegramChatId, acceptingLeads } = user;
+    return { id, name, email, role, telegramChatId, acceptingLeads };
+  }
+
   findAll(): Promise<User[]> {
     return this.userRepository.find({
       order: { id: 'ASC' },

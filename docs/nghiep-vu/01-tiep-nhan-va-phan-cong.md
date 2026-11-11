@@ -122,6 +122,8 @@ Khi khách để lại số điện thoại trong bot (FE-36, đã làm ở loca
 
 ## 4. Gán sale
 
+**FE-39 đã có local, chưa phát hành server:** danh sách và chi tiết lead hiển thị người phụ trách; quản lý chuyển người bằng form, chủ hoặc quản lý ghi chú kết quả liên hệ. Trang Tài khoản cho sale tự đổi công tắc nhận khách/Telegram, quản lý sửa cho mọi người. Hướng dẫn và kiểm thử: [FE-39](../fe-39-admin-phu-trach.md).
+
 | Khách đến từ | Ai phụ trách |
 |---|---|
 | Web, bot (kênh của hệ thống) | **Chia lần lượt** cho các sale đang nhận khách, không phân biệt mức HOT/WARM/COLD |

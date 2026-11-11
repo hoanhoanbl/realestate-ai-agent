@@ -7,6 +7,7 @@ import { isFollowupDue, type FollowupSnapshot } from './followup-policy';
 
 const now = new Date('2026-11-03T08:00:00Z');
 const snapshot = (overrides = {}): FollowupSnapshot => ({
+  email: 'test@example.invalid',
   status: 'CONFIRMED', viewing_status: 'NEW', level: 'WARM', consent_marketing: true,
   created_at: new Date(now.getTime() - 4 * 86400000), viewing_time: new Date(now.getTime() + 5 * 3600000),
   reminder_sent: false, feedback_asked: false, feedback_asked_at: null,
@@ -34,11 +35,12 @@ describe('Follow-up eligibility', () => {
     for (const change of [{ viewing_status: 'NEW' }, { consent_marketing: false }, { has_feedback: true }, { nurture_started: true }, { level: 'HOT' }, { status: 'SIGNED' }, { cooling_down: true }, { feedback_asked_at: now }])
       expect(isFollowupDue({ ...s, ...change }, 'WARM_NUDGE', now)).toBe(false);
   });
-  it.each(['HOT', 'WARM', 'COLD'])('nudges old NEW %s leads only before the appointment', level => {
-    const s = snapshot({ status: 'NEW', level });
+  it.each(['HOT', 'WARM', 'COLD', null])('escalates overdue %s leads by assignment even without an appointment', level => {
+    const s = snapshot({ status: 'CONSULTING', level, viewing_time: null, assigned_at: new Date(now.getTime()-3*3600000), response_due_at: new Date(now.getTime()-1), first_response_at: null });
     expect(isFollowupDue(s, 'STAFF_NUDGE', now)).toBe(true);
-    expect(isFollowupDue({ ...s, viewing_time: new Date(now.getTime() - 1) }, 'STAFF_NUDGE', now)).toBe(false);
-    expect(isFollowupDue({ ...s, created_at: new Date(now.getTime() - 72 * 3600000) }, 'STAFF_NUDGE', now)).toBe(false);
+    expect(isFollowupDue({ ...s, response_due_at: new Date(now.getTime()+1) }, 'STAFF_NUDGE', now)).toBe(false);
+    expect(isFollowupDue({ ...s, first_response_at: now }, 'STAFF_NUDGE', now)).toBe(false);
+    expect(isFollowupDue({ ...s, status: 'SIGNED' }, 'STAFF_NUDGE', now)).toBe(false);
     expect(isFollowupDue({ ...s, staff_nudged: true }, 'STAFF_NUDGE', now)).toBe(false);
   });
   it.each([['HOT_NUDGE', 'HOT'], ['COLD_NURTURE', 'COLD']] as const)('routes silent %s with consent and no feedback', (type, level) => {

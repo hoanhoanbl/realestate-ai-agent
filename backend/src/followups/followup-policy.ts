@@ -8,9 +8,15 @@ export interface FollowupSnapshot {
   attendance_check_sent: boolean; attendance_check_at: string | Date | null; attendance_escalated: boolean;
   hot_nudged?: boolean; cold_nurture_started?: boolean;
   lost_reason?: string | null; expired_for_schedule?: boolean;
+  email?: string | null;
+  assigned_at?: string | Date | null; response_due_at?: string | Date | null; first_response_at?: string | Date | null;
 }
 export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date): boolean {
+  if (type === 'STAFF_NUDGE') return !s.cooling_down && ['CONSULTING','NEW','CONFIRMED','VIEWED'].includes(s.status) &&
+    !!s.assigned_at && !!s.response_due_at && !s.first_response_at && !s.staff_nudged &&
+    new Date(s.response_due_at).getTime() <= now.getTime();
   const elapsed = now.getTime() - new Date(s.viewing_time).getTime();
+  if (['REMINDER','FEEDBACK','WARM_NUDGE','COLD_NURTURE'].includes(type) && !s.email) return false;
   const hour = 3_600_000;
   if (!s.viewing_time || !Number.isFinite(elapsed) || s.cooling_down) return false;
   const silent = s.status === 'VIEWED' && s.viewing_status === 'ATTENDED' && s.consent_marketing &&
@@ -27,8 +33,6 @@ export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date
       (s.status === 'NEW' && s.viewing_status === 'NEW') ||
       // Đã đóng bởi chính tác vụ của giờ hẹn này: chỉ còn thông báo quản lý.
       (s.status === 'LOST' && s.lost_reason === 'EXPIRED' && s.viewing_status === 'CANCELLED' && s.expired_for_schedule === true));
-    case 'STAFF_NUDGE': return s.status === 'NEW' && s.viewing_status === 'NEW' && elapsed <= 0 && ['HOT', 'WARM', 'COLD'].includes(s.level ?? '') &&
-      now.getTime() - new Date(s.created_at).getTime() > 72 * hour && !s.staff_nudged;
     case 'ATTENDANCE_CHECK': return s.status === 'CONFIRMED' && s.viewing_status === 'NEW' &&
       elapsed > 2 * hour && !s.attendance_check_sent;
     case 'ATTENDANCE_ESCALATE': return s.status === 'CONFIRMED' && s.viewing_status === 'NEW' &&

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { FeedbackService } from './feedback.service';
-import { FeedbackAiResultDto, SubmitFeedbackDto } from './dto/feedback.dto';
+import { CreateFeedbackLinkDto, FeedbackAiResultDto, SubmitFeedbackDto } from './dto/feedback.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WebhookSecretGuard } from '../auth/webhook-secret.guard';
 
@@ -24,8 +24,8 @@ export class FeedbackController {
 
   @Post('link/:leadId')
   @UseGuards(WebhookSecretGuard)
-  createLink(@Param('leadId', ParseIntPipe) leadId: number) {
-    return this.feedbackService.createLink(leadId);
+  createLink(@Param('leadId', ParseIntPipe) leadId: number, @Body() dto: CreateFeedbackLinkDto) {
+    return this.feedbackService.createLink(leadId, dto?.viewingId);
   }
 
   @Put(':id/ai-result')

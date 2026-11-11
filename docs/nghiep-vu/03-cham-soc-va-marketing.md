@@ -22,7 +22,7 @@ Cập nhật lần cuối: 4/11/2026.
 
 1. Luồng 2 tạo link riêng `/cam-nhan/<mã>` cho khách, AI soạn thư hỏi thăm (AI lỗi thì dùng mẫu dự phòng), gửi khách qua email, ... và ghi "Đã hỏi cảm nhận". Lead không đổi trạng thái. Sale không phải tự gửi thư.
 2. Khách bấm link, mở trang cảm nhận trên web (không cần đăng nhập), chấm 1–5 sao, viết nhận xét, chọn mong muốn tiếp theo: muốn đặt cọc, muốn xem căn khác, chưa có nhu cầu nữa.
-3. Mỗi khách gửi **một lần**. Gửi lần hai: "Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị".
+3. FE-38 local: mỗi buổi xem có link riêng và được gửi một lần; buổi xem sau có link mới. Link hex cũ vẫn thuộc buổi đầu, không bị đổi sang căn mới. Gửi lại cùng link đã nộp: "Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị". Chi tiết: [FE-38](../fe-38-han-phan-hoi.md).
 4. Luồng 5: AI phân tích cảm xúc (tích cực, trung lập, tiêu cực), tóm tắt và gợi ý việc nên làm; ghi "AI phân tích cảm nhận".
 5. Nhân viên nhận email, ... kèm kết quả AI. Khách nhận email cảm ơn.
 6. Cảm nhận **tiêu cực hoặc từ 2 sao trở xuống**: quản lý nhận thêm email cảnh báo.

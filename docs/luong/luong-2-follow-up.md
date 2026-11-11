@@ -10,14 +10,14 @@ Backend API mới: `/api/followups`, bảo vệ bằng `X-Webhook-Secret`.
 | REMINDER | CONFIRMED + buổi xem NEW, giờ xem trong 24 giờ tới | Email nhắc lịch; HOT/WARM/COLD đều được |
 | FEEDBACK | VIEWED + buổi xem ATTENDED, giờ xem qua hơn 2 giờ, chưa hỏi và chưa phản hồi | Email có link cảm nhận; không tự đổi trạng thái khách |
 | WARM_NUDGE | WARM + VIEWED + buổi xem ATTENDED + đồng ý tiếp thị + được hỏi cảm nhận hơn 3 ngày + chưa phản hồi + chưa nuôi | Tìm contact đúng email, tạo/cập nhật ai_nudge_text và tag nuoi-warm |
-| STAFF_NUDGE | HOT/WARM/COLD + NEW + buổi xem NEW + tạo hơn 3 ngày, giờ hẹn chưa qua | Gọi sub-workflow nhắc nhân viên duyệt lịch |
+| STAFF_NUDGE | FE-38: quá responseDueAt, chưa firstResponseAt, khách còn đang xử lý; không cần buổi xem/email/điểm | Báo email quản lý, ghi RESPONSE_OVERDUE |
 | EXPIRE_LEAD | Lead NEW + buổi xem NEW + giờ hẹn đã qua, không cần AI chấm | Backend đóng LOST/EXPIRED, hủy buổi xem chờ và xóa link duyệt; báo quản lý |
 | HOT_NUDGE | HOT và cùng điều kiện im lặng/đồng ý như WARM | Nhắc sale gọi khách qua Telegram; không gửi email chăm sóc cho khách |
 | COLD_NURTURE | COLD và cùng điều kiện im lặng/đồng ý như WARM | Tìm contact đúng email, gắn `ban-tin-hang-thang`; không qua AI hoặc gửi email ngay |
 | ATTENDANCE_CHECK | CONFIRMED + buổi xem NEW + qua giờ hẹn hơn 2 giờ, chưa nhắc trong lịch hiện tại | Nhắc nhân viên ghi nhận khách có đến hay không |
 | ATTENDANCE_ESCALATE | Vẫn CONFIRMED + buổi xem NEW, đã nhắc xác nhận hơn 24 giờ và chưa báo quản lý trong lịch hiện tại | Thông báo tới email quản lý qua sub-workflow |
 
-Chỉ dùng lịch xem mới nhất của mỗi lead. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic của L7/L8 không chặn nhắc lịch. Khách đã gửi cảm nhận không được chọn để hỏi lại hoặc nuôi theo nhánh im lặng. Segment Mautic nhận `nuoi-warm`, không nhận riêng `WARM`.
+FE-38 phân biệt nhắc lịch/điểm danh/hỏi cảm nhận theo viewing ID và giờ hẹn; cảnh báo phản hồi theo phiên nhận khách, kể cả khi chưa có lịch. Link cảm nhận thuộc đúng buổi xem, link cũ vẫn hoạt động. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic L7/L8 không chặn nhắc lịch. Chi tiết triển khai và tương thích checkpoint: [FE-38](../fe-38-han-phan-hoi.md).
 
 ## Luồng xử lý
 

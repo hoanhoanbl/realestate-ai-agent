@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -8,6 +8,7 @@ import { Viewing } from '../viewings/entities/viewing.entity';
 import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
 import { N8nService } from '../n8n/n8n.service';
+import { Lead } from '../leads/entities/lead.entity';
 
 @Injectable()
 export class FeedbackService {
@@ -29,17 +30,25 @@ export class FeedbackService {
     return `${base}/cam-nhan/${token}`;
   }
 
-  // n8n (luồng 2) xin link gửi trong email hỏi cảm nhận. Mỗi khách chỉ có một link.
-  async createLink(leadId: number): Promise<{ token: string; url: string }> {
-    await this.leadsService.findOne(leadId); // 404 nếu khách không tồn tại
-    const existing = await this.feedbackRepository.findOne({ where: { leadId }, order: { id: 'DESC' } });
-    if (existing) return { token: existing.token, url: this.urlFor(existing.token) };
-
-    const token = crypto.randomBytes(16).toString('hex');
-    await this.feedbackRepository.save(
-      this.feedbackRepository.create({ leadId, token, rating: null, interest: null, comment: null, submittedAt: null }),
-    );
-    return { token, url: this.urlFor(token) };
+  // Một link cho mỗi buổi xem; prefix ánh xạ buổi xem, 128 bit ngẫu nhiên vẫn bảo vệ link.
+  // Không cần thêm cột trong đợt tích hợp sau PR nền. Link hex cũ vẫn thuộc buổi đầu tiên.
+  async createLink(leadId: number, viewingId?: number): Promise<{ token: string; url: string }> {
+    return this.feedbackRepository.manager.transaction(async em => {
+      const lead = await em.getRepository(Lead).findOne({ where: { id: leadId }, lock: { mode: 'pessimistic_write' } });
+      if (!lead) throw new NotFoundException(`Lead with id ${leadId} not found`);
+      const viewing = await em.getRepository(Viewing).findOne({ where: { leadId, status: 'ATTENDED', ...(viewingId ? { id: viewingId } : {}) }, order: { id: 'DESC' } });
+      if (!viewing) throw new BadRequestException('Chưa có buổi xem đã điểm danh để hỏi cảm nhận');
+      const repo = em.getRepository(Feedback);
+      let existing = await repo.createQueryBuilder('f').where('f.leadId=:leadId', { leadId })
+        .andWhere("split_part(f.token,'_',1)=:scope", { scope: `v${viewing.id}` }).getOne();
+      const first = await em.getRepository(Viewing).findOne({ where: { leadId }, order: { id: 'ASC' } });
+      if (!existing && first?.id === viewing.id) existing = await repo.createQueryBuilder('f').where('f.leadId=:leadId',{leadId})
+        .andWhere("f.token !~ '^v[0-9]+_'").orderBy('f.id','ASC').getOne();
+      if (existing) return { token: existing.token, url: this.urlFor(existing.token) };
+      const token = `v${viewing.id}_${crypto.randomBytes(16).toString('hex')}`;
+      await repo.save(repo.create({ leadId, token, rating: null, interest: null, comment: null, submittedAt: null }));
+      return { token, url: this.urlFor(token) };
+    });
   }
 
   private async findByToken(token: string): Promise<Feedback> {
@@ -52,7 +61,8 @@ export class FeedbackService {
   async getPublic(token: string) {
     const feedback = await this.findByToken(token);
     const lead = await this.leadsService.findOne(feedback.leadId);
-    const viewing = await this.viewingRepository.findOne({ where: { leadId: lead.id }, order: { id: 'DESC' } });
+    const match = /^v([1-9]\d*)_[a-f0-9]{32}$/.exec(feedback.token);
+    const viewing = await this.viewingRepository.findOne({ where: { leadId: lead.id, ...(match ? { id: Number(match[1]) } : {}) }, order: { id: 'ASC' } });
     const property = viewing ? await this.propertyRepository.findOne({ where: { id: viewing.propertyId } }) : null;
     return {
       leadName: lead.name,

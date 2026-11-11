@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { FollowupTask, MAUTIC_FOLLOWUPS, SCHEDULED_FOLLOWUPS, type FollowupType } from './followup-task.entity';
@@ -8,11 +8,12 @@ import { Lead } from '../leads/entities/lead.entity';
 import { LeadEvent } from '../leads/entities/lead-event.entity';
 import { LeadsService } from '../leads/leads.service';
 import { Viewing } from '../viewings/entities/viewing.entity';
+import { FOLLOWUP_SNAPSHOT_SQL } from './followup-sql';
 
 const LEASE_MS = 30 * 60_000;
 const RETRY_MS = 6 * 3_600_000;
 const EVENTS: Record<FollowupType, string> = {
-  REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'STAFF_NUDGE_SENT',
+  REMINDER: 'REMINDER_SENT', FEEDBACK: 'FEEDBACK_ASKED', WARM_NUDGE: 'WARM_NURTURE_STARTED', STAFF_NUDGE: 'RESPONSE_OVERDUE',
   ATTENDANCE_CHECK: 'ATTENDANCE_CHECK_SENT', ATTENDANCE_ESCALATE: 'ATTENDANCE_ESCALATED',
   HOT_NUDGE: 'HOT_NUDGE_SENT', COLD_NURTURE: 'COLD_NURTURE_STARTED', EXPIRE_LEAD: 'LEAD_EXPIRED_NOTIFIED',
 };
@@ -22,48 +23,29 @@ export class FollowupsService {
   private readonly logger = new Logger(FollowupsService.name);
   constructor(private readonly db: DataSource, private readonly leads: LeadsService) {}
 
-  private async snapshot(m: EntityManager, leadId: number, type: FollowupType): Promise<(FollowupSnapshot & { viewing_id: number }) | undefined> {
-    const rows = await m.query(`SELECT l.status,l.level,l.consent_marketing,l.created_at,v.id AS viewing_id,v.viewing_time,v.status AS viewing_status,l.lost_reason,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='HOT_NUDGE_SENT') AS hot_nudged,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='COLD_NURTURE_STARTED') AS cold_nurture_started,
-      EXISTS(SELECT 1 FROM followup_tasks t JOIN lead_events e ON e.lead_id=t.lead_id AND e.type='LEAD_EXPIRED' AND e.note='L2 '||t.task_key
-        WHERE t.lead_id=l.id AND t.type='EXPIRE_LEAD' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time)) AS expired_for_schedule,
-      (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='REMINDER_SENT'
-        AND (e.note IS NULL OR e.note NOT LIKE 'L2 REMINDER:%')
-        AND e.created_at >= COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='REMINDER' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS reminder_sent,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='FEEDBACK_ASKED') AS feedback_asked,
-      (SELECT max(e.created_at) FROM lead_events e WHERE e.lead_id=l.id AND e.type='FEEDBACK_ASKED') AS feedback_asked_at,
-      EXISTS(SELECT 1 FROM feedbacks f WHERE f.lead_id=l.id AND f.submitted_at IS NOT NULL) AS has_feedback,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type IN ('WARM_NUDGE_SENT','WARM_NURTURE_STARTED')) AS nurture_started,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='STAFF_NUDGE_SENT') AS staff_nudged,
-      (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT'
-        AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS attendance_check_sent,
-      (SELECT max(e.created_at) FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_CHECK_SENT'
-        AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz)
-        AND ((e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_CHECK:%') OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_CHECK' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time) AND e.note='L2 '||t.task_key))) AS attendance_check_at,
-      (EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='ATTENDANCE_ESCALATED'
-        AND (e.note IS NULL OR e.note NOT LIKE 'L2 ATTENDANCE_ESCALATE:%') AND e.created_at > COALESCE((SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))
-        OR EXISTS(SELECT 1 FROM followup_tasks t WHERE t.lead_id=l.id AND t.type='ATTENDANCE_ESCALATE' AND t.state='COMPLETED' AND t.viewing_id=v.id AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time))) AS attendance_escalated,
-      EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='FOLLOWUP_FAILED' AND e.note LIKE $2 AND e.created_at>now()-interval '6 hours') AS cooling_down
-      FROM leads l JOIN LATERAL (SELECT * FROM viewings WHERE lead_id=l.id ORDER BY id DESC LIMIT 1) v ON true
-      WHERE l.id=$1`, [leadId, `${type}:%`]);
+  private async snapshot(m: EntityManager, leadId: number, type: FollowupType, viewingId: number): Promise<(FollowupSnapshot & { viewing_id: number }) | undefined> {
+    const rows = await m.query(FOLLOWUP_SNAPSHOT_SQL, [leadId, type + ':%', viewingId]);
     return rows[0];
   }
 
   async claim(dto: ClaimFollowupDto) {
+    if (dto.type !== 'STAFF_NUDGE' && dto.viewingId === 0) throw new BadRequestException('viewingId=0 chỉ dùng cho hạn phản hồi theo phiên nhận khách');
     const result = await this.db.transaction(async m => {
       // Every operation locks the lead before the task: two executions cannot acquire the same work.
       await m.query('SELECT id FROM leads WHERE id=$1 FOR UPDATE', [dto.leadId]);
       if (dto.type === 'EXPIRE_LEAD') await m.query('SELECT id FROM viewings WHERE id=$1 FOR UPDATE', [dto.viewingId]);
-      const s = await this.snapshot(m, dto.leadId, dto.type);
+      const s = await this.snapshot(m, dto.leadId, dto.type, dto.viewingId);
       const now = new Date();
-      const key = SCHEDULED_FOLLOWUPS.includes(dto.type)
+      // Checkpoint STAFF_NUDGE cũ (3 ngày, có viewing) chỉ được hoàn tất dữ liệu, không gửi lại.
+      const key = dto.type === 'STAFF_NUDGE' && dto.viewingId > 0 ? `STAFF_NUDGE:${dto.leadId}` : SCHEDULED_FOLLOWUPS.includes(dto.type)
         ? `${dto.type}:${dto.leadId}:${dto.viewingId}:${new Date(dto.viewingTime).toISOString()}`
         : `${dto.type}:${dto.leadId}`;
       const repo = m.getRepository(FollowupTask);
       let task = await repo.findOne({ where: { taskKey: key }, lock: { mode: 'pessimistic_write' } });
+      if (!task && dto.type === 'FEEDBACK') {
+        const legacy = await repo.findOne({ where: { taskKey: `FEEDBACK:${dto.leadId}` }, lock: { mode: 'pessimistic_write' } });
+        if (legacy?.viewingId === dto.viewingId && legacy.viewingTime.getTime() === new Date(dto.viewingTime).getTime()) task = legacy;
+      }
       if (task?.state === 'COMPLETED' || task?.state === 'REVIEW') return { claimed: false, reason: task.state };
       if (task && task.owner !== dto.owner && task.leaseUntil > now) return { claimed: false, reason: 'Tác vụ đang được execution khác xử lý' };
       if (task?.state === 'ACTION_STARTED') {
@@ -118,7 +100,7 @@ export class FollowupsService {
     return this.db.transaction(async m => {
       const task = await this.locked(m, id, token);
       if (task.state !== 'CLAIMED' || task.leaseUntil <= new Date()) return { allowed: false, reason: task.state };
-      const s = await this.snapshot(m, task.leadId, task.type);
+      const s = await this.snapshot(m, task.leadId, task.type, task.viewingId);
       if (!s || s.viewing_id !== task.viewingId || new Date(s.viewing_time).getTime() !== task.viewingTime.getTime() || !isFollowupDue(s, task.type, new Date()))
         return { allowed: false, reason: 'Khách hoặc lịch không còn đủ điều kiện' };
       task.state = 'ACTION_STARTED';
@@ -149,7 +131,8 @@ export class FollowupsService {
       let statusChanged = false;
       // Attendance is recorded by staff. Sending a survey never proves the customer attended.
       if (task.result.mauticContactId) await m.getRepository(Lead).update(task.leadId, { mauticContactId: task.result.mauticContactId });
-      await m.getRepository(LeadEvent).save({ leadId: task.leadId, type: EVENTS[task.type], note: `L2 ${task.taskKey}` });
+      await m.getRepository(LeadEvent).save({ leadId: task.leadId,
+        type: task.type === 'STAFF_NUDGE' && task.viewingId > 0 ? 'STAFF_NUDGE_SENT' : EVENTS[task.type], note: `L2 ${task.taskKey}` });
       task.state = 'COMPLETED'; task.error = null;
       await m.getRepository(FollowupTask).save(task);
       return { ok: true, leadId: task.leadId, statusChanged };

@@ -67,7 +67,7 @@ Sửa bằng `nano /root/realestate-ai-agent/.env`. Không dán giá trị vào 
 |---|---|---|
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | db, backend | Đổi `DB_PASSWORD` sau khi đã có dữ liệu thì phải chạy thêm `ALTER USER` trong database |
 | `WEBHOOK_SECRET` | backend, n8n | Header `X-Webhook-Secret` giữa backend và n8n |
-| `JWT_SECRET`, `SEED_USER_PASSWORD` | backend | Đăng nhập admin |
+| `JWT_SECRET`, `SEED_USER_PASSWORD` | backend | Đăng nhập admin. `SEED_USER_PASSWORD` có giá trị thì mỗi lần khởi động backend tạo các tài khoản mẫu còn thiếu (quản lý, sale mẫu và 10 sale demo, xem `tong-quan-du-an.md` mục 11), dùng chung mật khẩu này |
 | `PUBLIC_HOST`, `PUBLIC_WEB_URL` | tất cả | Tên miền web; link trong email |
 | `N8N_ENCRYPTION_KEY` | n8n | Khoá mã hoá credential. **Không bao giờ đổi**, đổi là mất hết credential |
 | `N8N_LEAD_CHANGED_URL` | backend | Webhook luồng 7 (`http://n8n:5678/webhook/lead-changed`) |

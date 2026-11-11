@@ -26,6 +26,7 @@ import {
 import { useSession } from "@/lib/auth";
 import { contractCode } from "@/lib/contract";
 import { formatTime, vnDayKey } from "@/lib/time";
+import { isHotLead } from "@/lib/mautic";
 
 const POLL_MS = 15000;
 
@@ -162,7 +163,7 @@ interface Matrix {
 function buildMatrix(leads: Lead[]): Matrix {
   const m: Matrix = { vipHot: 0, coolingHot: 0, breakthrough: 0, nurturing: 0 };
   for (const l of leads) {
-    const isHot = l.level === "HOT";
+    const isHot = isHotLead(l);
     const isHigh = (l.mauticPoints ?? 0) >= ENGAGED_POINTS;
     if (isHot && isHigh) m.vipHot++;
     else if (isHot) m.coolingHot++;

@@ -8,10 +8,23 @@ import { UpdateRoutingDto } from './dto/update-routing.dto';
 import type { AuthUser } from '../auth/auth.types';
 import { ASSIGNMENT_LOCK_SQL } from '../leads/intake-rules';
 
-// Tài khoản mẫu cho bản dev. Mật khẩu lấy từ biến SEED_USER_PASSWORD, không ghi trong code.
+// Tài khoản mẫu, tạo ở mọi môi trường có biến SEED_USER_PASSWORD (cả server): chỉ tạo email còn thiếu,
+// không đổi mật khẩu hay thông tin tài khoản đã có. Mật khẩu chung lấy từ biến đó, không ghi trong code.
+// Mọi email là bí danh "+" của cùng hộp thư nhadn2457@gmail.com, nên thông báo của mọi sale về một chỗ khi demo.
 const SEED_USERS: { email: string; name: string; role: UserRole }[] = [
   { email: 'nhadn2457+quanly@gmail.com', name: 'Quản lý', role: 'MANAGER' },
   { email: 'nhadn2457+nhanvien@gmail.com', name: 'Nhân viên sale', role: 'SALE' },
+  // 10 sale demo để thử chia khách lần lượt (FE-41)
+  { email: 'nhadn2457+nhanvien01@gmail.com', name: 'Nguyễn Minh Khang', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien02@gmail.com', name: 'Trần Thu Hà', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien03@gmail.com', name: 'Lê Quốc Bảo', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien04@gmail.com', name: 'Phạm Ngọc Anh', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien05@gmail.com', name: 'Võ Hoàng Long', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien06@gmail.com', name: 'Đặng Thị Mai', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien07@gmail.com', name: 'Bùi Văn Phúc', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien08@gmail.com', name: 'Hồ Thanh Tâm', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien09@gmail.com', name: 'Dương Gia Huy', role: 'SALE' },
+  { email: 'nhadn2457+nhanvien10@gmail.com', name: 'Ngô Bảo Châu', role: 'SALE' },
 ];
 
 @Injectable()

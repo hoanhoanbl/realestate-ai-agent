@@ -15,7 +15,7 @@ Triển khai local trên nền FE-33/FE-34, chưa phát hành server. Phạm vi 
 
 ## API mới
 
-Xem [api-contract.md mục 3.2](api-contract.md#32-link-duyet--doi-gio-cho-nhan-vien-fe-35). Link được ký bằng `WEBHOOK_SECRET`; đổi secret thì link cũ chết, nhân viên duyệt trên web admin.
+Xem [api-contract.md mục 3.2](api-contract.md#32-link-duyệt--đổi-giờ-cho-nhân-viên-fe-35). Link được ký bằng `WEBHOOK_SECRET`; đổi secret thì link cũ chết, nhân viên duyệt trên web admin.
 
 ## Triển khai
 

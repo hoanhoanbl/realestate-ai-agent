@@ -69,7 +69,7 @@
 
 ## 8. Docs
 
-- [ ] 8.1 Update `docs/api-contract.md` with the new and changed endpoints, status values and 409/429 responses (propose the text in chat first)
+- [x] 8.1 Update `docs/api-contract.md` with the new and changed endpoints, status values and 409/429 responses (propose the text in chat first)
 
 ## 9. Local end-to-end verification
 

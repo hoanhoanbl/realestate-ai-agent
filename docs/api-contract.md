@@ -252,6 +252,21 @@ Quy tắc giờ cho `POST /api/viewings` (khách, bot) và `PUT /api/viewings/{i
 
 Hai lịch cùng một căn vẫn phải cách nhau ít nhất 60 phút, sai thì trả `409` như trước.
 
+Chặn đặt trùng và lạm dụng cho `POST /api/viewings` (khách, bot):
+
+| Tình huống | Mã | Thông báo (rút gọn) |
+|---|---|---|
+| Ô ẩn `website` (honeypot) có chữ. Form web luôn gửi rỗng; không lưu gì | `400` | `Yêu cầu không hợp lệ` |
+| Căn không còn `AVAILABLE` (đã giữ cọc, đã bán, ẩn), kể cả khi vừa đổi trạng thái lúc đặt | `400` | `Căn nhà này hiện không nhận đặt lịch xem` |
+| Căn đã có lịch cách dưới 60 phút (kiểm tra có khoá theo căn nên hai yêu cầu cùng lúc không cùng lọt) | `409` | `Khung giờ này đã có khách hẹn xem căn này (lúc …)` |
+| Cùng email đã có lịch chờ cho căn này | `409` | `Bạn đã có lịch xem căn này lúc …` |
+| Khách đang có hợp đồng cọc | `409` | `Bạn đang làm hợp đồng đặt cọc với chúng tôi…` |
+| Quá giới hạn theo IP | `429` | Mặc định 5 lần mỗi 10 phút (`BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS`) |
+
+- Request có header `X-Webhook-Secret` đúng (luồng 6) được miễn giới hạn `429`, vì mọi khách Telegram đi chung IP của n8n.
+- IP khách là `req.ip` sau khi backend tin `TRUST_PROXY_HOPS` proxy (mặc định 1). Đặt sai số này thì mọi khách bị tính chung một IP, hoặc IP bị giả được.
+- `PUT /api/viewings/{id}` (đổi giờ) cũng kiểm tra `409` khung 60 phút, bỏ qua chính buổi xem đó.
+
 ### 3.2. Link Duyệt / Đổi giờ cho nhân viên (FE-35)
 
 | Method | Đường dẫn | Quyền | Kết quả |
@@ -307,7 +322,7 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-da
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
-| POST | `/api/contracts` | JWT | `{leadId, depositAmount}`: lập hợp đồng, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do |
+| POST | `/api/contracts` | JWT | `{leadId, depositAmount}`: lập hợp đồng, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
 | GET | `/api/contracts` | JWT | Danh sách hợp đồng |
 | GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl`) |
 | POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
@@ -357,20 +372,30 @@ Cách luồng n8n chạy: [luong-4-bao-cao.md](luong/luong-4-bao-cao.md).
 | POST | `/api/viewings/manage/{token}/cancel` | Công khai | Khách tự hủy lịch |
 | POST | `/api/viewings/manage/{token}/reschedule-request` | Công khai | `{note?}`: khách xin đổi lịch |
 | GET | `/api/properties/admin/all` | JWT | Mọi căn kể cả căn ẩn, cho trang Quản lý nhà |
-| POST | `/api/properties` | Quản lý | Thêm căn |
-| PUT | `/api/properties/{id}` | Quản lý | Sửa căn |
-| DELETE | `/api/properties/{id}` | Quản lý | Ẩn căn |
+| POST | `/api/properties` | Quản lý | Thêm căn. `status` chỉ nhận `AVAILABLE` hoặc `HIDDEN` (mặc định `AVAILABLE`); `SOLD`: `400` |
+| PUT | `/api/properties/{id}` | Quản lý | Sửa căn, gồm đổi `status` (quy tắc bên dưới) |
+| DELETE | `/api/properties/{id}` | Quản lý | Ẩn căn (xoá mềm, đặt `HIDDEN`); cùng quy tắc đổi trạng thái |
+
+Trạng thái căn (`properties.status`): `AVAILABLE` (mở bán), `RESERVED` (đang giữ cọc), `SOLD` (đã bán), `HIDDEN` (ẩn). Danh sách công khai không trả căn `HIDDEN` và `SOLD`; căn `RESERVED` vẫn hiện nhưng không nhận đặt lịch.
+
+- `RESERVED` do hợp đồng quyết định: tạo hợp đồng đặt căn sang `RESERVED`; hợp đồng bị từ chối hoặc hết hạn thì trả về `AVAILABLE` nếu không còn hợp đồng nào khác.
+- Căn đang có hợp đồng còn hiệu lực không đổi trạng thái thủ công được: `409` `Căn này đang có hợp đồng #<id> (<trạng thái>), không đổi trạng thái được`.
+- `SOLD` chỉ đặt được khi căn đang `RESERVED` và hợp đồng đã `SIGNED`; sai thì `400` `Chỉ đánh dấu "đã bán" được khi căn đang giữ cọc và hợp đồng đã ký`. Thành công thì ghi sự kiện `PROPERTY_SOLD` cho lead của hợp đồng.
+- Những lịch xem đã đặt trước khi căn thành `RESERVED` vẫn giữ nguyên; nhân viên gọi báo khách.
 
 ## 4. Dữ liệu (bảng chính)
 
 | Bảng | Trường chính |
 |---|---|
 | `properties` | id, name, address, price, area, type, status, imageUrl, description; chi tiết (FE-31): bedrooms, bathrooms, floors, landArea, floorArea, roadWidth, direction, legalStatus, furnishing, occupancy (mã trong `backend/src/properties/property-options.ts`); mảng: images (link), features, furniture, nearby (`{ category, name, distance }`), panoramas (`{ title, url }`). Mảng `null` = chưa nhập, `[]` = đã xoá hết |
-| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl; FE-33: phone_normalized, assigned_user_id, assigned_at, response_due_at, first_response_at |
+| `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl; FE-33: phone_normalized, assigned_user_id, assigned_at, response_due_at, first_response_at; lost_reason (lý do mất khách, `null` nếu chưa mất) |
 | `viewings` | id, propertyId, leadId, viewingTime, status, manage_token |
+| `contracts` | Ngoài các trường lập và ký hợp đồng: `deposit_received_at`, `deposit_received_by` (ai nhận cọc, lúc nào). Chỉ mục duy nhất một phần `uq_contracts_active_property` trên `property_id` khi trạng thái là `DRAFTING`, `PENDING_APPROVAL`, `SENT` hoặc `SIGNED`: mỗi căn tối đa một hợp đồng còn hiệu lực |
 | `lead_events` | id, leadId, type, note, createdAt |
 
 Các bảng khác do backend tự tạo khi khởi động (TypeORM `synchronize`): `users`, `contracts`, `feedbacks`, `followup_tasks` (mục 6), `chat_logs` (mục 7), `weekly_reports`. Hai bảng `kb_documents` và `rag_chunks` phục vụ luồng 6 và 6b (xem [luong-6b-nap-tri-thuc.md](luong/luong-6b-nap-tri-thuc.md)).
+
+Giá trị `viewings.status`: `NEW` (chờ xử lý), `ATTENDED` (khách đã đến), `NO_SHOW` (khách không đến), `CANCELLED` (đã huỷ). Lead chuyển `VIEWED` chỉ khi nhân viên ghi nhận `ATTENDED`; luồng 2 không tự chuyển.
 
 Giá trị `leads.status`: `CONSULTING`, `NEW`, `CONFIRMED`, `VIEWED`, `DEPOSIT`, `SIGNED`, `LOST`. Lý do mất khách (`LOST`): `NO_SHOW`, `NOT_INTERESTED`, `CUSTOMER_CANCELLED`, `EXPIRED`, `OTHER`.
 

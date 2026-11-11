@@ -7,7 +7,8 @@ Verification used below: **link check** = every relative Markdown link in the fi
 ## 1. Common template
 
 - [x] 1.1 Create `docs/luong/README.md` with the shared template (1. Làm gì trong thực tế, 2. Ai tham gia, 3. Từng bước, 4. Nối với hệ thống, 5. Khi lỗi thì sao, 6. Triển khai lên server, 7. Cách chạy thử) and a table of all 12 workflows (file, trigger, workflow id from `docs/trien-khai.md`, doc link); verify the table has exactly the 12 files in `n8n-workflows/` and passes the link check
-- [ ] 1.2 Send the template to Hậu and wait for a reply before groups 2 to 5; verify the reply (OK or requested changes) is recorded in the PR description
+- [x] 1.2 Send the template to Hậu and wait for a reply before groups 2 to 5; verify the reply (OK or requested changes) is recorded in the PR description
+  - Ghi chú: Hoàng quyết định bỏ qua bước chờ Hậu trả lời khung chung (11/11/2026). Hậu CHƯA trả lời hay duyệt.
 
 ## 2. Flow 1 and 1b
 
@@ -29,7 +30,8 @@ Verification used below: **link check** = every relative Markdown link in the fi
 
 - [x] 5.1 Restructure `docs/luong/luong-2-follow-up.md` and `luong-4-bao-cao.md` to the template without losing existing content, add "Triển khai lên server" where missing, and update them to match FE-29 and later code; verify link check and that every section heading from the old file still exists or is merged on purpose
 - [x] 5.2 Do the same for `luong-5-cam-nhan.md`, `luong-7-dong-bo-mautic.md` and `luong-8-mautic-bao-ve.md`; verify link check
-- [ ] 5.3 Ask Hậu to review 5.1 and 5.2 (the owner of these flows); verify the review result is recorded in the PR description
+- [x] 5.3 Ask Hậu to review 5.1 and 5.2 (the owner of these flows); verify the review result is recorded in the PR description
+  - Ghi chú: Hoàng quyết định bỏ qua bước Hậu review luồng 2, 4, 5, 7, 8 (11/11/2026). Hậu CHƯA review.
 
 ## 6. `docs/api-contract.md`
 
@@ -48,7 +50,8 @@ Verification used below: **link check** = every relative Markdown link in the fi
 
 - [x] 8.1 Run a link check over `docs/` (script in the scratchpad, not committed) and a route comparison between `docs/api-contract.md` and the controllers; verify both report zero problems
 - [x] 8.2 In the same PR, move the DC-03 row of `docs/danh-sach-task.md` to section 4 with the PR number and merge date; verify the table row is under "Tài liệu (DC)" and section 3 no longer lists it
-- [ ] 8.3 Open the PR `docs/DC-03-tai-lieu-luong` into `dev` with title `[DC-03] Tài liệu 12 luồng, api-contract, tổng quan`; verify CI is green and Hậu has approved the parts for flows 2, 4, 5, 7, 8
+- [x] 8.3 Open the PR `docs/DC-03-tai-lieu-luong` into `dev` with title `[DC-03] Tài liệu 12 luồng, api-contract, tổng quan`; verify CI is green and Hậu has approved the parts for flows 2, 4, 5, 7, 8
+  - Ghi chú: PR #69 đã merge vào `dev` (CI xanh cả 5 job). Hoàng quyết định không chờ Hậu duyệt các phần luồng 2, 4, 5, 7, 8 (11/11/2026); PR không có review nào.
 
 ## Workflow follow-up
 

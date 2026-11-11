@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { ChatLog } from './chat-log.entity';
 import { CreateChatLogDto } from './chat-log.dto';
 
@@ -16,13 +16,32 @@ export function maskPii(text: string): string {
     .replace(LONG_NUMBER, '[số]');
 }
 
+export const CHAT_HISTORY_LIMIT = 200;
+
+export interface LeadChatLogView {
+  id: number;
+  createdAt: Date;
+  route: string;
+  question: string;
+  reply: string;
+  escalated: boolean;
+}
+
 @Injectable()
 export class ChatLogsService {
   constructor(@InjectRepository(ChatLog) private readonly repo: Repository<ChatLog>) {}
 
   async create(dto: CreateChatLogDto): Promise<{ id: number }> {
+    const channel = dto.channel || 'telegram';
+    // Lượt sau của cuộc chat đã gắn lead thì tự theo lead đó (lượt gắn gần nhất thắng)
+    const linked = await this.repo.findOne({
+      where: { channel, chatId: dto.chatId, leadId: Not(IsNull()) },
+      order: { id: 'DESC' },
+      select: { id: true, leadId: true },
+    });
     const saved = await this.repo.save(this.repo.create({
-      channel: dto.channel || 'telegram',
+      leadId: linked?.leadId ?? null,
+      channel,
       chatId: dto.chatId,
       route: dto.route,
       question: maskPii(dto.question),
@@ -33,5 +52,31 @@ export class ChatLogsService {
       executionId: dto.executionId ?? null,
     }));
     return { id: saved.id };
+  }
+
+  // Gắn các log chưa có lead của cuộc chat này vào lead; log đã thuộc lead khác giữ nguyên.
+  async linkChat(chatId: string, leadId: number, channel = 'telegram'): Promise<number> {
+    const result = await this.repo.update(
+      { channel, chatId, leadId: IsNull() },
+      { leadId },
+    );
+    return result.affected ?? 0;
+  }
+
+  // Cho trang chi tiết lead: cũ trước, không trả chatId và executionId
+  async findByLead(leadId: number): Promise<LeadChatLogView[]> {
+    const rows = await this.repo.find({
+      where: { leadId },
+      order: { id: 'DESC' },
+      take: CHAT_HISTORY_LIMIT,
+    });
+    return rows.reverse().map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      route: r.route,
+      question: r.question,
+      reply: r.reply,
+      escalated: r.escalated,
+    }));
   }
 }

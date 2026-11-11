@@ -25,6 +25,7 @@ import { bookableSlots, vnDateKey } from '../viewings/viewing-time';
 import { LeadsController } from './leads.controller';
 import { LeadsService } from './leads.service';
 import { UsersController } from '../users/users.controller';
+import { ChatLogsService } from '../chat-logs/chat-logs.service';
 
 // Chỉ chạy khi bật rõ ràng, trên PostgreSQL tạm riêng. Không dùng .env/database đang chạy.
 const databaseUrl = process.env.FE33_TEST_DATABASE_URL;
@@ -105,6 +106,7 @@ integration(
         providers: [
           { provide: LeadIntakeService, useValue: service },
           { provide: LeadsService, useValue: {} },
+          { provide: ChatLogsService, useValue: {} },
           { provide: UsersService, useValue: users },
           { provide: JwtService, useValue: jwt },
         ],

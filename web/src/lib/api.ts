@@ -546,6 +546,29 @@ export function getLeadEvents(id: number): Promise<LeadEvent[]> {
   return request<LeadEvent[]>(`/leads/${id}/events`);
 }
 
+// Một lượt hỏi đáp của bot Telegram gắn với khách (FE-36); văn bản đã che email và số dài
+export type ChatRoute = "COMMAND" | "BLOCKED" | "AGENT" | "STAFF" | "OUT_OF_SCOPE";
+export interface LeadChatLog {
+  id: number;
+  createdAt: string;
+  route: ChatRoute;
+  question: string;
+  reply: string;
+  escalated: boolean;
+}
+
+export const CHAT_ROUTE_LABELS: Record<ChatRoute, string> = {
+  COMMAND: "Lệnh",
+  BLOCKED: "Bị chặn",
+  AGENT: "Bot tư vấn",
+  STAFF: "Chuyển nhân viên",
+  OUT_OF_SCOPE: "Ngoài phạm vi",
+};
+
+export function getLeadChatLogs(id: number): Promise<LeadChatLog[]> {
+  return request<LeadChatLog[]>(`/leads/${id}/chat-logs`);
+}
+
 export interface CreateLeadInput {
   name: string;
   phone: string;

@@ -299,3 +299,7 @@ Log da thuoc lead khac giu nguyen. Loi khi gan chi ghi log o backend, khong lam 
 | 10/11/2026 | Hoang | FE-34: `GET /api/viewings/slots`, quy tac khung gio dat lich (muc 3.1) |
 | 11/11/2026 | Hoang (local) | FE-35: link Duyet/Doi gio (muc 3.2), `GET /api/users/{id}/notify-target`, payload `viewing_requested` them `assignedUserId`, bo `approvalUrl` |
 | 11/11/2026 | Hoang (local) | FE-36: `GET /api/leads/{id}/chat-logs` (muc 3.3), `chatId?` cho `POST /api/leads/intake` va `POST /api/viewings` (chi doc khi co `X-Webhook-Secret`), log moi cua chat da gan lead tu theo lead |
+
+### FE-40: hồ sơ đồng bộ Mautic
+
+GET /api/leads/:id/mautic-context dùng X-Webhook-Secret. Trả leadId, name, email (có thể null), phone, phoneNormalized, level, status, source, score, mauticContactId; không trả link duyệt. L7 đọc lại hồ sơ hiện tại để đồng bộ contact không email. Xem [FE-40](fe-40-l7-khong-email.md).

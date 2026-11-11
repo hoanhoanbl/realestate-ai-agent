@@ -63,7 +63,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const body = $('Webhook').first().json.body ?? {};\nconst leadId = Number(body.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) {\n  throw new Error('leadId không hợp lệ: ' + body.leadId);\n}\nconst name = String(body.name || '').trim();\nconst parts = name.split(/\\s+/);\nconst firstname = parts.length > 1 ? parts[parts.length - 1] : name;\nconst lastname = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';\nconst email = String(body.email || '').trim().toLowerCase();\nif (!/^[^\\s@\"\\\\]+@[^\\s@\"\\\\]+\\.[^\\s@\"\\\\]+$/.test(email)) throw new Error('Email lead không hợp lệ');\nconst phone = String(body.phone || '').trim();\nconst level = String(body.level || '').toUpperCase();\nif (level && !['HOT','WARM','COLD'].includes(level)) throw new Error('Mức AI không hợp lệ');\nconst status = String(body.status || 'NEW').toUpperCase();\nif (!['CONSULTING','NEW','CONFIRMED','VIEWED','DEPOSIT','SIGNED','LOST'].includes(status)) throw new Error('Trạng thái lead không hợp lệ');\nconst source = String(body.source || 'direct').trim().toLowerCase();\nconst score = Number(body.score) || 0;\nconst trigger = body.trigger || 'unknown';\n\nconst allStatuses = ['CONSULTING','NEW','CONFIRMED','VIEWED','DEPOSIT','SIGNED','LOST'];\nconst removeStatusTags = allStatuses.filter(s => s !== status).map(s => `-${s}`);\nconst removeLevels = ['HOT','WARM','COLD'].filter(x => x !== level).map(x => `-${x}`);\nconst tags = [level, status, source, ...removeStatusTags, ...removeLevels].filter(Boolean);\nif (level !== 'HOT' && score < 80) tags.push('-vip-prospect');\n\n// Khi lead chuyen sang chot coc (DEPOSIT), da ky (SIGNED) hoac mat khach (LOST), go tag nuoi WARM khoi Mautic\nif (['DEPOSIT', 'SIGNED', 'LOST'].includes(status)) {\n  tags.push('-nuoi-warm');\n}\n\nreturn [{ json: { leadId, name, firstname, lastname, email, phone, level, status, source, score, trigger, tags } }];"
+        "jsCode": "const body = $('Đọc hồ sơ Backend').first().json;\nconst leadId = Number(body.leadId);\nif (!Number.isInteger(leadId) || leadId <= 0) {\n  throw new Error('leadId không hợp lệ: ' + body.leadId);\n}\nconst name = String(body.name || '').trim();\nconst parts = name.split(/\\s+/);\nconst firstname = parts.length > 1 ? parts[parts.length - 1] : name;\nconst lastname = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';\nconst email = String(body.email || '').trim().toLowerCase();\nif (email && !/^[^\\s@\"\\\\]+@[^\\s@\"\\\\]+\\.[^\\s@\"\\\\]+$/.test(email)) throw new Error('Email lead không hợp lệ');\nconst rawPhone = String(body.phoneNormalized || body.phone || '').trim();\nif (!/^[+\\d\\s.()-]+$/.test(rawPhone)) throw new Error('Số điện thoại không hợp lệ');\nconst phone = rawPhone.replace(/[\\s.()-]/g,'').replace(/^\\+84/,'0');\nif (!/^\\d{8,15}$/.test(phone)) throw new Error('Số điện thoại không hợp lệ');\nconst mauticContactId = body.mauticContactId == null ? null : Number(body.mauticContactId);\nif (mauticContactId !== null && (!Number.isSafeInteger(mauticContactId) || mauticContactId<=0)) throw new Error('Contact ID đã liên kết không hợp lệ');\nconst level = String(body.level || '').toUpperCase();\nif (level && !['HOT','WARM','COLD'].includes(level)) throw new Error('Mức AI không hợp lệ');\nconst status = String(body.status || 'NEW').toUpperCase();\nif (!['CONSULTING','NEW','CONFIRMED','VIEWED','DEPOSIT','SIGNED','LOST'].includes(status)) throw new Error('Trạng thái lead không hợp lệ');\nconst source = String(body.source || 'direct').trim().toLowerCase();\nconst score = Number(body.score) || 0;\nconst trigger = body.trigger || 'unknown';\n\nconst allStatuses = ['CONSULTING','NEW','CONFIRMED','VIEWED','DEPOSIT','SIGNED','LOST'];\nconst removeStatusTags = allStatuses.filter(s => s !== status).map(s => `-${s}`);\nconst removeLevels = ['HOT','WARM','COLD'].filter(x => x !== level).map(x => `-${x}`);\nconst tags = [level, status, source, ...removeStatusTags, ...removeLevels].filter(Boolean);\nif (level !== 'HOT' && score < 80) tags.push('-vip-prospect');\n\n// Khi lead chuyen sang chot coc (DEPOSIT), da ky (SIGNED) hoac mat khach (LOST), go tag nuoi WARM khoi Mautic\nif (['DEPOSIT', 'SIGNED', 'LOST'].includes(status)) {\n  tags.push('-nuoi-warm');\n}\n\nreturn [{ json: { leadId, name, firstname, lastname, email, phone, mauticContactId, level, status, source, score, trigger, tags } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -93,7 +93,11 @@
           "parameters": [
             {
               "name": "search",
-              "value": "=email:{{ $json.email }}"
+              "value": "={{ (() => { const p=$('Chuẩn hoá dữ liệu').first().json; const values=['phone:\"'+p.phone+'\"']; if(p.phone.startsWith('0')) values.push('phone:\"+84'+p.phone.slice(1)+'\"'); if(p.email) values.push('email:\"'+p.email+'\"'); return values.join(' OR '); })() }}"
+            },
+            {
+              "name": "limit",
+              "value": "100"
             }
           ]
         },
@@ -163,7 +167,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/{{ $('Chọn Contact đúng email').first().json.contactId }}/edit",
+        "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/{{ $('Chọn Contact đúng định danh').first().json.contactId }}/edit",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -175,7 +179,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ firstname: $('Chuẩn hoá dữ liệu').first().json.firstname, lastname: $('Chuẩn hoá dữ liệu').first().json.lastname, phone: $('Chuẩn hoá dữ liệu').first().json.phone, tags: $('Chuẩn hoá dữ liệu').first().json.tags }) }}",
+        "jsonBody": "={{ JSON.stringify($('Chọn Contact đúng định danh').first().json.payload) }}",
         "options": {
           "timeout": 15000
         },
@@ -216,7 +220,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ firstname: $node[\"Chuẩn hoá dữ liệu\"].json.firstname, lastname: $node[\"Chuẩn hoá dữ liệu\"].json.lastname, email: $node[\"Chuẩn hoá dữ liệu\"].json.email, phone: $node[\"Chuẩn hoá dữ liệu\"].json.phone, tags: $node[\"Chuẩn hoá dữ liệu\"].json.tags }) }}",
+        "jsonBody": "={{ JSON.stringify($('Chọn Contact đúng định danh').first().json.payload) }}",
         "options": {
           "timeout": 15000
         },
@@ -232,7 +236,7 @@
       "id": "70010001-0000-4000-8000-000000000007",
       "name": "Tạo Contact mới",
       "onError": "continueErrorOutput",
-      "retryOnFail": true,
+      "retryOnFail": false,
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "credentials": {
@@ -245,7 +249,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const res = $json;\nconst id = Number(res.contact?.id ?? res.id ?? $('Chọn Contact đúng email').first().json.contactId);\nif (!Number.isSafeInteger(id) || id <= 0) throw new Error('Không nhận được contactId hợp lệ sau khi đồng bộ Mautic');\nreturn [{json:{...$('Chuẩn hoá dữ liệu').first().json,contactId:id}}];"
+        "jsCode": "const res = $json;\nconst id = Number(res.contact?.id ?? res.id ?? $('Chọn Contact đúng định danh').first().json.contactId);\nif (!Number.isSafeInteger(id) || id <= 0) throw new Error('Không nhận được contactId hợp lệ sau khi đồng bộ Mautic');\nreturn [{json:{...$('Chuẩn hoá dữ liệu').first().json,contactId:id}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -467,8 +471,8 @@
       "waitBetweenTries": 3000
     },
     {
-      "id": "mautic-Chọn Contact đúng email",
-      "name": "Chọn Contact đúng email",
+      "id": "mautic-Chọn Contact đúng định danh",
+      "name": "Chọn Contact đúng định danh",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -477,7 +481,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const res = $json;\nconst email = $('Chuẩn hoá dữ liệu').first().json.email;\nif (!res.contacts || typeof res.contacts !== 'object') throw new Error('Mautic không trả danh sách contacts hợp lệ');\nconst matches = Object.values(res.contacts).filter(c => {\n  const value = c.fields?.all?.email ?? c.fields?.core?.email?.value ?? c.email;\n  return typeof value === 'string' && value.trim().toLowerCase() === email;\n});\nif (matches.length > 1) throw new Error('Có nhiều contact trùng email, cần kiểm tra trên Mautic');\nconst id = matches.length ? Number(matches[0].id) : null;\nif (matches.length && (!Number.isSafeInteger(id) || id <= 0)) throw new Error('ID contact không hợp lệ');\nreturn [{json:{contactId:id}}];"
+        "jsCode": "const res = $json;\nconst p = $('Chuẩn hoá dữ liệu').first().json;\nconst field=(c,key)=>c.fields?.all?.[key] ?? c.fields?.core?.[key]?.value ?? c[key] ?? '';\nconst phone=value=>String(value??'').replace(/[\\s.()-]/g,'').replace(/^\\+84/,'0');\nif(!res.contacts || typeof res.contacts!=='object')throw new Error('Mautic không trả danh sách contacts hợp lệ');\nif(Number(res.total??0)>100)throw new Error('Quá nhiều contact ứng viên, cần kiểm tra định danh trước khi đồng bộ');\nconst candidates=Object.values(res.contacts);\nconst matches=candidates.filter(c=>phone(field(c,'phone'))===p.phone || (p.email && String(field(c,'email')).trim().toLowerCase()===p.email));\nconst ids=new Set(matches.map(c=>Number(c.id)));\nif(ids.size>1)throw new Error('Có nhiều contact trùng số điện thoại/email, cần kiểm tra trên Mautic');\nlet selected=matches[0]??null;\nif(p.mauticContactId){\n const linked=$('Đọc Contact đã liên kết').first().json.contact;\n if(!linked || Number(linked.id)!==p.mauticContactId)throw new Error('Contact ID đã liên kết không còn hợp lệ');\n if(selected && Number(selected.id)!==p.mauticContactId)throw new Error('Contact đã liên kết xung đột với số điện thoại/email');\n selected=linked;\n}\nif(selected){\n const raw=String(field(selected,'phone')).trim();\n if(raw && phone(raw)!==p.phone)throw new Error('Email trùng nhưng số điện thoại thuộc khách khác');\n if(!raw && (!p.email || String(field(selected,'email')).trim().toLowerCase()!==p.email))throw new Error('Không xác minh được định danh contact đã liên kết');\n}\nconst contactId=selected?Number(selected.id):null;\nif(selected && (!Number.isSafeInteger(contactId)||contactId<=0))throw new Error('ID contact không hợp lệ');\nconst existingEmail=selected?String(field(selected,'email')).trim().toLowerCase():'';\nconst payload={firstname:p.firstname,lastname:p.lastname,phone:p.phone,tags:p.tags,overwriteWithBlank:false};\n// Không gửi email rỗng hoặc thay email Mautic đã có bằng địa chỉ khác.\nif(p.email && (!existingEmail || existingEmail===p.email))payload.email=p.email;\nreturn [{json:{contactId,payload,emailPreserved:!!existingEmail && existingEmail!==p.email}}];"
       },
       "onError": "continueErrorOutput"
     },
@@ -607,6 +611,98 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ Number($('Webhook').first().json.body.leadId) }}/mautic-context",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -600,
+        220
+      ],
+      "id": "fe40-backend-context",
+      "name": "Đọc hồ sơ Backend",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-exists",
+              "leftValue": "={{ Number($json.mauticContactId || 0) }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -180,
+        220
+      ],
+      "id": "fe40-has-linked-id",
+      "name": "Đã liên kết Contact?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.mauticUrl }}/contacts/{{ $('Chuẩn hoá dữ liệu').first().json.mauticContactId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        40,
+        20
+      ],
+      "id": "fe40-read-linked-contact",
+      "name": "Đọc Contact đã liên kết",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "mautic_api_credential",
+          "name": "Mautic API - chọn Local hoặc Server"
+        }
+      }
     }
   ],
   "connections": {
@@ -625,7 +721,7 @@
       "main": [
         [
           {
-            "node": "Chuẩn hoá dữ liệu",
+            "node": "Đọc hồ sơ Backend",
             "type": "main",
             "index": 0
           }
@@ -636,7 +732,7 @@
       "main": [
         [
           {
-            "node": "Tìm Contact Mautic",
+            "node": "Đã liên kết Contact?",
             "type": "main",
             "index": 0
           }
@@ -654,7 +750,7 @@
       "main": [
         [
           {
-            "node": "Chọn Contact đúng email",
+            "node": "Chọn Contact đúng định danh",
             "type": "main",
             "index": 0
           }
@@ -812,7 +908,7 @@
         ]
       ]
     },
-    "Chọn Contact đúng email": {
+    "Chọn Contact đúng định danh": {
       "main": [
         [
           {
@@ -846,6 +942,60 @@
         [
           {
             "node": "Dừng khi đồng bộ lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đọc hồ sơ Backend": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hoá dữ liệu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phản hồi dữ liệu sai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã liên kết Contact?": {
+      "main": [
+        [
+          {
+            "node": "Đọc Contact đã liên kết",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tìm Contact Mautic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đọc Contact đã liên kết": {
+      "main": [
+        [
+          {
+            "node": "Tìm Contact Mautic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Báo lỗi Backend",
             "type": "main",
             "index": 0
           }

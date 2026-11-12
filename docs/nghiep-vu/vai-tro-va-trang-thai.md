@@ -53,6 +53,7 @@ Một văn phòng môi giới bất động sản nhận bán nhà cho chủ nh�
 | Xác nhận "Đã nhận tiền cọc", đánh dấu căn "Đã bán" | | | ✅ | |
 | Thêm, sửa, ẩn, xoá căn nhà | | | ✅ | |
 | Xem báo cáo tuần, bấm tạo báo cáo ngay | | | ✅ | Lập báo cáo mỗi thứ Hai |
+| Xem trang Đội sale (khách đang giữ và kết quả của từng sale), lọc danh sách khách theo người phụ trách | | | ✅ | Sale không thấy mục này và không thấy ô lọc |
 | Tạo tài khoản nhân viên | | | ✅ | |
 | Xem danh sách khách, lịch xem, hợp đồng, số liệu tổng quan | | ✅ | ✅ | |
 

@@ -629,6 +629,35 @@ export function getStats(): Promise<Stats> {
   return request<Stats>("/stats");
 }
 
+// Trang Đội sale (chỉ quản lý): số khách và kết quả của từng người phụ trách
+export type TeamPeriod = "now" | "week" | "month";
+export type TeamOpenStatus = "CONSULTING" | "NEW" | "CONFIRMED" | "VIEWED" | "DEPOSIT";
+export interface TeamOwner {
+  id: number | null; // null = chưa phân công
+  name: string;
+  role: "SALE" | "MANAGER" | null;
+  acceptingLeads: boolean | null;
+  open: Record<TeamOpenStatus | "total", number>;
+  overdue: number;
+  idle: number;
+  assigned: number;
+  attended: number;
+  signed: number;
+  lost: number;
+}
+export interface TeamStats {
+  period: TeamPeriod;
+  from: string | null;
+  to: string | null;
+  acceptingSales: number;
+  totalSales: number;
+  owners: TeamOwner[];
+  totals: Omit<TeamOwner, "id" | "name" | "role" | "acceptingLeads">;
+}
+export function getTeamStats(period: TeamPeriod): Promise<TeamStats> {
+  return request<TeamStats>(`/stats/team?period=${period}`);
+}
+
 export function createViewing(
   input: CreateViewingInput,
 ): Promise<CreateViewingResult> {

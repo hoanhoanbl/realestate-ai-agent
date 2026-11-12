@@ -6,6 +6,8 @@ Quy tắc nghiệp vụ (khi nào áp dụng, ai xử lý, khách thấy gì) n�
 
 ## Bảng các luồng
 
+Luồng 1, 1b, 2, 3, 4, 5, 6, 6b cùng Thông báo và Error là **phần lõi đề tài** (Visits, Document signing, Lead follow-up, Sales analytics). Luồng 7 và 8 là **mở rộng Marketing Automation (Mautic), phát triển sau**, ngoài bốn vế đề tài. Riêng luồng 2: phần nuôi khách WARM và COLD qua Mautic cũng là mở rộng. Chi tiết: mục "Phạm vi" của [tong-quan-du-an.md](../tong-quan-du-an.md).
+
 | Luồng | Việc chính | Kích hoạt | Id trên server | Tài liệu |
 |---|---|---|---|---|
 | 1 | Nhận đặt lịch, chấm điểm AI, báo sale duyệt | Webhook `viewing-requested` | `prt5invo7qugQx74` | [luong-1-dat-lich.md](luong-1-dat-lich.md) |
@@ -16,8 +18,8 @@ Quy tắc nghiệp vụ (khi nào áp dụng, ai xử lý, khách thấy gì) n�
 | 5 | Phân tích cảm nhận sau buổi xem | Webhook `feedback-submitted` | `luong5Realestat0` | [luong-5-cam-nhan.md](luong-5-cam-nhan.md) |
 | 6 | Bot Telegram tư vấn khách (AI Agent) | Webhook `telegram-khach` | `luong6Realestat0` | [luong-6-telegram-agent.md](luong-6-telegram-agent.md) |
 | 6b | Nạp tri thức vào kho vector cho bot | 2 giờ sáng mỗi ngày (và chạy tay) | `luong6bRagNap001` | [luong-6b-nap-tri-thuc.md](luong-6b-nap-tri-thuc.md) |
-| 7 | Đồng bộ khách sang Mautic | Webhook `lead-changed` | `luong7Realestat0` | [luong-7-dong-bo-mautic.md](luong-7-dong-bo-mautic.md) |
-| 8 | Mautic báo hành vi khách về backend | Webhook `mautic-event` | `luong8Realestat0` | [luong-8-mautic-bao-ve.md](luong-8-mautic-bao-ve.md) |
+| 7 (mở rộng) | Đồng bộ khách sang Mautic | Webhook `lead-changed` | `luong7Realestat0` | [luong-7-dong-bo-mautic.md](luong-7-dong-bo-mautic.md) |
+| 8 (mở rộng) | Mautic báo hành vi khách về backend | Webhook `mautic-event` | `luong8Realestat0` | [luong-8-mautic-bao-ve.md](luong-8-mautic-bao-ve.md) |
 | Thông báo | Gửi tin cho nhân viên (email, Telegram, push) | Luồng khác gọi | `thongBaoNhanVien` | [thong-bao-nhan-vien.md](thong-bao-nhan-vien.md) |
 | Error | Báo quản lý khi một luồng khác lỗi | Luồng khác lỗi | `errorWfRealestat` | [error-workflow.md](error-workflow.md) |
 

@@ -4,7 +4,7 @@ File này là luật chung của hệ thống: ai được làm gì, và mỗi �
 
 - [01-tiep-nhan-va-phan-cong.md](01-tiep-nhan-va-phan-cong.md): quy trình 1, khách vào từ đâu, ai phụ trách, hạn phản hồi, khung giờ hẹn (đã chốt, chưa làm).
 - [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md): quy trình 2, đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
-- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
+- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem (hỏi cảm nhận, khách im lặng, báo cáo tuần). Nuôi khách và điểm tương tác qua Mautic trong file này là mở rộng, phát triển sau.
 
 Tài liệu luồng trong `docs/luong/` chỉ link về đây, không chép lại quy tắc. Nếu code chạy khác với file này, báo trong nhóm để sửa một trong hai, không để lệch.
 

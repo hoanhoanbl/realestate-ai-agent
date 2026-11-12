@@ -1,5 +1,7 @@
 # Luồng 7: Đồng bộ lead sang Mautic
 
+> **Mở rộng, phát triển sau.** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
+
 File: `n8n-workflows/luong-7-dong-bo-mautic.json` (21 node, không tính ghi chú; id `luong7Realestat0`).
 Kích hoạt: `POST /webhook/lead-changed`, Header Auth `X-Webhook-Secret`.
 

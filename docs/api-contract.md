@@ -360,6 +360,7 @@ Cách luồng n8n chạy: [luong-4-bao-cao.md](luong/luong-4-bao-cao.md).
 | GET | `/api/stats` | JWT | `{total, hot, warm, cold, bySource, byAssignee, overdueResponses}` |
 | GET | `/api/stats/tasks` | JWT | `{pendingAttendance, wantsDeposit, notInterested, reservedBackups, customerRequests}`: việc cần làm trên trang tổng quan |
 | GET | `/api/stats/funnel` | JWT | `{total, byStatus, noShow, conversionRate, pendingApproval, failedAutomation, viewingsToday}`: phễu bán hàng |
+| GET | `/api/stats/team?period=now\|week\|month` | Quản lý | Trang Đội sale: `{period, from, to, acceptingSales, totalSales, owners[], totals}`. Mỗi phần tử `owners`: `{id, name, role, acceptingLeads, open:{CONSULTING, NEW, CONFIRMED, VIEWED, DEPOSIT, total}, overdue, idle, assigned, attended, signed, lost}`. `now` (mặc định) điền `open`, `overdue` (quá hạn phản hồi), `idle` (khách mở không có sự kiện quá 7 ngày); `week`/`month` điền `assigned`, `attended`, `signed`, `lost` theo người đang phụ trách, mốc 00:00 thứ Hai hoặc ngày 1 giờ Việt Nam. Mọi sale đều có dòng; quản lý và `id: null` (chưa phân công) chỉ hiện khi có số. `period` khác ba giá trị trên trả `400`, sale trả `403` |
 
 ### 3.9. Lịch xem và nhà (web admin, khách tự quản lý)
 
@@ -454,3 +455,4 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 | 11/11/2026 | Hoàng | FE-36: `GET /api/leads/{id}/chat-logs` (mục 3.3), `chatId?` cho `POST /api/leads/intake` và `POST /api/viewings` (chỉ đọc khi có `X-Webhook-Secret`), log mới của chat đã gắn lead tự theo lead |
 | 10/11/2026 | Hậu | FE-40: `GET /api/leads/{id}/mautic-context` (mục 2.7) |
 | 11/11/2026 | Hoàng | DC-03: chuyển toàn bộ sang tiếng Việt có dấu, sắp lại số mục (3.2, 3.3 lên mục 3), thêm các mục 3.4 đến 3.9 (đăng nhập, khách và người phụ trách, hợp đồng, cảm nhận, báo cáo và thống kê, lịch xem), bảng webhook backend gọi n8n, danh sách đầy đủ `lead_events.type` và trạng thái lead |
+| 12/11/2026 | Hoàng | Đội sale: `GET /api/stats/team` (chỉ quản lý), số khách và kết quả theo từng người phụ trách |

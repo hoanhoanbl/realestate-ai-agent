@@ -83,6 +83,7 @@ Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep
 | FE-39 | `feature/FE-39-admin-phu-trach` | Web admin: người phụ trách, chuyển sale, ghi chú, công tắc "Đang nhận khách" | Hậu | Xong local, chưa PR/server. Đã kiểm tra quản lý/sale và màn hình 375px. Xem [FE-39](fe-39-admin-phu-trach.md) |
 | FE-40 | `feature/FE-40-l7-khong-email` | Luồng 7 đồng bộ lead không có email sang Mautic | Hậu | Xong code và kiểm thử local 10/11; chưa PR/chưa lên server. [FE-40](fe-40-l7-khong-email.md) |
 | FE-41 | `feature/FE-41-sale-mau` | Thêm 10 sale demo (`nhadn2457+nhanvien01..10@gmail.com`) vào `SEED_USERS` để thử chia khách lần lượt trên mọi môi trường, kể cả server | Hoàng | Đang làm (11/11) |
+| FE-42 | `feature/FE-42-doi-sale` | Trang "Đội sale" cho quản lý (`/admin/doi-sale`, `GET /api/stats/team`): số khách đang mở, trễ phản hồi, im quá 7 ngày, kết quả theo tuần/tháng của từng sale; ô lọc "Phụ trách" ở trang Khách hàng. Kế hoạch: `openspec/changes/sales-team-overview` | Hoàng | Đang làm (12/11) |
 
 ### Tuần 5 (16–22/11)
 

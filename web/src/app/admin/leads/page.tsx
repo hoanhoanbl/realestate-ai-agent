@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 import LevelBadge from "@/components/LevelBadge";
@@ -12,6 +12,7 @@ import {
   formatVnd,
   getLeads,
   getAssignees,
+  type AssigneeOption,
   sourceLabel,
   type Lead,
   type LeadStatus,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/api";
 import { normalizeText } from "@/lib/property";
 import { isHotLead } from "@/lib/mautic";
+import { useSession } from "@/lib/auth";
 
 // Mức AI chấm + hai nhóm theo điểm tương tác Mautic (Hậu, trục thứ hai)
 type Filter = "ALL" | Level | "HIGH_ENGAGEMENT" | "VIP_HOT";
@@ -85,8 +87,45 @@ const STATUS_OPTIONS: { value: "ALL" | LeadStatus; label: string }[] = [
   { value: "LOST", label: "Không mua" },
 ];
 
+// Giá trị ô "Phụ trách": ALL = mọi người, NONE = chưa phân công, còn lại là id người phụ trách
+const OWNER_ALL = "";
+const OWNER_NONE = "none";
+
 const LEVELS: Filter[] = FILTERS.map((f) => f.value);
 const STATUSES = STATUS_OPTIONS.map((o) => o.value);
+
+function matchesOwner(lead: Lead, owner: string): boolean {
+  if (owner === OWNER_ALL) return true;
+  if (owner === OWNER_NONE) return lead.assignedUserId == null;
+  return lead.assignedUserId === Number(owner);
+}
+
+// Tên người phụ trách: quản lý bấm vào để lọc danh sách theo người đó (không mở khách)
+function OwnerLink({
+  lead,
+  name,
+  enabled,
+  onPick,
+  className = "",
+}: {
+  lead: Lead;
+  name: string;
+  enabled: boolean;
+  onPick: (value: string) => void;
+  className?: string;
+}) {
+  if (!enabled) return <span className={className}>{name}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(lead.assignedUserId == null ? OWNER_NONE : String(lead.assignedUserId))}
+      aria-label={`Chỉ xem khách của ${name}`}
+      className={`inline-flex min-h-11 items-center rounded px-1 text-left text-brand-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:min-h-0 ${className}`}
+    >
+      {name}
+    </button>
+  );
+}
 
 // Ba cờ tự động hoá gọn trong một ô: email đã gửi, đã báo nhân viên
 function Flags({ lead }: { lead: Lead }) {
@@ -134,14 +173,29 @@ function LeadsContent() {
     statusParam && STATUSES.includes(statusParam) ? statusParam : "ALL",
   );
   const [query, setQuery] = useState("");
+  // Người phụ trách lấy từ địa chỉ (?assignee=<id>|none) để link từ trang Đội sale và khi tải lại vẫn giữ lọc
+  const router = useRouter();
+  const pathname = usePathname();
+  const session = useSession();
+  const isManager = session?.user.role === "MANAGER";
+  const assigneeParam = searchParams.get("assignee");
+  const ownerFilter = isManager && assigneeParam && (assigneeParam === OWNER_NONE || /^\d+$/.test(assigneeParam)) ? assigneeParam : OWNER_ALL;
+  const setOwnerFilter = (value: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (value === OWNER_ALL) next.delete("assignee");
+    else next.set("assignee", value);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [owners, setOwners] = useState<Record<number, string>>({});
+  const [assignees, setAssignees] = useState<AssigneeOption[]>([]);
+  const owners = useMemo(() => Object.fromEntries(assignees.map((u) => [u.id, u.name])) as Record<number, string>, [assignees]);
 
   useEffect(() => {
     let active = true;
-    getAssignees().then(users => { if (active) setOwners(Object.fromEntries(users.map(u => [u.id, u.name]))); }).catch(() => {});
+    getAssignees().then(users => { if (active) setAssignees(users); }).catch(() => {});
     return () => { active = false; };
   }, []);
   const ownerName = (lead: Lead) => lead.assignedUserId ? owners[lead.assignedUserId] ?? `Nhân viên #${lead.assignedUserId}` : "Chưa phân công";
@@ -178,8 +232,14 @@ function LeadsContent() {
 
   // Đếm theo mức trên tập đã lọc trạng thái + tìm kiếm, để số trên chip khớp với danh sách
   const base = useMemo(
-    () => (leads ?? []).filter((l) => (statusFilter === "ALL" || l.status === statusFilter) && matchesSearch(l, query)),
-    [leads, statusFilter, query],
+    () =>
+      (leads ?? []).filter(
+        (l) =>
+          (statusFilter === "ALL" || l.status === statusFilter) &&
+          matchesOwner(l, ownerFilter) &&
+          matchesSearch(l, query),
+      ),
+    [leads, statusFilter, ownerFilter, query],
   );
 
   const counts = useMemo(() => {
@@ -229,6 +289,25 @@ function LeadsContent() {
             className={`${INPUT} pl-9`}
           />
         </div>
+        {isManager && (
+          <select
+            aria-label="Lọc theo người phụ trách"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            className={INPUT.replace("w-full", "w-auto")}
+          >
+            <option value={OWNER_ALL}>Mọi người phụ trách</option>
+            <option value={OWNER_NONE}>Chưa phân công</option>
+            {[...assignees]
+              .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name, "vi") : a.role === "MANAGER" ? -1 : 1))
+              .map((u) => (
+                <option key={u.id} value={String(u.id)}>
+                  {u.name}
+                  {u.role === "MANAGER" ? " (quản lý)" : u.acceptingLeads ? "" : " (tạm ngừng nhận)"}
+                </option>
+              ))}
+          </select>
+        )}
         <select
           aria-label="Lọc theo trạng thái"
           value={statusFilter}
@@ -312,7 +391,9 @@ function LeadsContent() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{sourceLabel(lead.source)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{ownerName(lead)}</td>
+                    <td className="px-4 py-3 text-slate-700">
+                      <OwnerLink lead={lead} name={ownerName(lead)} enabled={isManager} onPick={setOwnerFilter} />
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">{formatVnd(lead.budget)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -352,10 +433,15 @@ function LeadsContent() {
           <ul className="mt-4 grid gap-3 md:grid-cols-2 xl:hidden">
             {visible.map((lead) => (
               <li key={lead.id}>
-                <Link href={`/admin/leads/${lead.id}`} className={`block p-4 ${CARD}`}>
+                <div className={`relative block p-4 transition hover:bg-slate-50 ${CARD}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">{lead.name}</p>
+                      <Link
+                        href={`/admin/leads/${lead.id}`}
+                        className="block truncate font-semibold text-slate-900 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-brand-500 after:rounded-xl"
+                      >
+                        {lead.name}
+                      </Link>
                       <p className="text-xs text-slate-500">
                         {lead.phone} · {formatVnd(lead.budget)}
                       </p>
@@ -366,14 +452,16 @@ function LeadsContent() {
                     </div>
                   </div>
                   {lead.reason && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{lead.reason}</p>}
-                  <p className="mt-2 text-sm text-slate-600">Phụ trách: <span className="font-medium">{ownerName(lead)}</span></p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Phụ trách: <OwnerLink lead={lead} name={ownerName(lead)} enabled={isManager} onPick={setOwnerFilter} className="relative z-10 font-medium" />
+                  </p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <LeadStatusBadge status={lead.status} />
                     <StatusBadge status={lead.automationStatus} />
                     <MauticPoints lead={lead} />
                     <span className="ml-auto text-xs text-slate-400">{formatDateTime(lead.createdAt)}</span>
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>

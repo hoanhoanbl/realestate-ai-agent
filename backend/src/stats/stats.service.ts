@@ -4,6 +4,26 @@ import { Repository } from 'typeorm';
 import { Lead } from '../leads/entities/lead.entity';
 import { LEAD_STATUSES } from '../leads/lead.constants';
 
+export const TEAM_PERIODS = ['now', 'week', 'month'] as const;
+export type TeamPeriod = (typeof TEAM_PERIODS)[number];
+
+const OPEN_STATUSES = ['CONSULTING', 'NEW', 'CONFIRMED', 'VIEWED', 'DEPOSIT'] as const;
+const IDLE_DAYS = 7;
+
+export interface TeamOwnerStats {
+  id: number | null;
+  name: string;
+  role: 'SALE' | 'MANAGER' | null;
+  acceptingLeads: boolean | null;
+  open: Record<(typeof OPEN_STATUSES)[number] | 'total', number>;
+  overdue: number;
+  idle: number;
+  assigned: number;
+  attended: number;
+  signed: number;
+  lost: number;
+}
+
 @Injectable()
 export class StatsService {
   constructor(
@@ -126,4 +146,132 @@ export class StatsService {
       viewingsToday: Number(today[0]?.count ?? 0),
     };
   }
+
+  // Trang Đội sale (quản lý): mỗi người phụ trách một dòng. "now" đếm khách đang mở và cờ cần chú ý;
+  // "week"/"month" đếm kết quả trong kỳ theo người đang phụ trách. Mốc kỳ tính theo giờ Việt Nam.
+  async getTeam(period: TeamPeriod) {
+    const q = <T>(sql: string, params: unknown[] = []): Promise<T[]> => this.leadRepository.manager.query(sql, params);
+    const TZ = `'Asia/Ho_Chi_Minh'`;
+    const from =
+      period === 'now'
+        ? null
+        : (
+            await q<{ from: Date }>(
+              `SELECT date_trunc('${period}', now() AT TIME ZONE ${TZ}) AT TIME ZONE ${TZ} AS "from"`,
+            )
+          )[0].from;
+    const to = period === 'now' ? null : new Date();
+    const open = OPEN_STATUSES.map((s) => `'${s}'`).join(',');
+
+    const zero = (): Omit<TeamOwnerStats, 'id' | 'name' | 'role' | 'acceptingLeads'> => ({
+      open: { CONSULTING: 0, NEW: 0, CONFIRMED: 0, VIEWED: 0, DEPOSIT: 0, total: 0 },
+      overdue: 0,
+      idle: 0,
+      assigned: 0,
+      attended: 0,
+      signed: 0,
+      lost: 0,
+    });
+    const rows = new Map<number | null, TeamOwnerStats>();
+    const users = await q<{ id: number; name: string; role: 'SALE' | 'MANAGER'; accepting: boolean }>(
+      `SELECT id, name, role, accepting_leads AS accepting FROM users ORDER BY name, id`,
+    );
+    for (const u of users) {
+      rows.set(u.id, { id: u.id, name: u.name, role: u.role, acceptingLeads: u.accepting, ...zero() });
+    }
+    rows.set(null, { id: null, name: 'Chưa phân công', role: null, acceptingLeads: null, ...zero() });
+    const row = (id: number | null) => rows.get(id) ?? rows.get(null)!;
+
+    if (period === 'now') {
+      const [byStatus, flags] = await Promise.all([
+        q<{ owner: number | null; status: (typeof OPEN_STATUSES)[number]; n: string }>(
+          `SELECT assigned_user_id AS owner, status, count(*)::text AS n FROM leads
+            WHERE status IN (${open}) GROUP BY 1, 2`,
+        ),
+        q<{ owner: number | null; overdue: string; idle: string }>(
+          `SELECT l.assigned_user_id AS owner,
+                  count(*) FILTER (WHERE l.first_response_at IS NULL AND l.response_due_at <= now())::text AS overdue,
+                  count(*) FILTER (WHERE GREATEST(l.assigned_at, COALESCE(e.last_event, l.assigned_at))
+                                          < now() - interval '${IDLE_DAYS} days')::text AS idle
+             FROM leads l
+             LEFT JOIN LATERAL (SELECT max(created_at) AS last_event FROM lead_events WHERE lead_id = l.id) e ON true
+            WHERE l.status IN (${open}) GROUP BY 1`,
+        ),
+      ]);
+      for (const r of byStatus) {
+        const o = row(r.owner);
+        o.open[r.status] = Number(r.n);
+        o.open.total += Number(r.n);
+      }
+      for (const r of flags) {
+        const o = row(r.owner);
+        o.overdue = Number(r.overdue);
+        o.idle = Number(r.idle);
+      }
+    } else {
+      const range = [from, to];
+      const [assigned, attended, signed, lost] = await Promise.all([
+        q<{ owner: number | null; n: string }>(
+          `SELECT assigned_user_id AS owner, count(*)::text AS n FROM leads
+            WHERE assigned_at >= $1 AND assigned_at < $2 GROUP BY 1`,
+          range,
+        ),
+        q<{ owner: number | null; n: string }>(
+          `SELECT l.assigned_user_id AS owner, count(DISTINCT l.id)::text AS n FROM viewings v
+             JOIN leads l ON l.id = v.lead_id
+            WHERE v.status = 'ATTENDED' AND v.viewing_time >= $1 AND v.viewing_time < $2 GROUP BY 1`,
+          range,
+        ),
+        q<{ owner: number | null; n: string }>(
+          `SELECT l.assigned_user_id AS owner, count(DISTINCT c.id)::text AS n FROM contracts c
+             JOIN leads l ON l.id = c.lead_id
+            WHERE c.status = 'SIGNED' AND c.signed_at >= $1 AND c.signed_at < $2 GROUP BY 1`,
+          range,
+        ),
+        // Thời điểm mất khách lấy từ sự kiện đổi trạng thái "... -> LOST" gần nhất của khách đang ở trạng thái LOST
+        q<{ owner: number | null; n: string }>(
+          `SELECT l.assigned_user_id AS owner, count(*)::text AS n FROM leads l
+             JOIN LATERAL (SELECT max(created_at) AS at FROM lead_events
+                            WHERE lead_id = l.id AND type = 'STATUS_CHANGED' AND note LIKE '%-> LOST%') e ON true
+            WHERE l.status = 'LOST' AND e.at >= $1 AND e.at < $2 GROUP BY 1`,
+          range,
+        ),
+      ]);
+      for (const r of assigned) row(r.owner).assigned = Number(r.n);
+      for (const r of attended) row(r.owner).attended = Number(r.n);
+      for (const r of signed) row(r.owner).signed = Number(r.n);
+      for (const r of lost) row(r.owner).lost = Number(r.n);
+    }
+
+    // Mọi sale đều có dòng; quản lý và "Chưa phân công" chỉ hiện khi đang giữ khách hoặc có số trong kỳ
+    const active = (o: TeamOwnerStats) =>
+      o.open.total + o.assigned + o.attended + o.signed + o.lost > 0 || o.overdue + o.idle > 0;
+    const owners = [...rows.values()].filter((o) => (o.role === 'SALE' ? true : active(o)));
+    owners.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'vi'));
+
+    const totals = zero();
+    for (const o of owners) {
+      for (const k of Object.keys(totals.open) as (keyof typeof totals.open)[]) totals.open[k] += o.open[k];
+      totals.overdue += o.overdue;
+      totals.idle += o.idle;
+      totals.assigned += o.assigned;
+      totals.attended += o.attended;
+      totals.signed += o.signed;
+      totals.lost += o.lost;
+    }
+    return {
+      period,
+      from,
+      to,
+      acceptingSales: owners.filter((o) => o.role === 'SALE' && o.acceptingLeads).length,
+      totalSales: owners.filter((o) => o.role === 'SALE').length,
+      owners,
+      totals,
+    };
+  }
+}
+
+// Sale trước, rồi quản lý, cuối cùng là khách chưa có người phụ trách
+function rank(o: TeamOwnerStats): number {
+  return o.role === 'SALE' ? 0 : o.role === 'MANAGER' ? 1 : 2;
 }

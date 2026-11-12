@@ -41,7 +41,7 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 
 ### Mở rộng L4 chốt ngày 12/11 (local, chờ đăng ký mã task)
 
-Hậu triển khai trên `codex/l4-sale-va-can-nha`: hiệu suất sale bản gọn (không so sánh kỳ trước/xếp hạng) và hiệu quả từng căn nhà, hiển thị web/email, API thống kê cho n8n. Chưa push/PR/server; chưa chiếm mã FE mới trước bước phối hợp đăng ký trên dev. Hợp đồng và checklist cho bạn n8n: [L4 sale/căn nhà](luong/luong-4-sale-va-can-nha.md). L5 gợi ý căn thay thế đã chốt hướng nhưng chưa triển khai trong nhánh này.
+Hậu hoàn tất code trên `codex/l4-sale-va-can-nha`: hiệu suất sale bản gọn (không so sánh kỳ trước/xếp hạng) và hiệu quả từng căn nhà, hiển thị web/email, API thống kê cho n8n. Trước push: 186/186 test backend, lint/build backend và web, checker và n8n end-to-end cô lập PASS. Người dùng xác nhận chạy tay local được; sẽ tự push và mở PR, chưa xác nhận merge/server. Còn nghiệm thu nút web sau Publish, Gemini/gửi thư nội bộ và lịch tự động. Chưa chiếm mã FE mới trước bước phối hợp đăng ký trên dev. Hợp đồng và checklist cho bạn n8n: [L4 sale/căn nhà](luong/luong-4-sale-va-can-nha.md). L5 gợi ý căn thay thế đã chốt hướng nhưng chưa triển khai trong nhánh này.
 
 ### Tuần 3 (2–8/11)
 

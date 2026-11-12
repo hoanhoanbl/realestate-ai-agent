@@ -1,6 +1,6 @@
 # L4 mở rộng: hiệu suất sale và hiệu quả từng căn nhà
 
-Phạm vi chốt ngày **12/11/2026**, người làm Hậu. Code trên nhánh local `codex/l4-sale-va-can-nha`, nền `origin/dev` `f1b4fe3`. Chưa push, chưa triển khai server. L5 gợi ý căn thay thế là việc tiếp theo, **không nằm trong thay đổi này**.
+Phạm vi chốt ngày **12/11/2026**, người làm Hậu. Code hoàn tất trên nhánh `codex/l4-sale-va-can-nha`, nền `origin/dev` `f1b4fe3`; đã kiểm thử trước push. Người dùng tự push nhánh và mở PR vào dev; chưa xác nhận merge hoặc triển khai server. L5 gợi ý căn thay thế là việc tiếp theo, **không nằm trong thay đổi này**.
 
 ## 1. Nghiệp vụ và phạm vi
 
@@ -123,7 +123,7 @@ Runtime checker dùng schema riêng `l4_runtime_test` trên DB disposable cố �
 
 ## 6. Kết quả local 12/11/2026
 
-- Backend lint/build PASS. Bộ regression đầy đủ 17 suite, **185/185** test PASS; sau bổ sung guard dữ liệu phản hồi sai thời gian/interest không hợp lệ, chạy lại hai suite L4 **10/10** PASS (unit và HTTP/PostgreSQL thật).
+- Backend lint/build PASS. Kiểm tra trước push trên commit code `0ffbbff`: bộ regression đầy đủ **17 suite, 186/186 test PASS**, gồm unit và HTTP/PostgreSQL integration. Web lint/build, cả 12 JSON workflow và checker BF-07/L4 cũng PASS; n8n cô lập chạy lại end-to-end PASS.
 - Web lint và production build Next.js Turbopack PASS, 24 trang. Giao diện đã kiểm tra bằng API dữ liệu giả; desktop và mobile `window.innerWidth=375`, không có tràn ngang toàn trang (bảng cuộn trong vùng riêng).
 - `check-followup-report.cjs`: PASS, bao gồm kiểm tra hai bảng email, escape tên người/căn, bỏ so sánh sale và dừng khi breakdowns không hợp lệ.
 - n8n cô lập chạy L4 end-to-end: query tổng quan PostgreSQL thật → HTTP Nest breakdowns thật → AI dự phòng → lưu `weekly_reports` thật → node email giả kiểm tra đủ hai bảng: PASS. Không gọi Gemini hoặc SMTP thật.
@@ -131,3 +131,14 @@ Runtime checker dùng schema riêng `l4_runtime_test` trên DB disposable cố �
 - Ảnh bằng dữ liệu giả: `output/l4-sale-property-desktop.png`, `output/l4-sale-property-mobile.png`. Không đưa vào commit các file output có sẵn của người dùng.
 
 Giới hạn còn lại: không tái dựng phản hồi đầu tiên của phiên giao cũ; lịch xem phản ánh giờ/trạng thái hiện lưu, không phải lịch sử mọi lần đổi/huỷ; phân nhóm nhận xét bằng từ khoá có thể nhắc cả điểm tốt lẫn điểm chưa thích. Các chú thích này được giữ trên web/email và trong prompt AI.
+
+## 7. Chạy tay và nghiệm thu trước phát hành
+
+Người dùng đã xác nhận chạy được bằng trigger **Chạy tay** trên n8n local. Backend local đã được kiểm tra từ máy host (HTTP 200) và từ n8n: API breakdowns trả 201, có dữ liệu nhân sự/căn nhà. Không tự suy ra Gemini hoặc giao thư thật đã được nghiệm thu từ kết quả chạy tay này.
+
+- Bấm **Chạy tay** trong Editor để chạy ngay, không cần Publish.
+- **Quản lý bấm tạo ngay** là webhook: Execute node này chỉ mở trạng thái `Waiting for trigger event`, chưa phải một lượt xử lý dữ liệu hoàn tất.
+- Nút **Tạo báo cáo ngay** trên web đi qua backend và gọi Production URL `/webhook/report-requested`; cần Publish L4. Lượt chờ trong Editor dùng Test URL `/webhook-test/report-requested`, không phải đích của nút web.
+- Khi chưa muốn gửi mail thật, disable hai node email trước khi test. Lượt chạy cô lập của script dùng node email giả.
+
+Các bước còn cần xác nhận sau review: Publish và thử nút web → báo cáo được lưu và hiển thị đúng hai bảng → kiểm tra Gemini/gửi mail tới hộp thư nội bộ → kiểm tra lịch thứ Hai 08:00 → nghiệm thu server. Push code không đồng nghĩa các bước này đã hoàn tất.

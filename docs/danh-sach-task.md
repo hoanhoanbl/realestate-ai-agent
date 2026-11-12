@@ -39,6 +39,10 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 
 ## 3. Việc đang làm và sắp tới
 
+### Mở rộng L4 chốt ngày 12/11 (local, chờ đăng ký mã task)
+
+Hậu triển khai trên `codex/l4-sale-va-can-nha`: hiệu suất sale bản gọn (không so sánh kỳ trước/xếp hạng) và hiệu quả từng căn nhà, hiển thị web/email, API thống kê cho n8n. Chưa push/PR/server; chưa chiếm mã FE mới trước bước phối hợp đăng ký trên dev. Hợp đồng và checklist cho bạn n8n: [L4 sale/căn nhà](luong/luong-4-sale-va-can-nha.md). L5 gợi ý căn thay thế đã chốt hướng nhưng chưa triển khai trong nhánh này.
+
 ### Tuần 3 (2–8/11)
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |

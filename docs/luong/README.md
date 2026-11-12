@@ -25,6 +25,8 @@ Luồng 1, 1b, 2, 3, 4, 5, 6, 6b cùng Thông báo và Error là **phần lõi �
 
 Bảng "Kích hoạt" và id lấy từ [trien-khai.md](../trien-khai.md) mục 4. Nếu hai nơi khác nhau, file JSON trong repo là bản đúng.
 
+L4 mở rộng local 12/11/2026: [hiệu suất sale gọn và hiệu quả từng căn nhà](luong-4-sale-va-can-nha.md), có API `/reports/breakdowns`, cấu trúc dữ liệu và checklist cho bạn n8n. Cần deploy backend trước khi import JSON mới; chưa nghiệm thu server.
+
 ## Khung chung
 
 Mỗi tài liệu luồng mở đầu bằng tên file JSON và cách kích hoạt, rồi có các mục sau (luồng nào không có nội dung cho một mục thì ghi "Không có" thay vì bỏ mục, để người đọc không phải đoán):

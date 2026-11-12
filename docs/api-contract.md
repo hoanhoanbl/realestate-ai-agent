@@ -405,7 +405,7 @@ Giá trị `lead_events.type` (danh sách đầy đủ ở `backend/src/leads/le
 - Luồng 1: `AI_SCORED`, `APPROVED`, `RESCHEDULE_REQUESTED`, `APPROVAL_TIMEOUT`
 - Luồng 2: `REMINDER_SENT`, `FEEDBACK_ASKED`, `WARM_NUDGE_SENT`, `WARM_NURTURE_STARTED`, `HOT_NUDGE_SENT`, `COLD_NURTURE_STARTED`, `LEAD_EXPIRED`, `LEAD_EXPIRED_NOTIFIED`, `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED`, `ATTENDANCE_CHECK_SENT`, `ATTENDANCE_ESCALATED`
 - Lịch xem: `VIEWING_RESCHEDULED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `CUSTOMER_RESCHEDULE_REQUESTED`
-- Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`
+- Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`
 - Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
 - Mautic và trạng thái: `MAUTIC_SYNCED`, `MAUTIC_SCORE_CHANGED`, `STATUS_CHANGED`
 
@@ -440,6 +440,30 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 | POST | `/api/chat-logs` | `{chatId, route, question, reply, channel?, usedFallback?, escalated?, staffNotified?, executionId?}`; trả `{id}` |
 
 `route`: `COMMAND` (lệnh /start, tin không phải chữ), `BLOCKED` (Guardrails chặn), `AGENT` (AI Agent trả lời), `STAFF` (khách muốn gặp nhân viên), `OUT_OF_SCOPE` (ngoài phạm vi). Backend che email và dãy số bắt đầu bằng 0 hoặc +84 dài 9-12 chữ số (số điện thoại, CCCD) trong `question`, `reply` trước khi lưu. Cách luồng 6 chạy: [luong/luong-6-telegram-agent.md](luong/luong-6-telegram-agent.md).
+
+## 8. L5: theo dõi sau phản hồi
+
+Quy tắc: [chăm sóc mục 1.1](nghiep-vu/03-cham-soc-va-marketing.md). Bàn giao n8n và test: [L5 theo dõi](luong/luong-5-theo-doi-sau-phan-hoi.md).
+
+Backend tạo `feedback_work` cùng transaction nhận phản hồi; một dòng duy nhất/feedback. Event mới: `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`. Bảng `feedback_work_history` ghi kết quả; `feedback_work_alerts` giữ checkpoint giao thông báo. Không backfill phản hồi cũ.
+
+| Method | Đường dẫn | Quyền và hợp đồng |
+|---|---|---|
+| GET | `/api/feedback-work?filter=OPEN` | JWT; sale chỉ thấy việc khách đang phụ trách, quản lý thấy tất cả. OPEN/PENDING/IN_PROGRESS/TODAY/OVERDUE/COMPLETED/ALL; tối đa 200 dòng, hạn cũ trước |
+| GET | `/api/feedback-work/lead/{leadId}` | JWT chủ khách/quản lý; tất cả việc của khách, có lịch sử |
+| POST | `/api/feedback-work/{id}/result` | JWT chủ khách/quản lý; `{version,outcome,note,complete?,nextDueAt?,propertyId?,viewingTime?}` |
+| GET | `/api/feedback-work/context/{feedbackId}` | `X-Webhook-Secret`; dữ liệu phẳng phục vụ AI L5, đúng buổi xem của phản hồi |
+| GET | `/api/feedback-work/alerts/due` | `X-Webhook-Secret`; mảng tối đa 200 `{workId,version,assigneeId,kind}` |
+| POST | `/api/feedback-work/alerts/start` | `X-Webhook-Secret`; body một item từ due. Kiểm tra lại hạn, chủ khách, phiên bản, khóa lead/việc; trả `{allowed:false}` hoặc `{allowed:true,alertId,token,kind,leadId,assigneeId?,title,message,actions}` |
+| POST | `/api/feedback-work/alerts/{id}/finish` | `X-Webhook-Secret`; `{token,delivered,error?}`. delivered chỉ true khi nhà cung cấp xác nhận; false giữ REVIEW |
+| GET | `/api/feedback-work/alerts/review` | JWT MANAGER; REVIEW và STARTED hết lease, không trả token |
+| POST | `/api/feedback-work/alerts/{id}/resolve` | JWT MANAGER; `{delivered,note}` sau đối soát provider. true -> SENT; false xóa checkpoint để lần quét sau thử lại nếu còn đủ điều kiện; event lưu người/lý do |
+
+`outcome`: CONTACTED/NEXT_VIEWING/NEEDS_TIME/UNREACHABLE/NOT_BUYING. `note` bắt buộc, trim không rỗng, tối đa 2.000 ký tự; version là số nguyên dương. Ngày dùng ISO8601 có múi giờ; UI gửi +07:00. CONTACTED hoàn tất chỉ khi complete=true; còn lại cần nextDueAt tương lai. NEEDS_TIME/UNREACHABLE luôn cần hạn tương lai. NEXT_VIEWING cần propertyId và viewingTime, trả lỗi nếu không tạo được lịch thật; không nhận nextDueAt. NOT_BUYING áp dụng quy tắc đóng khách, chặn hợp đồng đang hiệu lực. Chưa có phiên bản mới nhất/đã hoàn tất: 409. Khác sale phụ trách: 403. Không lộ token cảm nhận hoặc thông tin kênh thông báo trong danh sách việc.
+
+Danh sách trả `id,feedbackId,leadId,viewingId,version,status,dueAt,completedAt,leadName,leadStatus,assignedUserId,assignedUserName,propertyName,viewingTime,rating,interest,comment,aiSummary,submittedAt,overdue,history[]`. History gồm actorName, outcome, note, nextDueAt, nextViewingId, createdAt. Trạng thái việc khác trạng thái lead; không tự đặt cọc khi khách chọn DEPOSIT trong phản hồi.
+
+Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn tới mốc escalateAt; ESCALATE sau thêm 2 giờ làm việc. Mỗi `(workId,version,kind,assigneeId)` chỉ một checkpoint. STARTED có lease 30 phút; hết lease giữ REVIEW, không nhận lại để gửi. Finish lặp lại sau SENT trả ok; token sai trả 409. Khi khách được đóng/ký, việc dừng và các lần gửi chưa bắt đầu bị chặn. Thông báo đã bắt đầu giao dịch ngoài trước thao tác đóng/chuyển sale có thể đang trên đường giao, không thể thu hồi bằng DB.
 
 ## Lịch sử thay đổi
 

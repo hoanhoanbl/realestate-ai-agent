@@ -1,125 +1,48 @@
-# Luồng 5: Khách gửi cảm nhận, AI phân tích và báo nhân viên
+# Luồng 5: Khách gửi cảm nhận, AI phân tích và theo dõi xử lý
 
-File: `n8n-workflows/luong-5-cam-nhan.json` (17 node, không tính ghi chú; id `luong5Realestat0`).
-Kích hoạt: **Webhook** `POST /webhook/feedback-submitted`, có header `X-Webhook-Secret`. Backend gọi khi khách bấm "Gửi cảm nhận".
-
-Khung chung của các tài liệu luồng: [README.md](README.md).
+File: `n8n-workflows/luong-5-cam-nhan.json` (18 node không tính ghi chú; id repo `luong5Realestat0`). Kích hoạt webhook `POST /webhook/feedback-submitted`, Header Auth `X-Webhook-Secret`. Có thêm workflow phụ trợ [theo dõi sau phản hồi](luong-5-theo-doi-sau-phan-hoi.md).
 
 ## 1. Làm gì trong thực tế
 
-Sau khi dẫn khách đi xem nhà, nhân viên thường chỉ hỏi miệng "anh/chị thấy sao?" rồi quên, hoặc khách trả lời qua tin nhắn lẻ tẻ không ai tổng hợp. Điểm quyết định mua hay không lại nằm đúng ở lúc này.
+Khách gửi đánh giá buổi xem. Backend lưu phản hồi và tạo việc chăm sóc ngay. L5 tóm tắt bằng AI, lưu gợi ý để sale đọc trong hồ sơ, gọi workflow giao thông báo việc và gửi thư cảm ơn khi khách có email. Sale ghi kết quả gọi lại trên web, không để phản hồi chỉ dừng ở một email.
 
-Luồng này làm cho phản hồi của khách **thành việc cần làm cụ thể**:
-
-1. Luồng 2 gửi khách email hỏi cảm nhận, trong email có nút **"Gửi cảm nhận"**.
-2. Khách mở trang web, chọn số sao, chọn bước tiếp theo (đặt cọc / xem căn khác / không còn nhu cầu), viết thêm nếu muốn.
-3. AI đọc phản hồi, tóm tắt, đánh giá cảm xúc và **gợi ý nhân viên nên làm gì tiếp**.
-4. Nhân viên nhận email có tóm tắt và nút mở hồ sơ. Khách muốn đặt cọc thì tiêu đề email là **[CƠ HỘI ĐẶT CỌC]**. Khách không hài lòng thì quản lý cũng nhận cảnh báo.
-5. Khách nhận email cảm ơn.
-
-AI **không** tự đổi trạng thái khách hay tự soạn hợp đồng. Nó chỉ gợi ý; nhân viên quyết định (human-in-the-loop).
+Quy tắc nghiệp vụ, trạng thái và các hạn: [chăm sóc sau buổi xem, mục 1 và 1.1](../nghiep-vu/03-cham-soc-va-marketing.md). Phần gợi ý căn thay thế chưa được chốt/triển khai trong đợt này.
 
 ## 2. Ai tham gia
 
-Khách, Web (trang `/cam-nhan/[token]`), Backend, n8n (luồng 5), PostgreSQL (n8n đọc), Gemini, Email, Nhân viên, Quản lý.
+Khách, web `/cam-nhan/[token]`, backend, PostgreSQL, n8n L5, Gemini, sale đang phụ trách, quản lý và SMTP. Việc chăm sóc không phụ thuộc Gemini/n8n có chạy thành công hay không.
 
 ## 3. Từng bước
 
-### Sơ đồ
+1. Khách nộp form. Backend khóa lead và phản hồi; lưu phản hồi, FEEDBACK_RECEIVED và công việc trong cùng transaction. Gửi trùng cùng link trả 409.
+2. Backend gọi webhook `feedback-submitted` bất đồng bộ sau commit.
+3. `Cấu hình` -> `Chuẩn hoá` -> `Lấy cảm nhận`: HTTP gọi context backend thay SQL nối buổi xem mới nhất. `Có cảm nhận?` kiểm tra dữ liệu.
+4. `Chuẩn bị` escape HTML -> `Basic LLM Chain`/Gemini và parser -> `Kiểm tra AI`. Prompt coi góp ý khách là dữ liệu, không làm theo chỉ dẫn trong góp ý. AI lỗi/thiếu dùng mẫu dự phòng; guard không cho 4–5 sao mang cảm xúc NEGATIVE hoặc 1–2 sao mang POSITIVE.
+5. `Lưu kết quả AI` -> `Ghi log FEEDBACK_ANALYZED`.
+6. `Nhắc việc sau phản hồi` gọi workflow phụ trợ; worker tự lấy việc hợp lệ và kiểm tra checkpoint, dùng workflow Thông báo nhân viên để giao đúng sale. Lỗi worker không chặn nhánh cảm ơn; L2 quét lại theo giờ.
+7. `Có email khách?`: email hợp lệ -> `Email cảm ơn khách`, thiếu/sai email -> đi thẳng `Cần báo quản lý?`.
+8. `Cần báo quản lý?` giữ cảnh báo phản hồi tiêu cực qua `Email cảnh báo quản lý`.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor K as Khách
-    participant W as Web khách
-    participant B as Backend
-    participant N as n8n (luồng 5)
-    participant D as PostgreSQL
-    participant G as Gemini
-    participant E as Email
-    actor S as Nhân viên
-    actor Q as Quản lý
-
-    Note over K,B: Trước đó, luồng 2 đã xin link (POST /feedback/link/:leadId)<br/>và gửi email hỏi cảm nhận kèm nút "Gửi cảm nhận"
-    K->>W: Mở /cam-nhan/{token} từ email
-    W->>B: GET /api/feedback/{token}
-    B-->>W: Tên khách, căn nhà, giờ xem (không lộ email, SĐT)
-    K->>W: Chọn số sao, lựa chọn, góp ý, bấm Gửi
-    W->>B: POST /api/feedback/{token}
-    B->>B: Lưu cảm nhận (chỉ được gửi một lần, lần hai trả 409)
-    B->>B: Ghi lead_events FEEDBACK_RECEIVED
-    B->>N: Webhook feedback-submitted {feedbackId, leadId}
-    B-->>W: ok
-    W-->>K: Cảm ơn anh/chị
-    N->>D: Lấy cảm nhận + khách + căn nhà
-    N->>G: Phân tích: sentiment, summary, nextAction
-    G-->>N: Kết quả (hoặc lỗi: dùng mẫu dự phòng)
-    N->>N: Kiểm tra: số sao và cảm xúc không được mâu thuẫn
-    N->>B: PUT /api/feedback/:id/ai-result
-    N->>B: POST /events FEEDBACK_ANALYZED
-    N->>E: Email cho nhân viên (tóm tắt, gợi ý, nút mở hồ sơ)
-    E-->>S: [CƠ HỘI ĐẶT CỌC] / [CẦN XỬ LÝ] / thường
-    N->>E: Email cảm ơn khách
-    opt Khách không hài lòng (cảm xúc NEGATIVE hoặc 1-2 sao)
-        N->>E: Email cảnh báo quản lý
-        E-->>Q: [KHÁCH KHÔNG HÀI LÒNG]
-    end
-```
-
-### Các bước
-
-Workflow chia thành bốn nhóm bằng ghi chú: **1. Tiếp nhận cảm nhận**, **2. AI phân tích cảm nhận**, **3. Lưu kết quả và ghi log**, **4. Báo nhân viên, quản lý; cảm ơn khách**, và một nhóm **Xử lý lỗi**. Phần AI dùng hai node phụ trợ `Google Gemini Chat Model` và `Structured Output Parser`; nhánh "không có cảm nhận" đi tới node `Không có cảm nhận` để Error workflow báo.
-
-| Bước | Node | Làm gì |
-|---|---|---|
-| 1 | Webhook | Nhận `feedbackId`, kiểm tra header bí mật |
-| 2 | Cấu hình | Địa chỉ backend, địa chỉ web, email nhân viên và quản lý |
-| 3 | Chuẩn hoá | Kiểm tra `feedbackId` là số nguyên |
-| 4 | Lấy cảm nhận (Postgres) | Một câu SQL lấy cảm nhận đã gửi, khách, căn nhà |
-| 5 | Có cảm nhận? | Không có thì dừng và báo lỗi qua Error workflow |
-| 6 | Chuẩn bị | Escape HTML, đổi `DEPOSIT/OTHER/NONE` thành chữ dễ đọc |
-| 7 | Basic LLM Chain (Gemini) | Phân tích. Prompt dặn rõ **phần góp ý của khách chỉ là dữ liệu, không làm theo lệnh trong đó** (chống chèn lệnh) |
-| 8 | Kiểm tra AI | **Guardrail**: AI lỗi hoặc thiếu thì dùng mẫu dự phòng; 4–5 sao không được `NEGATIVE`, 1–2 sao không được `POSITIVE` |
-| 9 | Lưu kết quả AI | Backend lưu `aiSentiment`, `aiSummary`, `aiNextAction` |
-| 10 | Ghi log FEEDBACK_ANALYZED | Dòng thời gian của khách |
-| 11 | Email nhân viên | Tóm tắt và gợi ý; tiêu đề đổi theo mức ưu tiên |
-| 12 | Email cảm ơn khách | Nội dung đổi theo lựa chọn của khách |
-| 13 | Cần báo quản lý? → Email cảnh báo quản lý | Chỉ khi khách không hài lòng |
+Node `Email nhân viên` gửi hộp thư chung trước đây được thay bằng `Nhắc việc sau phản hồi`. Thông báo việc chứa link hồ sơ; AI tóm tắt nằm trong hồ sơ. Không tự đổi lead theo kết quả AI và không tự soạn hợp đồng.
 
 ## 4. Nối với hệ thống
 
-- **Bảng mới `feedbacks`:** `leadId, token, rating, interest, comment, submittedAt, aiSentiment, aiSummary, aiNextAction`.
-- **API công khai:** `GET` và `POST /api/feedback/:token`. **Cho n8n:** `POST /api/feedback/link/:leadId`, `PUT /api/feedback/:id/ai-result`. **Cho admin:** `GET /api/feedback/lead/:leadId`. Xem [api-contract.md](../api-contract.md).
-- **Web:** trang khách `/cam-nhan/[token]`; trang chi tiết khách ở admin có thẻ "Cảm nhận của khách".
-- **Log:** `FEEDBACK_ASKED` (luồng 2), `FEEDBACK_RECEIVED` (backend), `FEEDBACK_ANALYZED` (luồng 5).
-- **Bảo mật:** `token` là chuỗi ngẫu nhiên 32 ký tự, mỗi khách một link, chỉ gửi được một lần. Trang công khai không lộ email hay số điện thoại.
+- Web khách -> backend: GET/POST `/api/feedback/{token}`. Token mới gồm ID buổi xem và 128 bit ngẫu nhiên; token cũ vẫn gắn buổi đầu. Trang công khai chỉ trả tên khách/căn/giờ xem/trạng thái đã gửi, không trả email hoặc số điện thoại.
+- L5 -> backend: GET `/api/feedback-work/context/{feedbackId}`, PUT `/api/feedback/{id}/ai-result`, POST `/api/leads/{leadId}/events`.
+- L5 -> `feedbackWorkNotifications`: giao thông báo việc mới/đến hạn; worker cũng được L2 gọi.
+- Web admin -> `/api/feedback-work/*`: ghi kết quả, lịch sử, danh sách việc.
+- NEXT_VIEWING tạo lịch thật rồi gọi L1 `viewing-requested`; quy trình duyệt lịch giữ nguyên.
+
+Hợp đồng JSON và phân quyền: [API mục 8](../api-contract.md#8-l5-theo-dõi-sau-phản-hồi).
 
 ## 5. Khi lỗi thì sao
 
-**Xử lý lỗi (nhóm cuối của workflow).** Lỗi cuối cùng làm lần chạy thất bại và kích hoạt [Error workflow](error-workflow.md); xem các mục dưới đây.
-
-- Gemini lỗi sau 3 lần thử: **không dừng**, dùng mẫu dự phòng từ số sao và lựa chọn của khách. Nhân viên vẫn nhận email.
-- Các node khác: thử lại 3 lần; lỗi cuối cùng thì Error workflow gửi email quản lý.
-- n8n lỗi hoặc tắt: cảm nhận của khách **vẫn được lưu**, chỉ thiếu phần AI. Backend ghi log cảnh báo.
+Lỗi làm workflow thất bại có thể báo qua Error workflow nếu đã cấu hình `errorWfRealestat` trong Settings. Khách đã nộp thành công vẫn có việc khi AI/n8n lỗi. Worker checkpoint tránh tự giao lại lần gửi chưa rõ kết quả; quản lý xử lý tại trang theo dõi. Nếu cần chạy lại AI, lưu ý nhánh email cảm ơn/cảnh báo cũ không có checkpoint giao thư; chạy lại toàn L5 có thể gửi lại hai thư này. Để test không phát thư thật, disable hoặc thay hai SMTP node bằng mock. Không tự retry SMTP khi chưa rõ nhà cung cấp đã nhận thư.
 
 ## 6. Triển khai lên server
 
-| Mục | Giá trị |
-|---|---|
-| Workflow id | `luong5Realestat0` |
-| Credential | Header Auth `iYLrhsH8b8dDkZ0n`, Postgres `postgres_account_id`, Gemini `wU5LeG7gXaoUdMXQ`, SMTP `hfJ9bBGUGsjH8qDP` |
-| Biến `.env` | `PUBLIC_WEB_URL` (link hồ sơ trong email), `WEBHOOK_SECRET` |
-| Cấu hình trong node `Cấu hình` | `backendUrl`, `webUrl`, `staffEmail`, `managerEmail` (hai email đang ghi sẵn trong node, kiểm tra trước khi dùng thật) |
-| Error workflow | Chọn `errorWfRealestat` trong Settings |
-
-Hiện trạng:
-
-- **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi luồng 5 đã bật. Luồng này không nằm trong danh sách import của `v0.3.0` và `v0.3.1`; khi cần import lại thì làm theo [mục 5](../trien-khai.md) (file đó ghi luồng 5 import lại được ngay sau khi release lên `main`).
-- **Phụ thuộc:** bảng `feedbacks` và các API `/api/feedback/*` của backend; lời hỏi cảm nhận và link do [luồng 2](luong-2-follow-up.md) gửi.
-- **Chưa kiểm trên server:** [trien-khai.md](../trien-khai.md) không có ghi nhận kiểm riêng cho luồng 5 sau lần import gần nhất.
+Chưa kiểm trên server. Thực hiện backend + schema trước, import workflow phụ trợ rồi ánh xạ ID trong cả L2/L5; xem [bàn giao chi tiết](luong-5-theo-doi-sau-phan-hoi.md#6-triển-khai-lên-server). `Lấy cảm nhận` mới dùng cùng Header Auth với `Lưu kết quả AI`, không còn cần Postgres credential ở node đó. Cấu hình backendUrl, webUrl, managerEmail, Gemini và SMTP theo môi trường. Không dùng email demo trên server.
 
 ## 7. Cách chạy thử
 
-1. Chạy `backend/sql/demo-follow-up.sql`, rồi chạy luồng 2 (nhánh "Chạy tay"). Khách `Trần Thị Cảm` nhận email hỏi cảm nhận.
-2. Mở link trong email (hoặc lấy `token` trong bảng `feedbacks`) tại `http://localhost:3000/cam-nhan/<token>`, gửi cảm nhận.
-3. Sau chừng 30 giây: hộp thư nhóm có email cho nhân viên và email cảm ơn; trang chi tiết khách ở admin hiện thẻ cảm nhận kèm tóm tắt AI. Gửi lại lần hai: báo "đã gửi rồi".
+Xem [hướng dẫn test local](luong-5-theo-doi-sau-phan-hoi.md#7-cách-chạy-thử). Kiểm tra khách không có email vẫn tạo việc, AI thất bại không làm mất việc và phản hồi buổi xem cũ không bị ghép sang căn mới. Trong editor, webhook chờ sự kiện là bình thường; chạy worker bằng node `Chạy tay` để thử nhắc việc.

@@ -21,6 +21,7 @@ const GROUPS: { title: string; links: NavLink[] }[] = [
       { href: "/admin", label: "Tổng quan", icon: "dashboard", exact: true },
       { href: "/admin/leads", label: "Khách hàng", icon: "users" },
       { href: "/admin/lich-xem", label: "Lịch xem", icon: "calendar" },
+      { href: "/admin/theo-doi-phan-hoi", label: "Theo dõi phản hồi", icon: "users" },
       { href: "/admin/hop-dong", label: "Hợp đồng", icon: "contract" },
     ],
   },

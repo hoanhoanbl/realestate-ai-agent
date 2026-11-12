@@ -1,0 +1,514 @@
+{
+  "name": "luong-5-theo-doi-phan-hoi",
+  "id": "feedbackWorkNotifications",
+  "active": false,
+  "nodes": [
+    {
+      "name": "Khi được gọi",
+      "id": "feedback-work-0",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "name": "Chạy tay",
+      "id": "feedback-work-1",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "backendUrl",
+              "value": "={{ ($env.BACKEND_URL || 'http://backend:8081').replace(/\\/$/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "webhookSecret",
+              "value": "={{ $env.WEBHOOK_SECRET }}",
+              "type": "string"
+            },
+            {
+              "id": "c7",
+              "name": "managerEmail",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        100
+      ],
+      "id": "feedback-work-config",
+      "name": "Cấu hình"
+    },
+    {
+      "name": "Lấy việc đến hạn",
+      "id": "feedback-work-3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        100
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback-work/alerts/due",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "retryOnFail": false
+    },
+    {
+      "name": "Từng việc",
+      "id": "feedback-work-4",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "name": "Bắt đầu thông báo",
+      "id": "feedback-work-5",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback-work/alerts/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {workId:$json.workId,version:$json.version,kind:$json.kind,assigneeId:$json.assigneeId} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Được gửi?",
+      "id": "feedback-work-6",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Được gửi?",
+              "leftValue": "={{ $json.allowed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Chuẩn bị người nhận",
+      "id": "feedback-work-7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input=$json;\nconst cfg=$('Cấu hình').first().json;\nif(input.kind==='ESCALATE' && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(cfg.managerEmail||''))) throw new Error('Thiếu email quản lý');\nreturn {json:{...input,...(input.kind==='ESCALATE'?{emailTo:cfg.managerEmail}:{})}};"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "thongBaoNhanVien",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        200
+      ],
+      "id": "feedback-work-notify",
+      "name": "Thông báo nhân viên",
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
+    },
+    {
+      "name": "Kiểm tra giao thông báo",
+      "id": "feedback-work-9",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const s=$('Bắt đầu thông báo').item.json;\nif(s.kind==='ESCALATE' && $json.emailSent!==true) throw new Error('Chưa xác nhận email quản lý');\nif($json.emailSent!==true && $json.telegramSent!==true && $json.pushSent!==true) throw new Error('Chưa có kênh nào xác nhận thành công');\nreturn {json:$json};"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Xác nhận đã gửi",
+      "id": "feedback-work-10",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback-work/alerts/{{ $('Bắt đầu thông báo').item.json.alertId }}/finish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token:$('Bắt đầu thông báo').item.json.token,delivered:true} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Giữ lại để đối soát",
+      "id": "feedback-work-11",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback-work/alerts/{{ $('Bắt đầu thông báo').item.json.alertId }}/finish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "={{ $('Cấu hình').first().json.webhookSecret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {token:$('Bắt đầu thông báo').item.json.token,delivered:false,error:String($json.error?.message || $json.error || 'Lần gửi chưa rõ kết quả').slice(0,500)} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "name": "Kết thúc",
+      "id": "feedback-work-12",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -80
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Ghi chú",
+      "id": "feedback-work-13",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -480
+      ],
+      "parameters": {
+        "content": "## Theo dõi sau phản hồi\nĐược L2 gọi mỗi giờ và L5 gọi sau phân tích. Backend tạo việc cùng transaction nhận phản hồi.\n2 giờ làm việc 08–21h: nhắc sale; thêm 2 giờ: quản lý. Nếu quét trễ đã tới mốc quản lý thì chỉ báo quản lý.\nSENT không gửi lại; timeout/crash giữ REVIEW/STARTED, quản lý đối soát tại /admin/theo-doi-phan-hoi.\nĐổi workflowId của node Thông báo nhân viên sang ID workflow dùng chung trên môi trường đích. Cấu hình managerEmail, backendUrl, webhookSecret. Không gửi email khách trong workflow này.\nHướng dẫn: docs/luong/luong-5-theo-doi-sau-phan-hoi.md",
+        "height": 360,
+        "width": 600
+      }
+    }
+  ],
+  "connections": {
+    "Khi được gọi": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chạy tay": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình": {
+      "main": [
+        [
+          {
+            "node": "Lấy việc đến hạn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy việc đến hạn": {
+      "main": [
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Từng việc": {
+      "main": [
+        [
+          {
+            "node": "Kết thúc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bắt đầu thông báo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bắt đầu thông báo": {
+      "main": [
+        [
+          {
+            "node": "Được gửi?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Được gửi?": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn bị người nhận",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn bị người nhận": {
+      "main": [
+        [
+          {
+            "node": "Thông báo nhân viên",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Giữ lại để đối soát",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Thông báo nhân viên": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra giao thông báo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Giữ lại để đối soát",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra giao thông báo": {
+      "main": [
+        [
+          {
+            "node": "Xác nhận đã gửi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Giữ lại để đối soát",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xác nhận đã gửi": {
+      "main": [
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Giữ lại để đối soát": {
+      "main": [
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Từng việc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {}
+}

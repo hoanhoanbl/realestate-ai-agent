@@ -50,6 +50,9 @@ Từ 4/11, mỗi quy tắc nghiệp vụ, ngoại lệ hay bước làm tay ph�
 
 ### Tuần 4 (9–15/11)
 
+Bổ sung local theo yêu cầu Hậu 12/11: nhánh `feature/l5-theo-doi-sau-phan-hoi` triển khai theo dõi sau phản hồi (tạo việc, kết quả gọi, hạn, nhắc sale/báo quản lý, lịch sử). Chưa push/PR/merge/server; chưa cấp mã FE mới, cần phối hợp đăng ký mã theo quy trình trước khi mở PR. Gợi ý căn thay thế chưa chốt. Bàn giao/test: [L5 theo dõi phản hồi](luong/luong-5-theo-doi-sau-phan-hoi.md).
+
+
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
 | CH-08 | `chore/CH-08-skill-ui-ux` | Đưa skill `ui-ux-pro-max` (bản `v2.15.0`, MIT, nguồn `nextlevelbuilder/ui-ux-pro-max-skill`) vào `.claude/skills/` để cả nhóm dùng cùng một chuẩn giao diện (`docs/giao-dien-web.md`). Script tra cứu cần Python 3 | Hoàng | Xong, chưa PR |

@@ -14,6 +14,7 @@ import { LeadEvent } from './entities/lead-event.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
+import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 import { formatVn } from '../viewings/viewing-time';
 import type { AuthUser } from '../auth/auth.types';
 import { AssignLeadDto, CreateLeadDto } from './dto/create-lead.dto';
@@ -138,6 +139,7 @@ export class LeadIntakeService {
         }
       }
       if (reopened) {
+        await closeFeedbackWork(em, existing.id, 'Kết thúc việc cũ trước khi mở lại khách');
         existing.status = 'CONSULTING';
         existing.lostReason = null;
         existing.approvalUrl = null;

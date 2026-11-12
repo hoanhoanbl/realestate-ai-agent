@@ -2,7 +2,7 @@
 
 Quy tắc từ sau buổi xem trở đi. **Phần lõi đề tài** (vế Lead follow-up và Sales analytics): mục 1 hỏi cảm nhận, mục 2 khách im lặng (nhắc sale và nhắc khách HOT), mục 6 báo cáo tuần, mục 7 chống gửi trùng. **Phần mở rộng, phát triển sau** (Marketing Automation qua Mautic, ngoài đề tài): nuôi khách WARM và COLD ở mục 2, mục 3, mục 4, mục 5. Các mục mở rộng có chữ "Mở rộng" ở tiêu đề. Tên file giữ `03-cham-soc-va-marketing.md` để không gãy link. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các chặng trước buổi xem: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
 
-Cập nhật lần cuối: 4/11/2026.
+Cập nhật lần cuối: 12/11/2026.
 
 ## Các mốc thời gian
 
@@ -24,7 +24,7 @@ Cập nhật lần cuối: 4/11/2026.
 2. Khách bấm link, mở trang cảm nhận trên web (không cần đăng nhập), chấm 1–5 sao, viết nhận xét, chọn mong muốn tiếp theo: muốn đặt cọc, muốn xem căn khác, chưa có nhu cầu nữa.
 3. FE-38 local: mỗi buổi xem có link riêng và được gửi một lần; buổi xem sau có link mới. Link hex cũ vẫn thuộc buổi đầu, không bị đổi sang căn mới. Gửi lại cùng link đã nộp: "Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị". Chi tiết: [FE-38](../fe-38-han-phan-hoi.md).
 4. Luồng 5: AI phân tích cảm xúc (tích cực, trung lập, tiêu cực), tóm tắt và gợi ý việc nên làm; ghi "AI phân tích cảm nhận".
-5. Nhân viên nhận email, ... kèm kết quả AI. Khách nhận email cảm ơn.
+5. Backend tạo việc chăm sóc cùng transaction lưu phản hồi. Sale nhận thông báo mở hồ sơ; xem AI tóm tắt trong hồ sơ khi có kết quả. Khách có email hợp lệ nhận email cảm ơn. Chi tiết theo dõi ở mục 1.1.
 6. Cảm nhận **tiêu cực hoặc từ 2 sao trở xuống**: quản lý nhận thêm email cảnh báo.
 
 **Khách phản hồi bằng link, không bằng thư trả lời.** Thư gửi khách là thư tự động. Hệ thống chỉ nhận cảm nhận khách gửi qua trang `/cam-nhan/<mã>`; khách bấm "Trả lời" ngay trong thư thì thư đó vào hộp thư chung của văn phòng, hệ thống **không đọc** và không hiện lên web. Chọn cách này vì form cho dữ liệu có cấu trúc (số sao, mong muốn) để AI phân tích, xếp việc cho nhân viên và tính báo cáo; thư trả lời tự do thì không làm được như vậy.
@@ -42,10 +42,36 @@ Cập nhật lần cuối: 4/11/2026.
 | Khách chọn | Hệ thống làm | Nhân viên làm |
 |---|---|---|
 | Muốn đặt cọc | Hiện trong nhóm "Khách muốn đặt cọc" trên trang tổng quan | Gọi khách, lập hợp đồng ([02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md) mục 4) |
-| Muốn xem căn khác | Ghi vào cảm nhận | Gợi ý căn phù hợp hơn, khách đặt lịch mới (là một lead mới) |
-| Chưa có nhu cầu nữa | Hiện trong nhóm "Khách không còn nhu cầu". **Không** tự đóng lead | Gọi trong 24 giờ hỏi lý do, rồi bấm "Không mua" với lý do "Không còn nhu cầu" hoặc mời xem căn khác |
+| Muốn xem căn khác | Ghi vào cảm nhận | Gọi xác nhận nhu cầu, chọn căn và tạo buổi xem mới trong hồ sơ cũ (FE-33/34); không tự tạo lead trùng |
+| Chưa có nhu cầu nữa | Hiện trong nhóm "Khách không còn nhu cầu". **Không** tự đóng lead | Liên hệ trong hạn chăm sóc ở mục 1.1 để hỏi lý do, rồi bấm "Không mua" với lý do "Không còn nhu cầu" hoặc mời xem căn khác |
 
 Lý do không tự đóng: "không quan tâm căn này" chưa chắc là "không mua nhà".
+
+## 1.1. Theo dõi sau khi khách đã phản hồi (L5)
+
+Phạm vi đã chốt ngày 12/11: một việc cho mỗi phản hồi mới đã gửi, ghi kết quả gọi lại, hạn liên hệ tiếp, nhắc sale, báo quản lý và lịch sử. Gợi ý căn thay thế chưa thuộc phạm vi đợt này.
+
+**Tạo việc và người phụ trách:** lưu phản hồi, event và việc trong cùng transaction; gửi đồng thời cùng link chỉ thành công một lần. AI/n8n lỗi không làm mất việc. Mỗi việc gắn buổi xem đúng token `v<id>_<32 hex>`; token hex cũ gắn buổi đầu. Không xác định được thì để trống, không lấy nhầm buổi mới nhất. Việc đi theo sale hiện đang phụ trách lead. Chuyển sale giữ nguyên hạn; sale cũ không được sửa nữa. Quản lý xem và xử lý toàn bộ.
+
+**Hạn:** lần xử lý đầu trong 2 giờ làm việc tính từ lúc backend nhận phản hồi; giờ làm việc 08:00–21:00 mỗi ngày, kể cả cuối tuần, UTC+7. Ví dụ nhận 20:30 thì hạn 09:30 hôm sau. Hết hạn nhắc sale, thêm 2 giờ làm việc chưa xử lý thì báo quản lý. L2 quét mỗi giờ nên thông báo xuất hiện ở lần quét tiếp theo; giao diện báo quá hạn theo hạn thực tế. Nếu lần quét đã qua cả mốc báo quản lý, chỉ gửi mốc quản lý. Chưa có sale/kênh riêng thì workflow thông báo dùng đường dự phòng quản lý.
+
+**Trạng thái việc:** `PENDING` (chưa xử lý), `IN_PROGRESS` (đang xử lý), `COMPLETED` (hoàn tất). Quá hạn là nhãn tính từ hạn và trạng thái, không phải trạng thái lead. Mỗi lần ghi kết quả cần ghi chú/lý do, lưu người thực hiện và thời điểm. Hai người sửa cùng phiên bản: người đến sau nhận 409, tải lại trước khi sửa.
+
+| Kết quả | Yêu cầu | Sau khi lưu |
+|---|---|---|
+| Đã liên hệ (`CONTACTED`) | Ghi nội dung; tick hoàn tất nếu không cần gọi tiếp, còn lại phải đặt hạn tương lai | Hoàn tất hoặc đang xử lý |
+| Cần thêm thời gian (`NEEDS_TIME`) | Lý do + hạn liên hệ tiếp ở tương lai | Đang xử lý |
+| Chưa liên hệ được (`UNREACHABLE`) | Ghi lần gọi + hạn thử lại ở tương lai | Đang xử lý |
+| Hẹn xem tiếp (`NEXT_VIEWING`) | Chọn căn đang bán và giờ xem tương lai trong 08:00–19:00; dùng quy tắc giờ của nhân viên | Tạo lịch NEW thật, lead NEW chờ duyệt, lưu viewingId trong lịch sử, hoàn tất việc |
+| Không mua (`NOT_BUYING`) | Lý do; chặn nếu lead DEPOSIT hoặc còn hợp đồng DRAFTING/PENDING_APPROVAL/SENT/SIGNED | Lead LOST/NOT_INTERESTED, hủy lịch NEW và hoàn tất các việc còn mở của khách |
+
+Tạo lịch kiểm tra khoảng cách tối thiểu 60 phút cùng căn và tối đa một lịch NEW của mỗi khách trong transaction. Không tạo lịch giả rồi đánh dấu thành công. Nếu gọi L1 thất bại, lịch đã lưu được giữ lại, automation FAILED để sale duyệt từ trang quản trị. Đóng lead hoặc ký hợp đồng ở các luồng hiện có cũng kết thúc việc còn mở; khách quay lại không làm sống lại việc cũ. Phản hồi đến sau khi khách đã đóng/đã ký được lưu nhưng việc được kết thúc ngay.
+
+**Giao diện:** menu “Theo dõi phản hồi” `/admin/theo-doi-phan-hoi` có bộ lọc việc mở, chưa xử lý, đang xử lý, hạn hôm nay, quá hạn, hoàn tất và tất cả. Hồ sơ khách hiển thị mọi việc của khách, kể cả các buổi xem trước. Danh sách giới hạn 200 dòng/lượt, ưu tiên hạn cũ trước; trường hợp nhiều dữ liệu mở hồ sơ khách để xem riêng.
+
+**Thông báo:** mỗi phiên bản hạn và người phụ trách có các mốc NEW/REMIND/ESCALATE riêng. Sau khi sale ghi kết quả và hẹn lại, tính nhắc theo hạn mới; không gửi thêm NEW cho mỗi lần cập nhật. SENT không gửi lại. Lần gửi lỗi/mất phản hồi giữ REVIEW, hoặc STARTED hết lease 30 phút chuyển REVIEW; không tự gửi lại. Quản lý đối soát lịch sử nhà cung cấp trên trang theo dõi rồi xác nhận đã gửi hoặc cho phép thử lại khi chắc chắn chưa gửi. Không cam kết giao dịch đúng một lần với SMTP; checkpoint ngăn tự gửi trùng khi kết quả chưa chắc chắn.
+
+Cấu hình n8n, API, hướng dẫn test và bàn giao: [luồng theo dõi phản hồi](../luong/luong-5-theo-doi-sau-phan-hoi.md). Báo cáo L4 cho các việc này chưa nằm trong đợt này. Không backfill tự động phản hồi trước khi triển khai để tránh tạo nhắc hàng loạt dữ liệu cũ.
 
 ## 2. Khách im lặng sau buổi xem
 

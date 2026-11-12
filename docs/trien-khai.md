@@ -106,6 +106,7 @@ Phiên bản 2.45.5. Workflow và credential dùng **id cố định** giống t
 | `luong-3-hop-dong.json` | `luong3Realestat0` | Webhook `contract-requested` | Bật |
 | `luong-4-bao-cao.json` | `luong4Realestat0` | 8 giờ sáng thứ Hai, webhook `report-requested` | Bật |
 | `luong-5-cam-nhan.json` | `luong5Realestat0` | Webhook `feedback-submitted` | Bật |
+| `luong-5-theo-doi-phan-hoi.json` | `feedbackWorkNotifications` (repo; ánh xạ ID khi import) | L2/L5 gọi | Workflow phụ trợ, xem [bàn giao](luong/luong-5-theo-doi-sau-phan-hoi.md); chưa kiểm trên server |
 | `luong-6-telegram-agent.json` | `luong6Realestat0` | Webhook `telegram-khach` | Bật |
 | `luong-6b-nap-tri-thuc.json` | `luong6bRagNap001` | 2 giờ sáng mỗi ngày | Bật |
 | `luong-7-dong-bo-mautic.json` | `luong7Realestat0` | Webhook `lead-changed` | Bật, bản cũ |

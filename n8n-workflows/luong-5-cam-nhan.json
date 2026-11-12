@@ -81,14 +81,16 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT f.id AS feedback_id, f.rating, f.interest, f.comment,\n       l.id AS lead_id, l.name, l.email, l.phone, l.level, l.status,\n       p.name AS property_name, p.address AS property_address\nFROM feedbacks f\nJOIN leads l ON l.id = f.lead_id\nLEFT JOIN viewings v ON v.lead_id = l.id\nLEFT JOIN properties p ON p.id = v.property_id\nWHERE f.id = $1::int AND f.submitted_at IS NOT NULL\nORDER BY v.id DESC LIMIT 1;",
+        "method": "GET",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/feedback-work/context/{{ $json.feedbackId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {
-          "queryReplacement": "={{ $json.feedbackId }}"
+          "timeout": 15000
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
       "position": [
         660,
         200
@@ -96,9 +98,9 @@
       "id": "45925137-bd5f-4e27-a72a-dd8ba4e78681",
       "name": "Lấy cảm nhận",
       "credentials": {
-        "postgres": {
-          "id": "postgres_account_id",
-          "name": "Postgres account"
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
         }
       },
       "alwaysOutputData": true,
@@ -293,31 +295,33 @@
     },
     {
       "parameters": {
-        "fromEmail": "nhadn2457@gmail.com",
-        "toEmail": "={{ $('Cấu hình').first().json.staffEmail }}",
-        "subject": "={{ $('Kiểm tra AI').first().json.interest === 'DEPOSIT' ? '[CƠ HỘI ĐẶT CỌC] ' : ($('Kiểm tra AI').first().json.needManager ? '[CẦN XỬ LÝ] ' : '') }}{{ $('Kiểm tra AI').first().json.name }} đánh giá {{ $('Kiểm tra AI').first().json.rating }}/5 sau buổi xem",
-        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\"><div style=\"background:#2563eb;color:#ffffff;padding:20px;font-size:20px;font-weight:bold\">Khách vừa gửi cảm nhận</div><div style=\"padding:24px;color:#111827;line-height:1.7;font-size:15px\"><table style=\"width:100%;border-collapse:collapse;background:#f3f4f6\"><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Khách hàng</td><td style=\"padding:10px\"><b>{{ $('Kiểm tra AI').first().json.nameHtml }}</b></td></tr><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Số điện thoại</td><td style=\"padding:10px\">{{ $('Kiểm tra AI').first().json.phoneHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Căn nhà</td><td style=\"padding:10px\">{{ $('Kiểm tra AI').first().json.propertyNameHtml }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Đánh giá</td><td style=\"padding:10px\">{{ '★'.repeat($('Kiểm tra AI').first().json.rating) + '☆'.repeat(5 - $('Kiểm tra AI').first().json.rating) }} ({{ $('Kiểm tra AI').first().json.rating }}/5)</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Lựa chọn</td><td style=\"padding:10px\">{{ $('Kiểm tra AI').first().json.interest === 'DEPOSIT' ? '<b>Muốn đặt cọc</b>' : $('Kiểm tra AI').first().json.interestText }}</td></tr><tr><td style=\"padding:10px;color:#6b7280;width:32%\">Góp ý</td><td style=\"padding:10px\">{{ $('Kiểm tra AI').first().json.commentHtml || '(không ghi)' }}</td></tr></table><p style=\"margin-top:16px\"><b>AI tóm tắt ({{ $('Kiểm tra AI').first().json.sentiment }}):</b> {{ $('Kiểm tra AI').first().json.summaryHtml }}</p><p><b>Gợi ý cho bạn:</b> {{ $('Kiểm tra AI').first().json.nextActionHtml }}</p><p style=\"margin-top:20px\"><a href=\"{{ $('Cấu hình').first().json.webUrl }}/admin/leads/{{ $('Kiểm tra AI').first().json.leadId }}\" style=\"background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold\">Mở hồ sơ khách</a></p></div><div style=\"background:#f9fafb;padding:12px 24px;color:#9ca3af;font-size:12px\">Email tự động từ hệ thống RealEstate AI.</div></div>",
+        "workflowId": {
+          "__rl": true,
+          "value": "feedbackWorkNotifications",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
         "options": {
-          "appendAttribution": false
+          "waitForSubWorkflow": true
         }
       },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
       "position": [
         2300,
         200
       ],
       "id": "0b0bbe20-bd84-4821-9304-d81a4c1f7005",
-      "name": "Email nhân viên",
-      "credentials": {
-        "smtp": {
-          "id": "hfJ9bBGUGsjH8qDP",
-          "name": "SMTP account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
+      "name": "Nhắc việc sau phản hồi",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -343,9 +347,7 @@
           "name": "SMTP account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
+      "retryOnFail": false
     },
     {
       "parameters": {
@@ -404,9 +406,7 @@
           "name": "SMTP account"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
+      "retryOnFail": false
     },
     {
       "parameters": {
@@ -503,6 +503,39 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "name": "Có email khách?",
+      "id": "l5-feedback-email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2450,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Được gửi?",
+              "leftValue": "={{ /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String($('Kiểm tra AI').first().json.email || '')) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     }
   ],
   "pinData": {},
@@ -639,18 +672,7 @@
       "main": [
         [
           {
-            "node": "Email nhân viên",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email nhân viên": {
-      "main": [
-        [
-          {
-            "node": "Email cảm ơn khách",
+            "node": "Nhắc việc sau phản hồi",
             "type": "main",
             "index": 0
           }
@@ -678,6 +700,35 @@
           }
         ],
         []
+      ]
+    },
+    "Nhắc việc sau phản hồi": {
+      "main": [
+        [
+          {
+            "node": "Có email khách?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có email khách?": {
+      "main": [
+        [
+          {
+            "node": "Email cảm ơn khách",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cần báo quản lý?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

@@ -1,5 +1,7 @@
 # Hướng dẫn hạ tầng và cấu hình Mautic 5
 
+> **Mở rộng, phát triển sau.** Mautic là phần Marketing Automation, không nằm trong bốn vế của đề tài (Visits, Document signing, Lead follow-up, Sales analytics). Xem [tong-quan-du-an.md](tong-quan-du-an.md), mục "Phạm vi".
+
 Tài liệu hạ tầng Marketing Automation (Mautic 5) cho dự án AI Real Estate Agent (Hậu sở hữu - Quyết định D-04).
 
 ---

@@ -1,6 +1,6 @@
-# Quy trình 3: Chăm sóc khách và marketing
+# Quy trình 3: Chăm sóc khách sau buổi xem và báo cáo
 
-Quy tắc từ sau buổi xem trở đi: hỏi cảm nhận, chăm khách im lặng, đồng bộ và chấm điểm tương tác trên Mautic, báo cáo tuần. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các chặng trước buổi xem: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
+Quy tắc từ sau buổi xem trở đi. **Phần lõi đề tài** (vế Lead follow-up và Sales analytics): mục 1 hỏi cảm nhận, mục 2 khách im lặng (nhắc sale và nhắc khách HOT), mục 6 báo cáo tuần, mục 7 chống gửi trùng. **Phần mở rộng, phát triển sau** (Marketing Automation qua Mautic, ngoài đề tài): nuôi khách WARM và COLD ở mục 2, mục 3, mục 4, mục 5. Các mục mở rộng có chữ "Mở rộng" ở tiêu đề. Tên file giữ `03-cham-soc-va-marketing.md` để không gãy link. Vai trò, trạng thái và nhãn tiếng Việt: xem [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md). Các chặng trước buổi xem: xem [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md).
 
 Cập nhật lần cuối: 4/11/2026.
 
@@ -10,7 +10,7 @@ Cập nhật lần cuối: 4/11/2026.
 |---|---|---|
 | Hỏi cảm nhận | Khi đã qua giờ hẹn 2 giờ, khách đã được điểm danh "có đến" | Luồng 2 (chạy mỗi giờ) |
 | Coi là khách im lặng | 3 ngày sau khi hỏi cảm nhận mà chưa trả lời | Luồng 2 |
-| Ngưỡng điểm Mautic báo sale | 20 điểm | `pointThreshold` trong node "Cấu hình" của luồng 8 |
+| Ngưỡng điểm Mautic báo sale (mở rộng) | 20 điểm | `pointThreshold` trong node "Cấu hình" của luồng 8 |
 | Thử lại một việc của luồng 2 bị lỗi | Sau 6 giờ | Luồng 2 |
 | Báo cáo tuần | 8 giờ sáng thứ Hai | Trigger "Thứ Hai 8h" của luồng 4 |
 
@@ -49,6 +49,8 @@ Lý do không tự đóng: "không quan tâm căn này" chưa chắc là "không
 
 ## 2. Khách im lặng sau buổi xem
 
+> **Mở rộng:** hàng WARM và COLD trong bảng dưới dùng Mautic, thuộc Marketing Automation, phát triển sau. Hàng HOT (nhắc sale gọi) là phần lõi.
+
 **Khi nào:** khách đã được hỏi cảm nhận hơn 3 ngày mà chưa trả lời, lead vẫn "Đã xem nhà", và khách **đã tick đồng ý nhận tin** khi đặt lịch. Không tick thì không gửi nội dung marketing (Nghị định 13/2023).
 
 | Mức khách | Hệ thống làm |
@@ -59,7 +61,7 @@ Lý do không tự đóng: "không quan tâm căn này" chưa chắc là "không
 
 Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang làm hợp đồng cọc", "Đã ký hợp đồng cọc" hoặc "Không mua" thì luồng 7 gỡ tag `nuoi-warm` để Mautic dừng gửi.
 
-## 3. Đồng bộ khách sang Mautic
+## 3. Đồng bộ khách sang Mautic (Mở rộng, phát triển sau)
 
 **Khi nào:** mỗi khi AI chấm điểm xong hoặc lead đổi trạng thái, backend báo luồng 7.
 
@@ -72,7 +74,7 @@ Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang l
 
 **Khi lỗi:** luồng 7 ghi "Follow-up bị lỗi" vào nhật ký của lead. Lỗi Mautic không chặn các việc khác (nhắc lịch, hỏi cảm nhận vẫn chạy).
 
-## 4. Điểm tương tác trên Mautic
+## 4. Điểm tương tác trên Mautic (Mở rộng, phát triển sau)
 
 **Mautic báo về khi:** điểm của contact thay đổi, khách xem một trang trên web, khách mở email. Luồng 8 chỉ nhận yêu cầu có mã bí mật đúng (từ 24 ký tự trở lên); sai mã thì từ chối.
 
@@ -90,7 +92,7 @@ Mỗi khách chỉ được đưa vào nuôi một lần. Lead chuyển "Đang l
 
 Trang tổng quan, thẻ chi tiết và bộ lọc "Ưu tiên chốt cọc" dùng chung quy tắc HOT hoặc điểm AI từ 70. Với hồ sơ cũ có điểm từ 70 nhưng nhãn mức chưa khớp, ba nơi vẫn xếp cùng nhóm ưu tiên. Các bộ lọc mức HOT/WARM/COLD tiếp tục dùng nhãn AI đã lưu; ma trận không tự sửa nhãn hoặc điểm khách.
 
-## 5. Theo dõi hành vi trên web khách
+## 5. Theo dõi hành vi trên web khách (Mở rộng, phát triển sau)
 
 Web khách gắn script theo dõi của Mautic: mỗi lần khách chuyển trang công khai, ứng dụng gửi một lượt xem. **Không** tải script hoặc gửi lượt xem trên `/ky`, `/cam-nhan`, `/lich`, `/hop-dong`, `/admin` và các trang con của chúng. Nếu script đã tải từ trang công khai trước đó thì không tải lại hoặc gửi pageview mới khi vào trang bị loại trừ.
 
@@ -135,6 +137,8 @@ Luồng 2 chạy mỗi giờ nên một việc (nhắc lịch, hỏi cảm nhậ
 Nguyên tắc: thà để người kiểm tra còn hơn gửi trùng cho khách. Cách xác nhận việc `REVIEW`: xem [luong-2-follow-up.md](../luong/luong-2-follow-up.md).
 
 ## 8. Đã lên kế hoạch, chưa làm
+
+FE-21, FE-22 và việc gắn tag "xem căn khác" dưới đây đều dùng Mautic, thuộc phần mở rộng, phát triển sau. FE-23 (báo cáo theo nguồn khách) thuộc vế Sales analytics.
 
 | Việc | Task |
 |---|---|

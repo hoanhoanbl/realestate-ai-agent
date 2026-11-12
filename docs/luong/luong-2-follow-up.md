@@ -1,5 +1,7 @@
 # Luồng 2: Follow-up tự động
 
+> **Lõi và mở rộng trong cùng một luồng.** Nhắc lịch, nhắc điểm danh, hỏi cảm nhận, nhắc sale gọi khách HOT là phần lõi (vế Lead follow-up). Nhánh nuôi khách WARM và COLD qua Mautic (tag `nuoi-warm`, `ban-tin-hang-thang`) là **mở rộng Marketing Automation, phát triển sau**.
+
 File: `n8n-workflows/luong-2-follow-up.json` (51 node, không tính ghi chú; id `luong2Realestat0`).
 Kích hoạt: **mỗi giờ** (node `Mỗi giờ`) hoặc nút `Chạy tay` trong n8n. Không có webhook.
 Backend API: `/api/followups/*`, bảo vệ bằng `X-Webhook-Secret`.

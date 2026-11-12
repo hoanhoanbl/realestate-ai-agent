@@ -8,7 +8,7 @@ Các tài liệu khác:
 - [luong/README.md](luong/README.md): tài liệu từng luồng n8n (làm gì, ai tham gia, nối với hệ thống, triển khai lên server).
 - [nghiep-vu/](nghiep-vu/): quy tắc nghiệp vụ theo từng quy trình.
 - [danh-sach-lo-hong.md](danh-sach-lo-hong.md): lỗ hổng còn lại, xếp theo vòng đời khách.
-- [mautic-setup.md](mautic-setup.md): hướng dẫn hạ tầng và cấu hình Mautic 5.
+- [mautic-setup.md](mautic-setup.md): hướng dẫn hạ tầng và cấu hình Mautic 5 (phần mở rộng, phát triển sau).
 
 ## 1. Yêu cầu của môn
 
@@ -23,6 +23,25 @@ Theo tài liệu thầy giao:
 
 > **AI Real Estate Agent**: Visits, document signing, lead follow-up, and sales analytics.
 > (Nhóm 9 "Industry-specific" trong danh sách đề tài)
+
+### Phạm vi: phần lõi đề tài và phần mở rộng
+
+Đề tài có **bốn vế**. Ba quy trình nghiệp vụ trong [nghiep-vu/](nghiep-vu/) và các luồng n8n lõi bám theo bốn vế này:
+
+| Vế đề tài | Luồng lõi | Quy trình nghiệp vụ |
+|---|---|---|
+| Visits | 1, 1b, 6, 6b | QT1 Tiếp nhận và phân công; QT2 mục Đặt lịch, Duyệt lịch, Trước và trong buổi xem |
+| Document signing | 3 | QT2 mục Đặt cọc và ký |
+| Lead follow-up | 2, 5 | QT3 mục Hỏi cảm nhận, Khách im lặng |
+| Sales analytics | 4 | QT3 mục Báo cáo tuần |
+
+**Mở rộng, phát triển sau: Marketing Automation (Mautic).** Đề tài không yêu cầu phần này. Nhóm đã dựng bản đầu, nhưng **không tính vào bốn vế** và không làm thêm tính năng mới cho đến khi bốn vế lõi chạy ổn. Phần mở rộng gồm:
+
+- Luồng 7 (đồng bộ khách sang Mautic) và luồng 8 (Mautic báo hành vi về).
+- Việc nuôi khách WARM và COLD qua Mautic ở luồng 2 (tag `nuoi-warm`, `ban-tin-hang-thang`). Nhắc lịch, hỏi cảm nhận, nhắc sale và nhắc điểm danh của luồng 2 vẫn là lõi.
+- Điểm Mautic và script theo dõi trên web khách, form đăng ký nhận bản tin (FE-21), cấu hình Mautic trên server (FE-22), hiển thị điểm Mautic trong app (FE-28), hạ tầng Mautic ([mautic-setup.md](mautic-setup.md)).
+
+Về nghiệp vụ, bốn vế đề tài không phụ thuộc phần mở rộng: lỗi Mautic không chặn nhắc lịch, hỏi cảm nhận hay báo cáo tuần. Lưu ý là luồng 2 vẫn chứa nhánh gọi Mautic trong cùng một workflow, chưa tách riêng. Tài liệu nào thuộc phần mở rộng đều ghi rõ "Mở rộng" ở đầu hoặc ở tiêu đề mục.
 
 ## 3. Bài toán thực tế
 
@@ -65,18 +84,20 @@ Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự đ�
 
 ## 6. Các luồng n8n trong hệ thống
 
+Cột "Vế đề tài" cho biết luồng thuộc vế nào của đề tài. Luồng ghi **Mở rộng** (Marketing Auto) không thuộc bốn vế đề tài và được phát triển sau, xem mục "Phạm vi" ở trên.
+
 | Luồng | Vế đề tài | Trigger | Tóm tắt | Điểm nhấn kỹ thuật | Chủ |
 |---|---|---|---|---|---|
 | **1. Tiếp nhận và chốt lịch xem nhà** | Visits | Webhook | Đăng ký → AI chấm điểm HOT/WARM/COLD → email khách → báo sale phụ trách kèm link Duyệt / Đổi giờ; luồng kết thúc, sale duyệt qua backend (FE-35) | LLM, Structured Output, Switch, **Human-in-the-loop (link duyệt)** | **Hoàng** |
 | **1b. Xử lý duyệt/đổi giờ thủ công** | Visits | Webhook | Backend gọi khi sale duyệt, đổi giờ hoặc yêu cầu hẹn lại (web admin hoặc link trong thông báo) → gửi email cho khách | HTTP callback, cập nhật status | **Hoàng** |
-| **2. Follow-up tự động** | Lead follow-up | Schedule | Nhắc lịch trước 24h, hỏi cảm nhận sau khi xem, nhắc khách WARM | Trigger định kỳ, Postgres, vòng lặp, guardrail AI | **Hậu** |
+| **2. Follow-up tự động** | Lead follow-up | Schedule | Nhắc lịch trước 24h, hỏi cảm nhận sau khi xem, nhắc khách im lặng (phần nuôi WARM/COLD qua Mautic là mở rộng) | Trigger định kỳ, Postgres, vòng lặp, guardrail AI | **Hậu** |
 | **3. Hợp đồng đặt cọc** | Document signing | Webhook | Khách muốn cọc → AI soạn hợp đồng → quản lý duyệt → khách ký online → xác nhận | 2 lần Wait (quản lý duyệt, khách ký qua `/ky/[token]`) | **Hoàng** |
 | **4. Báo cáo kinh doanh** | Sales analytics | Schedule (thứ Hai) | Gom số liệu tuần → tính phễu chuyển đổi → AI phân tích, đề xuất → email quản lý | **AI Agent có tool** (truy vấn DB), Merge, cảnh báo | **Hậu** |
 | **5. Phân tích cảm nhận** | Lead follow-up | Webhook | Nhận đánh giá của khách qua `/cam-nhan/[token]` → AI phân tích sentiment, tóm tắt và gợi ý | AI Chain, cập nhật feedback, ghi event | **Hậu** |
 | **6. Telegram Agent cho khách** | Visits & Q&A | Webhook (`telegram-khach`) | Khách chat Telegram: tìm nhà, hỏi đáp FAQ, đặt lịch, để lại số; muốn gặp người hoặc bot không trả lời được thì báo sale | AI Agent + Postgres Memory, Tool calling (6 tool, có Think), RAG, Guardrails, phân loại ý định, log hội thoại | **Hoàng** |
 | **6b. Nạp tri thức cho bot** | Visits & Q&A | Schedule (2 giờ sáng) | Đọc nhà và tài liệu FAQ → cắt đoạn, tạo embedding → lưu pgvector cho công cụ "Hỏi đáp tri thức" của luồng 6 | RAG, embedding Gemini, pgvector | **Hoàng** |
-| **7. Đồng bộ sang Mautic** | Marketing Auto | Webhook (`lead-changed`) | Nhận thay đổi từ lead → tạo/cập nhật Contact kèm Tag (thành phố, level, source, status) | Mautic REST API, data mapping | **Hậu** |
-| **8. Mautic báo về n8n** | Marketing Auto | Webhook (Mautic) | Khách mở email, bấm link, tăng điểm → n8n ghi nhận và báo sale khi vượt ngưỡng | Webhook receiver, scoring sync | **Hậu** |
+| **7. Đồng bộ sang Mautic** | **Mở rộng**: Marketing Auto | Webhook (`lead-changed`) | Nhận thay đổi từ lead → tạo/cập nhật Contact kèm Tag (thành phố, level, source, status) | Mautic REST API, data mapping | **Hậu** |
+| **8. Mautic báo về n8n** | **Mở rộng**: Marketing Auto | Webhook (Mautic) | Khách mở email, bấm link, tăng điểm → n8n ghi nhận và báo sale khi vượt ngưỡng | Webhook receiver, scoring sync | **Hậu** |
 | **Thông báo nhân viên (dùng chung)** | Dùng chung | Execute Workflow | Báo đúng sale phụ trách qua email, Telegram cá nhân, push; không có kênh thì báo quản lý | Sub-workflow, định tuyến người nhận | **Hoàng** |
 | **Error workflow (dùng chung)** | Monitoring | Error Trigger | Luồng nào lỗi thì gửi email cảnh báo quản lý | Giám sát | **Hoàng** |
 
@@ -119,7 +140,7 @@ Thêm node mới thì đặt trong khung đúng nhóm; khung không đủ chỗ 
 - n8n được **đọc** PostgreSQL trực tiếp (node Postgres) để lấy dữ liệu hàng loạt. Mọi thao tác **ghi** đều đi qua API backend (riêng luồng 6b ghi kho vector `rag_chunks` và bộ nhớ hội thoại của luồng 6 trực tiếp).
 - **Hai bot Telegram riêng:** bot khách (luồng 6, nhận và gửi, đăng ký webhook `telegram-khach`) và bot sale (chỉ gửi, qua sub-workflow Thông báo nhân viên). Biến môi trường và cách đăng ký: [luong/luong-6-telegram-agent.md](luong/luong-6-telegram-agent.md) mục 6.
 - Kênh thông báo cho sale: email, Telegram cá nhân (chat id nhập ở trang Tài khoản), thông báo đẩy qua Expo khi app có mặt.
-- Mautic chạy file compose riêng (`docker-compose.mautic.yml`) trên cùng network nội bộ.
+- Mautic (phần mở rộng) chạy file compose riêng (`docker-compose.mautic.yml`) trên cùng network nội bộ.
 - Cách đưa lên server và id từng workflow: [trien-khai.md](trien-khai.md).
 
 ## 8. Đối chiếu với "Technology Challenge Matrix" của thầy
@@ -134,7 +155,7 @@ Thêm node mới thì đặt trong khung đúng nhóm; khung không đủ chỗ 
 | Human-in-the-loop | ✅ Có | Luồng 1 (duyệt lịch qua link), Luồng 3 (duyệt hợp đồng, ký), Luồng 6 (chuyển nhân viên) |
 | Queue / Event-driven | ✅ Có | Webhook bất đồng bộ, retry, Wait chờ sự kiện, Mautic worker queue |
 | AI Agent / Tool calling | ✅ Có | Luồng 4 (Agent phân tích kèm tool DB), Luồng 6 (Telegram Agent), RAG ở luồng 6b |
-| Marketing Automation | ✅ Có | Mautic 5 (chiến dịch nuôi khách, tính điểm hành vi) |
+| Marketing Automation | Mở rộng, phát triển sau | Mautic 5 (chiến dịch nuôi khách, tính điểm hành vi). Đã dựng bản đầu, ngoài bốn vế đề tài |
 | Logging / Monitoring | ✅ Có | `lead_events`, `chat_logs`, Error workflow, tab Executions (Langfuse: dự kiến, FE-25) |
 
 ## 9. Sản phẩm hoàn thiện
@@ -146,7 +167,7 @@ Nguyên tắc: **web làm trước, app làm sau**.
 | 8 luồng n8n + Sub-workflow + Error | Như mục 6 |
 | Web khu khách | Trang chủ (danh sách nhà, lọc), chi tiết nhà (bộ ảnh, xem 360° từng phòng, thông tin cơ bản, tiện ích, nội thất, bản đồ và dịch vụ xung quanh) + form đặt lịch (nhận `?utm_source=`), cảm nhận `/cam-nhan/[token]`, ký hợp đồng `/ky/[token]` |
 | Web admin | Đăng nhập JWT, tổng quan (phễu theo trạng thái, tỉ lệ chốt, việc tồn), danh sách lead (hiện nguồn), chi tiết lead (dòng thời gian, duyệt, đổi giờ), lịch xem, quản lý nhà, hợp đồng, báo cáo AI hằng tuần, phân quyền tài khoản (RBAC) |
-| Mautic 5 | Quản lý contact, phân khúc khách hàng, chiến dịch nuôi WARM |
+| Mautic 5 (mở rộng, phát triển sau) | Quản lý contact, phân khúc khách hàng, chiến dịch nuôi WARM |
 | App nhân viên (Expo) | Đăng nhập, việc hôm nay, chi tiết lead (Duyệt, Đổi giờ, Gọi, Email), thông báo đẩy |
 | Báo cáo | Mô tả bài toán, kiến trúc, từng luồng, kết quả đo lường |
 

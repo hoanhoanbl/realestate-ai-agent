@@ -1,5 +1,7 @@
 # Luồng 8: Mautic gửi hành vi về backend
 
+> **Mở rộng, phát triển sau.** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
+
 File: `n8n-workflows/luong-8-mautic-bao-ve.json` (25 node, không tính ghi chú; id `luong8Realestat0`).
 Kích hoạt: `POST /webhook/mautic-event?token=<token-rieng>`. Luồng này xác thực bằng **token trong URL**, không dùng Header Auth.
 

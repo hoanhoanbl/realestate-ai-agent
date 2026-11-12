@@ -8,7 +8,7 @@ Quy trình 1: Tiếp nhận, gán sale
       ▼
 Quy trình 2: Duyệt lịch ─▶ Xem nhà ─▶ Đặt cọc, ký
                               │
-                              └─▶ Quy trình 3: Chăm sóc sau xem, marketing (chạy song song)
+                              └─▶ Quy trình 3: Chăm sóc sau xem, báo cáo (marketing Mautic là mở rộng)
 
 + xuyên suốt: AI, bảo mật, lỗi và giám sát, dữ liệu trùng
 ```

@@ -116,6 +116,11 @@ export class ContractsService {
     try {
       contract = await this.contractRepository.manager.transaction(async (em) => {
         await lockProperty(em, property.id);
+        // Serialize against feedback outcomes which may close the client or book another viewing.
+        const currentLead = await em.findOne(Lead, { where: { id: lead.id }, lock: { mode: 'pessimistic_write' } });
+        if (!currentLead || currentLead.status !== 'VIEWED') throw new ConflictException('Khách vừa thay đổi trạng thái, hãy tải lại trước khi lập hợp đồng');
+        if (await em.getRepository(Viewing).existsBy({ leadId: lead.id, status: 'NEW' }))
+          throw new ConflictException('Khách đang có lịch xem chờ xử lý');
         await this.assertNoActiveContract(em, property.id);
         const current = await em.findOne(Property, { where: { id: property.id } });
         if (!current || current.status !== 'AVAILABLE') {

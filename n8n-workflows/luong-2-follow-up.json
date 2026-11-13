@@ -1528,6 +1528,36 @@
         "mode": "runOnceForEachItem",
         "jsCode": "return { json: { name: 'Chưa chọn căn', address: '' } };"
       }
+    },
+    {
+      "name": "Nhắc việc sau phản hồi",
+      "id": "l2-feedback-work",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -900,
+        -380
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "feedbackWorkNotifications",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {},
@@ -1559,6 +1589,11 @@
         [
           {
             "node": "Lấy lead cần follow-up",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Nhắc việc sau phản hồi",
             "type": "main",
             "index": 0
           }

@@ -2,11 +2,13 @@
 
 > **Lõi và mở rộng trong cùng một luồng.** Nhắc lịch, nhắc điểm danh, hỏi cảm nhận, nhắc sale gọi khách HOT là phần lõi (vế Lead follow-up). Nhánh nuôi khách WARM và COLD qua Mautic (tag `nuoi-warm`, `ban-tin-hang-thang`) là **mở rộng Marketing Automation, phát triển sau**.
 
-File: `n8n-workflows/luong-2-follow-up.json` (51 node, không tính ghi chú; id `luong2Realestat0`).
+File: `n8n-workflows/luong-2-follow-up.json` (52 node, không tính ghi chú; id `luong2Realestat0`).
 Kích hoạt: **mỗi giờ** (node `Mỗi giờ`) hoặc nút `Chạy tay` trong n8n. Không có webhook.
 Backend API: `/api/followups/*`, bảo vệ bằng `X-Webhook-Secret`.
 
 Khung chung của các tài liệu luồng: [README.md](README.md). Các mục từ "Chín loại tác vụ" trở xuống là phần chi tiết riêng của luồng này.
+
+> Bổ sung 12/11: node `Nhắc việc sau phản hồi` gọi workflow phụ trợ độc lập từ `Cấu hình`, dùng checkpoint riêng `feedback_work_alerts`; không thêm loại vào chín tác vụ cũ. Xem [bàn giao L5](luong-5-theo-doi-sau-phan-hoi.md). Lỗi workflow phụ trợ không chặn nhánh L2 hiện có.
 
 ## 1. Làm gì trong thực tế
 

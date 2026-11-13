@@ -9,6 +9,9 @@ import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
 import { N8nService } from '../n8n/n8n.service';
 import { Lead } from '../leads/entities/lead.entity';
+import { LeadEvent } from '../leads/entities/lead-event.entity';
+import { FeedbackWorkService } from './feedback-work.service';
+import { feedbackViewing } from './feedback-scope';
 
 @Injectable()
 export class FeedbackService {
@@ -23,6 +26,7 @@ export class FeedbackService {
     private readonly propertyRepository: Repository<Property>,
     private readonly leadsService: LeadsService,
     private readonly n8nService: N8nService,
+    private readonly work: FeedbackWorkService,
   ) {}
 
   private urlFor(token: string): string {
@@ -61,8 +65,7 @@ export class FeedbackService {
   async getPublic(token: string) {
     const feedback = await this.findByToken(token);
     const lead = await this.leadsService.findOne(feedback.leadId);
-    const match = /^v([1-9]\d*)_[a-f0-9]{32}$/.exec(feedback.token);
-    const viewing = await this.viewingRepository.findOne({ where: { leadId: lead.id, ...(match ? { id: Number(match[1]) } : {}) }, order: { id: 'ASC' } });
+    const viewing = await feedbackViewing(this.feedbackRepository.manager, feedback);
     const property = viewing ? await this.propertyRepository.findOne({ where: { id: viewing.propertyId } }) : null;
     return {
       leadName: lead.name,
@@ -73,18 +76,17 @@ export class FeedbackService {
   }
 
   async submit(token: string, dto: SubmitFeedbackDto): Promise<{ ok: true }> {
-    const feedback = await this.findByToken(token);
-    if (feedback.submittedAt) throw new ConflictException('Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị');
-
-    feedback.rating = dto.rating;
-    feedback.interest = dto.interest;
-    feedback.comment = dto.comment || null;
-    feedback.submittedAt = new Date();
-    await this.feedbackRepository.save(feedback);
-
-    await this.leadsService.addEvent(feedback.leadId, {
-      type: 'FEEDBACK_RECEIVED',
-      note: `${dto.rating}/5 sao, ${dto.interest}${dto.comment ? ': ' + dto.comment.slice(0, 120) : ''}`,
+    const initial = await this.findByToken(token);
+    const feedback = await this.feedbackRepository.manager.transaction(async m => {
+      await m.query('SELECT id FROM leads WHERE id=$1 FOR UPDATE', [initial.leadId]);
+      const f = await m.getRepository(Feedback).findOneOrFail({ where: { id: initial.id }, lock: { mode: 'pessimistic_write' } });
+      if (f.submittedAt) throw new ConflictException('Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị');
+      f.rating = dto.rating; f.interest = dto.interest; f.comment = dto.comment || null; f.submittedAt = new Date();
+      await m.save(f);
+      await m.getRepository(LeadEvent).save({ leadId: f.leadId, type: 'FEEDBACK_RECEIVED',
+        note: `${dto.rating}/5 sao, ${dto.interest}${dto.comment ? ': ' + dto.comment.slice(0,120) : ''}` });
+      await this.work.create(m, f);
+      return f;
     });
 
     // Luồng 5 phân tích bất đồng bộ; n8n lỗi không làm hỏng việc lưu cảm nhận của khách

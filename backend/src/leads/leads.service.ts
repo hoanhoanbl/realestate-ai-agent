@@ -115,10 +115,13 @@ export class LeadsService {
       id: number;
       propertyId: number;
       propertyName: string | null;
+      propertyPrice: string | null;
+      propertyStatus: string | null;
       viewingTime: Date | null;
       status: string;
     }[] = await this.leadRepository.query(
       `SELECT v.id, v.property_id AS "propertyId", p.name AS "propertyName",
+              p.price AS "propertyPrice", p.status AS "propertyStatus",
               v.viewing_time AS "viewingTime", v.status
          FROM viewings v LEFT JOIN properties p ON p.id = v.property_id
         WHERE v.lead_id = $1

@@ -12,6 +12,13 @@ export class CreateContractDto {
   @IsInt()
   @Min(1)
   depositAmount: number;
+
+  // Căn khách muốn cọc. Bỏ trống thì lấy căn của buổi xem đã đến gần nhất.
+  // Có giá trị thì khách phải có buổi xem đã đến của đúng căn đó.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  propertyId?: number;
 }
 
 export class RejectContractDto {

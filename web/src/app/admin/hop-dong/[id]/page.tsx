@@ -9,10 +9,12 @@ import { BackLink, Icon, buttonClass } from "@/components/ui";
 import {
   ApiError,
   approveContract,
+  cancelContract,
   formatDateTime,
   formatVnd,
   getContract,
   markDepositReceived,
+  redraftContract,
   rejectContract,
   type ContractDetail,
 } from "@/lib/api";
@@ -55,6 +57,8 @@ function ContractDetailContent() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  // Giờ lúc tải dữ liệu gần nhất (trang tự tải lại mỗi 4 giây), để biết hợp đồng đã chờ soạn bao lâu
+  const [loadedAt, setLoadedAt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -69,6 +73,7 @@ function ContractDetailContent() {
         .then((data) => {
           if (cancelled) return;
           setContract(data);
+          setLoadedAt(Date.now());
           setError(null);
         })
         .catch((e: unknown) => {
@@ -159,9 +164,44 @@ function ContractDetailContent() {
       </div>
 
       {contract.status === "DRAFTING" && (
-        <p className="mt-5 rounded-lg bg-slate-50 p-4 text-slate-600 ring-1 ring-slate-200">
-          n8n đang soạn hợp đồng và nhờ AI rà soát. Trang tự cập nhật, thường mất khoảng 30 giây.
-        </p>
+        <div className="mt-5 rounded-lg bg-slate-50 p-4 text-slate-600 ring-1 ring-slate-200">
+          <p>
+            n8n đang soạn hợp đồng và nhờ AI rà soát. Trang tự cập nhật, thường mất khoảng 30 giây.
+          </p>
+          {loadedAt - new Date(contract.createdAt).getTime() > 60_000 && (
+            <div className="mt-3 border-t border-slate-200 pt-3">
+              <p className="text-sm text-amber-800">
+                Đã hơn 1 phút mà chưa có bản nháp, có thể n8n đang tắt hoặc luồng 3 chưa Publish. Bạn có thể gọi n8n soạn lại,
+                hoặc huỷ để trả căn và đưa khách về &quot;Đã xem nhà&quot;.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => act(() => redraftContract(contract.id), "Đã gọi n8n soạn lại. Trang sẽ tự cập nhật.")}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {busy ? "Đang xử lý..." : "Soạn lại"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!window.confirm("Huỷ hợp đồng này? Căn sẽ mở bán lại và khách quay về \"Đã xem nhà\".")) return;
+                    act(() => cancelContract(contract.id), "Đã huỷ hợp đồng. Khách về \"Đã xem nhà\", căn mở bán lại.");
+                  }}
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50 disabled:opacity-60"
+                >
+                  Huỷ hợp đồng
+                </button>
+              </div>
+            </div>
+          )}
+          {message && <p className="mt-3 text-sm text-emerald-700">{message}</p>}
+          {actionError && (
+            <p role="alert" className="mt-3 rounded-lg bg-red-50 p-2 text-sm text-red-700 ring-1 ring-red-200">{actionError}</p>
+          )}
+        </div>
       )}
 
       {contract.status === "PENDING_APPROVAL" && (

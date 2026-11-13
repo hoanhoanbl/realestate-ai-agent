@@ -177,6 +177,8 @@ export interface ViewingHistoryItem {
   id: number;
   propertyId: number;
   propertyName: string | null;
+  propertyPrice: string | number | null;
+  propertyStatus: PropertyStatus | null;
   viewingTime: string | null;
   status: ViewingStatus;
 }
@@ -217,6 +219,7 @@ export const EVENT_LABELS: Record<string, string> = {
   FEEDBACK_WORK_UPDATED: "Ghi kết quả liên hệ sau phản hồi",
   FEEDBACK_ALERT_RESOLVED: "Đối soát thông báo chăm sóc",
   CONTRACT_CREATED: "Tạo hợp đồng",
+  CONTRACT_REDRAFT_REQUESTED: "Soạn lại hợp đồng",
   CONTRACT_DRAFTED: "Hợp đồng soạn xong",
   CONTRACT_SENT: "Hợp đồng gửi khách ký",
   CONTRACT_SIGNED: "Khách ký hợp đồng",
@@ -471,12 +474,21 @@ export function getContract(id: number): Promise<ContractDetail> {
   return request<ContractDetail>(`/contracts/${id}`);
 }
 
-export function createContract(leadId: number, depositAmount: number): Promise<{ id: number }> {
+export function createContract(leadId: number, depositAmount: number, propertyId?: number): Promise<{ id: number }> {
   return request<{ id: number }>("/contracts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ leadId, depositAmount }),
+    body: JSON.stringify({ leadId, depositAmount, ...(propertyId !== undefined && { propertyId }) }),
   });
+}
+
+// Hợp đồng kẹt ở bước soạn (n8n lỗi): gọi n8n soạn lại, hoặc huỷ để trả căn
+export function redraftContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/redraft`, { method: "POST" });
+}
+
+export function cancelContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/cancel`, { method: "POST" });
 }
 
 export function markDepositReceived(id: number): Promise<ContractDetail> {

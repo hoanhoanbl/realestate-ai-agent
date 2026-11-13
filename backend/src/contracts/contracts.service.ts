@@ -24,6 +24,8 @@ import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
 
 const SIGN_VALID_DAYS = 7;
+// Hợp đồng ở bước soạn quá thời gian này mới cho gọi n8n soạn lại
+const REDRAFT_AFTER_SECONDS = 60;
 
 @Injectable()
 export class ContractsService {
@@ -98,12 +100,19 @@ export class ContractsService {
       .getCount();
     if (active > 0) throw new ConflictException('Khách này đã có hợp đồng đang xử lý');
 
-    // Căn của buổi xem gần nhất mà khách đã đến. Buổi xem sau bị huỷ hay không đến không đổi căn của hợp đồng.
+    // Sale chọn căn thì khách phải đã đến xem đúng căn đó. Không chọn thì lấy căn của buổi xem gần nhất
+    // mà khách đã đến; buổi xem sau bị huỷ hay không đến không đổi căn của hợp đồng.
     const viewing = await this.viewingRepository.findOne({
-      where: { leadId: lead.id, status: 'ATTENDED' },
+      where: { leadId: lead.id, status: 'ATTENDED', ...(dto.propertyId !== undefined && { propertyId: dto.propertyId }) },
       order: { viewingTime: 'DESC', id: 'DESC' },
     });
-    if (!viewing) throw new BadRequestException('Khách chưa có buổi xem nào đã đến, chưa lập hợp đồng được');
+    if (!viewing) {
+      throw new BadRequestException(
+        dto.propertyId !== undefined
+          ? 'Khách chưa đến xem căn này, chưa lập hợp đồng cho căn này được'
+          : 'Khách chưa có buổi xem nào đã đến, chưa lập hợp đồng được',
+      );
+    }
     const property = await this.propertyRepository.findOne({ where: { id: viewing.propertyId } });
     if (!property) throw new BadRequestException('Khách chưa có căn nhà để lập hợp đồng');
     if (dto.depositAmount > Number(property.price)) {
@@ -239,6 +248,59 @@ export class ContractsService {
     });
     // Trả cùng dạng với GET /contracts/:id (không lộ sign token)
     return this.findDetail(id);
+  }
+
+  // ---- Hợp đồng kẹt ở bước soạn (n8n tắt hoặc lỗi lúc nhân viên bấm tạo) ----
+
+  // Gọi lại luồng 3. Chỉ khi hợp đồng đã chờ đủ lâu: soạn bình thường mất khoảng 30 giây, gọi sớm hơn
+  // sẽ chạy hai lần song song và lần sau bị từ chối vì "đã có bản nháp". Việc kiểm tra và đánh dấu
+  // thời điểm gọi làm trong một câu UPDATE nên hai người bấm cùng lúc chỉ một người gọi được.
+  async retryDraft(id: number, user: AuthUser): Promise<{ ok: true }> {
+    const contract = await this.findOneOrFail(id);
+    if (contract.status !== 'DRAFTING') throw new BadRequestException('Chỉ soạn lại được hợp đồng đang ở bước soạn');
+    const previous = contract.updatedAt;
+    const touched: unknown[] = await this.contractRepository.query(
+      `UPDATE contracts SET updated_at = now()
+        WHERE id = $1 AND status = 'DRAFTING' AND updated_at < now() - make_interval(secs => $2)
+        RETURNING id`,
+      [id, REDRAFT_AFTER_SECONDS],
+    );
+    // TypeORM trả [rows, count] cho UPDATE ... RETURNING
+    const rows = Array.isArray(touched[0]) ? (touched[0] as unknown[]) : touched;
+    if (rows.length === 0) {
+      throw new ConflictException(`n8n còn đang soạn, hãy đợi ít nhất ${REDRAFT_AFTER_SECONDS} giây từ lúc tạo hoặc lần soạn lại trước`);
+    }
+    try {
+      await this.n8nService.callWebhook('contract-requested', { contractId: id });
+    } catch (err: any) {
+      // Chưa gọi được thì trả lại mốc cũ để nhân viên thử lại ngay khi n8n chạy
+      await this.contractRepository.query(`UPDATE contracts SET updated_at = $2 WHERE id = $1`, [id, previous]);
+      throw new BadGatewayException(`Không gọi được n8n (${err?.message ?? 'lỗi không rõ'}). Kiểm tra n8n đang chạy và luồng 3 đã Publish`);
+    }
+    await this.leadsService.addEvent(contract.leadId, {
+      type: 'CONTRACT_REDRAFT_REQUESTED',
+      note: `Hợp đồng #${id} chưa có bản nháp, đã gọi n8n soạn lại (bởi ${user.name})`,
+    });
+    return { ok: true };
+  }
+
+  // Huỷ hợp đồng chưa soạn xong: trả khách về VIEWED và nhả căn. Nếu n8n soạn xong sau đó,
+  // saveDraft bị từ chối vì hợp đồng không còn ở trạng thái soạn.
+  async cancelDraft(id: number, user: AuthUser): Promise<{ ok: true }> {
+    const contract = await this.findOneOrFail(id);
+    if (contract.status !== 'DRAFTING') throw new BadRequestException('Chỉ huỷ được hợp đồng đang ở bước soạn. Hợp đồng đã có bản nháp thì để quản lý từ chối');
+    const reason = `Huỷ khi chưa soạn xong (bởi ${user.name})`;
+    const changed: unknown[] = await this.contractRepository.query(
+      `UPDATE contracts SET status = 'REJECTED', reject_reason = $2, updated_at = now()
+        WHERE id = $1 AND status = 'DRAFTING' RETURNING id`,
+      [id, reason],
+    );
+    const rows = Array.isArray(changed[0]) ? (changed[0] as unknown[]) : changed;
+    if (rows.length === 0) throw new ConflictException('Hợp đồng vừa có bản nháp, hãy tải lại trang');
+    await this.leadsService.addEvent(contract.leadId, { type: 'CONTRACT_REJECTED', note: `Hợp đồng #${id} bị huỷ: ${reason}` });
+    await this.rollbackLead(contract.leadId, `Hợp đồng #${id} bị huỷ khi chưa soạn xong`);
+    await this.releaseProperty(contract.propertyId);
+    return { ok: true };
   }
 
   // ---- n8n gọi vào ----

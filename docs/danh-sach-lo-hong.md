@@ -23,7 +23,7 @@ Mốc xuất phát: server chạy bản `cd8dd5c`, cả 12 luồng đang bật (
 - **Trung bình:** khách hoặc sale gặp phiền, phải làm tay.
 - **Nhỏ:** thiếu tiện ích, không làm sai nghiệp vụ.
 
-Cập nhật lần cuối: 10/11/2026.
+Cập nhật lần cuối: 13/11/2026.
 
 ## Quy trình 1: Tiếp nhận và gán sale
 
@@ -43,7 +43,23 @@ Cập nhật lần cuối: 10/11/2026.
 | LH-10 | Nhận ra khách cũ bằng email (kiểm tra trùng lịch, "khách đã đặt N lần khác"). Khách đổi email hoặc không dùng email thì không nhận ra | Trung bình | Kiểm tra trùng bằng số điện thoại đã chuẩn hoá ở mọi kênh | Chưa làm |
 | LH-11 | Lịch sử chat Telegram (`chat_logs`) không gắn với lead. Sale muốn xem khách đã hỏi gì phải mở Executions của n8n | Nhỏ | Trang lead hiện lịch sử chat của khách đã để lại số | Xong ở local (FE-36), chưa lên server |
 
-## Quy trình 2, 3 và phần xuyên suốt: chưa rà
+## Quy trình 2 và 3: rà theo hành trình khách ngày 13/11
+
+Rà từ [ke-hoach-hanh-trinh-va-luong-n8n.md](ke-hoach-hanh-trinh-va-luong-n8n.md), đã đối chiếu code `dev` cho các lỗ ghi "đã kiểm". Kế hoạch làm: change OpenSpec `journey-followup-ladder` (FE-43 đến FE-46) và các task FE-47 đến FE-50 trong [danh-sach-task.md](danh-sach-task.md).
+
+| Mã | Lỗ hổng | Mức | Xong khi | Trạng thái |
+|---|---|---|---|---|
+| LH-20 | Khách WARM, COLD hoặc không tick đồng ý nhận tin: sau buổi xem không có việc tự động nào. Luồng 2 chỉ nhắc sale với khách HOT có đồng ý; WARM, COLD đi qua Mautic (phần mở rộng). Lead nằm ở `VIEWED` vô thời hạn. Đã kiểm (`followup-policy.ts`, `followup-sql.ts`) | Nghiêm trọng | Mọi lead `VIEWED` im 7 ngày được nhắc sale, bất kể mức điểm hay đồng ý nhận tin | Kế hoạch FE-45, FE-46 |
+| LH-21 | `CONSULTING` và `VIEWED` không có hạn xử lý. Hạn 2 giờ chỉ đo thao tác đầu tiên; khách huỷ hoặc không đến về `CONSULTING` thì không ai bị nhắc gọi lại; không có cách tự đóng lead bị bỏ quên | Nghiêm trọng | Lead im 7 ngày được nhắc, im 14 ngày không ai xử lý thì tự đóng với lý do `STALE` và báo quản lý | Kế hoạch FE-45 |
+| LH-22 | Hợp đồng lấy căn của buổi xem đã đến gần nhất (`contracts.service.ts`, đã kiểm). Khách xem căn A rồi căn B, muốn cọc căn A thì hợp đồng ra căn B; sale không chọn được căn | Nghiêm trọng | Sale chọn căn khi lập hợp đồng, mặc định là căn của buổi xem gần nhất | Kế hoạch FE-48 |
+| LH-23 | Sau `SIGNED` không có đường lui: khách bỏ cọc, hoàn cọc, hoặc quản lý quên xác nhận "đã nhận cọc" đều không có trạng thái hay nhắc việc. Căn thành `SOLD` thì khách dự phòng đang giữ lịch xem căn đó vẫn giữ lịch | Nghiêm trọng | Có đường hoàn cọc hoặc huỷ sau ký; nhắc quản lý xác nhận cọc; dọn lịch khách dự phòng khi căn `SOLD` | Làm sau nếu có time; nếu bỏ thì ghi vào hạn chế đã biết của báo cáo |
+| LH-24 | Chống trùng lịch chỉ tính theo căn (`BOOKING_GAP_MINUTES`, 60 phút, đã kiểm), không tính theo sale. Một sale có thể bị chia hai buổi xem cùng giờ ở hai căn | Trung bình | Không chia hoặc không duyệt hai buổi trùng giờ cho cùng một sale | Làm sau nếu có time; nếu bỏ thì ghi vào hạn chế đã biết |
+| LH-25 | Lý do "Không mua" quá thô (`LOST_REASONS` chỉ có `NO_SHOW`, `NOT_INTERESTED`, `CUSTOMER_CANCELLED`, `EXPIRED`, `OTHER`, đã kiểm). Báo cáo không trả lời được "mất khách vì giá, vì chọn căn khác hay vì mua nơi khác" | Trung bình | Sale chọn được lý do chi tiết khi đóng lead; báo cáo tuần chia theo nhóm lý do | Kế hoạch FE-44 (nhập), FE-47 (báo cáo) |
+| LH-26 | Không ghi nhận được "đã liên hệ được": hệ thống chỉ biết sale đã thao tác lần đầu (`first_response_at`), không biết sale đã nói chuyện được với khách chưa. Nhắc việc và báo cáo không phân biệt hai trường hợp | Trung bình | Sale đánh dấu "đã liên hệ được" hoặc ghi lần gọi không được; mốc này dừng chuỗi nhắc | Kế hoạch FE-44 |
+| LH-27 | Khách không đến buổi xem không nhận lời mời hẹn lại; lead chỉ chờ sale gọi | Trung bình | Khách không đến nhận một thư mời hẹn lại, không gửi trùng | Kế hoạch FE-46 |
+| LH-28 | Hợp đồng đã ký không được lưu thành file có dấu vết chống sửa (không có PDF, đường dẫn hay mã băm trong luồng 3). Đề bài của thầy ghi "compliant archiving" | Trung bình | Sau khi khách ký có file PDF lưu lại, mã băm và đường dẫn ghi vào nhật ký | Kế hoạch FE-48, FE-49 |
+
+## Phần xuyên suốt: chưa rà
 
 Các lỗ dưới đây ghi từ lần đọc lướt trước, **chưa kiểm lại trong code**. Khi rà tới quy trình nào thì kiểm lại, xếp mức và thêm "Xong khi".
 

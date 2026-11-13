@@ -24,6 +24,7 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 | Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
 | Cài và cấu hình Mautic (mở rộng, phát triển sau) | [docs/mautic-setup.md](docs/mautic-setup.md) |
 | Lỗ hổng còn lại, xếp theo vòng đời khách | [docs/danh-sach-lo-hong.md](docs/danh-sach-lo-hong.md) |
+| Kế hoạch hoàn thiện hành trình khách và các luồng n8n (13/11) | [docs/ke-hoach-hanh-trinh-va-luong-n8n.md](docs/ke-hoach-hanh-trinh-va-luong-n8n.md) |
 | Tiếp nhận khách và phân công sale (đã chốt, chưa làm) | [docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md](docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md) |
 
 ## Cau truc

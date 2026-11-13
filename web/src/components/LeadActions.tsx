@@ -10,6 +10,7 @@ import {
   formatDateTime,
   formatVnd,
   getContracts,
+  PROPERTY_STATUS_LABELS,
   recordAttendance,
   setLeadStatus,
   toLocalInput,
@@ -27,6 +28,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   // Tiền cọc gợi ý 10% giá nhà; nhân viên sửa được
   const [deposit, setDeposit] = useState("");
   const [contractId, setContractId] = useState<number | null>(null);
+  // Căn khách muốn cọc (id), khi khách đã xem nhiều căn. Rỗng thì dùng căn đầu danh sách.
+  const [pickedProperty, setPickedProperty] = useState("");
 
   // Khách đang đặt cọc hoặc đã ký thì tìm hợp đồng của khách để dẫn link
   useEffect(() => {
@@ -80,7 +83,15 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const canReschedule = (lead.status === "NEW" || (lead.status === "CONFIRMED" && !started)) && viewingPending;
 
   const canCreateContract = lead.status === "VIEWED" && lead.property !== null;
-  const defaultDeposit = lead.property ? Math.round(Number(lead.property.price) * 0.1) : 0;
+  // Các căn khách đã đến xem (mỗi căn một dòng, buổi mới nhất trước). Sale chọn căn khách muốn cọc.
+  const attendedProperties = lead.viewings
+    .filter((v) => v.status === "ATTENDED")
+    .filter((v, i, all) => all.findIndex((x) => x.propertyId === v.propertyId) === i);
+  const chosen =
+    attendedProperties.find((v) => String(v.propertyId) === pickedProperty) ?? attendedProperties[0] ?? null;
+  const chosenPrice = chosen?.propertyPrice != null ? Number(chosen.propertyPrice) : lead.property ? Number(lead.property.price) : 0;
+  const chosenUnavailable = chosen !== null && chosen.propertyStatus !== null && chosen.propertyStatus !== "AVAILABLE";
+  const defaultDeposit = Math.round(chosenPrice * 0.1);
 
   const contractLink = contractId !== null && (
     <Link href={`/admin/hop-dong/${contractId}`} className={`${BTN} bg-white text-blue-700 ring-1 ring-blue-300 hover:bg-blue-50`}>
@@ -215,6 +226,24 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
         )}
         {canCreateContract && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white p-2 ring-1 ring-amber-300">
+            {attendedProperties.length > 1 && (
+              <select
+                value={chosen ? String(chosen.propertyId) : ""}
+                onChange={(e) => setPickedProperty(e.target.value)}
+                aria-label="Căn khách muốn đặt cọc"
+                className="max-w-full rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
+              >
+                {attendedProperties.map((v) => (
+                  <option key={v.propertyId} value={v.propertyId}>
+                    {v.propertyName ?? `Căn #${v.propertyId}`}
+                    {v.propertyStatus && v.propertyStatus !== "AVAILABLE" ? ` (${PROPERTY_STATUS_LABELS[v.propertyStatus]})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            {attendedProperties.length === 1 && chosen && (
+              <span className="px-1 text-sm text-slate-700">Căn: <b>{chosen.propertyName ?? `#${chosen.propertyId}`}</b></span>
+            )}
             <input
               type="number"
               min={1}
@@ -231,7 +260,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 run("contract", async () => {
                   const amount = deposit === "" ? defaultDeposit : Number(deposit);
                   if (!Number.isInteger(amount) || amount < 1) throw new Error("Tiền đặt cọc phải là số nguyên dương.");
-                  const c = await createContract(lead.id, amount);
+                  if (chosenUnavailable) throw new Error("Căn này không còn mở bán, chọn căn khác hoặc nhờ quản lý kiểm tra.");
+                  const c = await createContract(lead.id, amount, chosen?.propertyId);
                   router.push(`/admin/hop-dong/${c.id}`);
                 })
               }

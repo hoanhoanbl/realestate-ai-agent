@@ -322,9 +322,11 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-da
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
-| POST | `/api/contracts` | JWT | `{leadId, depositAmount}`: lập hợp đồng, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
+| POST | `/api/contracts` | JWT | `{leadId, depositAmount, propertyId?}`: lập hợp đồng. Có `propertyId` thì khách phải có buổi xem đã đến của đúng căn đó (không thì `400`); bỏ trống thì lấy căn của buổi xem đã đến gần nhất. Sau khi lập, gọi webhook `contract-requested`, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
 | GET | `/api/contracts` | JWT | Danh sách hợp đồng |
 | GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl`) |
+| POST | `/api/contracts/{id}/redraft` | JWT | Hợp đồng kẹt ở `DRAFTING` (n8n lỗi): gọi lại webhook `contract-requested`. Chưa đủ 60 giây từ lúc tạo hoặc lần soạn lại trước: `409`. Không gọi được n8n: `502`. Trạng thái khác `DRAFTING`: `400` |
+| POST | `/api/contracts/{id}/cancel` | JWT | Huỷ hợp đồng còn ở `DRAFTING`: chuyển `REJECTED`, khách về `VIEWED`, căn về `AVAILABLE`. Đã có bản nháp: `400` hoặc `409` (khi n8n lưu bản nháp đúng lúc đó) |
 | POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
 | POST | `/api/contracts/{id}/reject` | Quản lý | `{reason}`: từ chối |
 | POST | `/api/contracts/{id}/deposit-received` | Quản lý | Xác nhận đã nhận tiền cọc; chỉ khi hợp đồng đã ký, và chỉ một lần |
@@ -407,7 +409,7 @@ Giá trị `lead_events.type` (danh sách đầy đủ ở `backend/src/leads/le
 - Luồng 2: `REMINDER_SENT`, `FEEDBACK_ASKED`, `WARM_NUDGE_SENT`, `WARM_NURTURE_STARTED`, `HOT_NUDGE_SENT`, `COLD_NURTURE_STARTED`, `LEAD_EXPIRED`, `LEAD_EXPIRED_NOTIFIED`, `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED`, `ATTENDANCE_CHECK_SENT`, `ATTENDANCE_ESCALATED`
 - Lịch xem: `VIEWING_RESCHEDULED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `CUSTOMER_RESCHEDULE_REQUESTED`
 - Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`
-- Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
+- Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_REDRAFT_REQUESTED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
 - Mautic và trạng thái: `MAUTIC_SYNCED`, `MAUTIC_SCORE_CHANGED`, `STATUS_CHANGED`
 
 ## 5. Xử lý lỗi
@@ -482,3 +484,4 @@ Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn 
 | 11/11/2026 | Hoàng | DC-03: chuyển toàn bộ sang tiếng Việt có dấu, sắp lại số mục (3.2, 3.3 lên mục 3), thêm các mục 3.4 đến 3.9 (đăng nhập, khách và người phụ trách, hợp đồng, cảm nhận, báo cáo và thống kê, lịch xem), bảng webhook backend gọi n8n, danh sách đầy đủ `lead_events.type` và trạng thái lead |
 | 12/11/2026 | Hoàng | Đội sale: `GET /api/stats/team` (chỉ quản lý), số khách và kết quả theo từng người phụ trách |
 | 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |
+| 13/11/2026 | Hoàng | Hợp đồng: `POST /api/contracts` nhận `propertyId?` (sale chọn căn, LH-22); `POST /api/contracts/{id}/redraft` và `/cancel` cho hợp đồng kẹt ở `DRAFTING`; sự kiện `CONTRACT_REDRAFT_REQUESTED`; `GET /api/leads/{id}` thêm `propertyPrice`, `propertyStatus` vào từng buổi xem |

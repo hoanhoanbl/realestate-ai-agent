@@ -48,6 +48,19 @@ export class ContractsController {
     return this.contractsService.findDetail(id);
   }
 
+  // Hợp đồng kẹt ở bước soạn (n8n lỗi): nhân viên soạn lại hoặc huỷ
+  @Post(':id/redraft')
+  @UseGuards(JwtAuthGuard)
+  redraft(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.contractsService.retryDraft(id, req.user);
+  }
+
+  @Post(':id/cancel')
+  @UseGuards(JwtAuthGuard)
+  cancel(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.contractsService.cancelDraft(id, req.user);
+  }
+
   // --- Chỉ quản lý ---
 
   @Post(':id/approve')

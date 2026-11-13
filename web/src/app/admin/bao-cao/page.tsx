@@ -13,6 +13,7 @@ import {
   type ReportRow,
 } from "@/lib/api";
 import CompareBars from "@/components/CompareBars";
+import ReportBreakdowns, { type ReportBreakdownData } from "@/components/ReportBreakdowns";
 import { Alert, Button, CARD, EmptyState, Icon, PageHeader, Skeleton } from "@/components/ui";
 import { useSession } from "@/lib/auth";
 
@@ -136,6 +137,7 @@ function ReportsContent() {
         period: string;
         sources?: Record<string, { current: number; previous: number; delta: number; rate: number | null }>;
         assignees?: Record<string, { current: number; previous: number; delta: number }>;
+        breakdowns?: ReportBreakdownData;
         campaigns?: { warm_nurtured: number; cold_nurtured: number; hot_nudged: number };
       }
     | undefined;
@@ -196,7 +198,7 @@ function ReportsContent() {
             </ul>
           </aside>
 
-          <div className="space-y-4 lg:col-span-3">
+          <div className="min-w-0 space-y-4 lg:col-span-3">
             {detail && metrics && analysis && (
               <>
                 <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-indigo-600 p-6 text-white">
@@ -283,16 +285,7 @@ function ReportsContent() {
                   </ul>
                 </div>
 
-                {metrics.assignees && (
-                  <div className={`p-5 ${CARD}`}>
-                    <h3 className="font-semibold text-slate-900">Khách mới theo người phụ trách</h3>
-                    <CompareBars rows={Object.entries(metrics.assignees).map(([id, value]) => ({
-                      label: id === "unassigned" ? "Chưa phân công" : `Nhân viên #${id}`,
-                      current: value.current, previous: value.previous,
-                    }))} />
-                    {Object.keys(metrics.assignees).length === 0 && <p className="mt-2 text-sm text-slate-500">Chưa có khách mới trong kỳ.</p>}
-                  </div>
-                )}
+                <ReportBreakdowns data={metrics.breakdowns} />
                 {/* FE-23: Cơ cấu nguồn khách & Chiến dịch nuôi dưỡng */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className={`p-5 ${CARD}`}>

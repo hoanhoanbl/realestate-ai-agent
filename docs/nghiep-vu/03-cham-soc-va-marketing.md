@@ -121,6 +121,20 @@ Script hiện chạy cho mọi khách, chưa hỏi đồng ý theo dõi. Làm ba
 
 Báo cáo đếm riêng số lead "Quá hạn không xử lý" dựa theo lần đóng trong kỳ; không phụ thuộc thông báo quản lý đã gửi hay chưa. FE-23 sẽ thêm số liệu theo nguồn khách và chiến dịch.
 
+### 6.1. Hiệu suất sale (bản gọn)
+
+Phạm vi chốt 12/11/2026, triển khai local trên nhánh `codex/l4-sale-va-can-nha`: bảng theo từng sale gồm khách được giao trong kỳ, đang phụ trách, phản hồi đúng hạn, quá hạn chưa phản hồi, khách đã đến xem, có hợp đồng cọc và đã ký. Không xếp hạng, không so sánh kỳ trước, không tính thời gian phản hồi trung bình/trung vị. Quản lý nhận cả trên web và email L4.
+
+Khách đang phụ trách/quá hạn là ảnh chụp lúc lập báo cáo. Phản hồi đúng hạn chỉ tính phiên giao hiện tại bắt đầu trong kỳ vì hồ sơ không giữ thời điểm phản hồi của phiên cũ sau khi chuyển sale. Kết quả xem/tạo hợp đồng/ký tra người phụ trách theo thời điểm phát sinh từ lịch sử giao khách; thiếu thì để chưa xác định, không gán cho chủ hiện tại. Mỗi chỉ số đếm khách duy nhất theo người; khách chuyển sale có thể xuất hiện ở nhiều người. Hợp đồng tạo chưa có nghĩa đã nhận tiền.
+
+### 6.2. Hiệu quả từng căn nhà
+
+Mỗi căn có số buổi hẹn trong kỳ, khách đặt xem duy nhất, khách đã đến, số buổi huỷ/không đến, số phản hồi/điểm trung bình, số khách muốn cọc và số hợp đồng tạo/ký. Buổi xem tính theo giờ hẹn, trạng thái tại lúc lập báo cáo; không gọi đây là số booking mới được tạo trong kỳ. Cảm nhận tính theo ngày gửi; hợp đồng theo ngày tạo hoặc ký. Không suy ra căn từ buổi xem mới nhất của khách: feedback dùng liên kết buổi của FE-38, hợp đồng dùng căn của hợp đồng. Thiếu ánh xạ phải báo cần kiểm tra.
+
+Không có rating thì hiện “Chưa có”, không hiển thị 0 sao; luôn kèm số phản hồi. Các nhóm giá, vị trí, diện tích/phòng, tình trạng, pháp lý và khác là **chủ đề được nhắc** trong nhận xét của khách chọn căn khác/không còn nhu cầu, không khẳng định nguyên nhân từ chối. Một phản hồi có thể nhắc nhiều chủ đề. AI chỉ nhận xét dựa trên số liệu, nêu hạn chế mẫu nhỏ, không tự điều chỉnh giá hoặc trạng thái nhà.
+
+Hợp đồng dữ liệu, cách nối node và nghiệm thu n8n: [L4 sale/căn nhà](../luong/luong-4-sale-va-can-nha.md).
+
 ## 7. Chống gửi trùng và xử lý lỗi của luồng 2
 
 Luồng 2 chạy mỗi giờ nên một việc (nhắc lịch, hỏi cảm nhận, nuôi khách, nhắc sale, nhắc điểm danh) có thể bị chọn nhiều lần. Bảng `followup_tasks` giữ mỗi việc một dòng:

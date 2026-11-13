@@ -354,6 +354,7 @@ Cách luồng n8n chạy: [luong-4-bao-cao.md](luong/luong-4-bao-cao.md).
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
 | POST | `/api/reports` | Secret | Luồng 4 lưu báo cáo: `{periodStart, periodEnd, metrics, analysis, alerts}` |
+| POST | `/api/reports/breakdowns` | Secret | L4 mới (local 12/11): `{periodStart, periodEnd}` ISO8601, khoảng đầu gồm/cuối loại, tối đa 93 ngày và không tương lai. Trả `{version:1, periodStart, periodEnd, asOf, responseScope, sales[], properties[], dataQuality}`; thành công 201, thiếu/sai secret 401, kỳ sai 400. [Hợp đồng n8n và cách tính](luong/luong-4-sale-va-can-nha.md). Lưu nguyên kết quả tại `metrics.breakdowns`; báo cáo cũ không có trường này vẫn hợp lệ |
 | GET | `/api/reports` | Quản lý | Danh sách báo cáo |
 | GET | `/api/reports/{id}` | Quản lý | Một báo cáo. Không có: `404` |
 | POST | `/api/reports/run` | Quản lý | Tạo báo cáo ngay (gọi webhook `report-requested`) |
@@ -456,3 +457,4 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 | 10/11/2026 | Hậu | FE-40: `GET /api/leads/{id}/mautic-context` (mục 2.7) |
 | 11/11/2026 | Hoàng | DC-03: chuyển toàn bộ sang tiếng Việt có dấu, sắp lại số mục (3.2, 3.3 lên mục 3), thêm các mục 3.4 đến 3.9 (đăng nhập, khách và người phụ trách, hợp đồng, cảm nhận, báo cáo và thống kê, lịch xem), bảng webhook backend gọi n8n, danh sách đầy đủ `lead_events.type` và trạng thái lead |
 | 12/11/2026 | Hoàng | Đội sale: `GET /api/stats/team` (chỉ quản lý), số khách và kết quả theo từng người phụ trách |
+| 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |

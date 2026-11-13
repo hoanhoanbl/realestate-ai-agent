@@ -322,9 +322,11 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-da
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
-| POST | `/api/contracts` | JWT | `{leadId, depositAmount}`: lập hợp đồng, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
+| POST | `/api/contracts` | JWT | `{leadId, depositAmount, propertyId?}`: lập hợp đồng. Có `propertyId` thì khách phải có buổi xem đã đến của đúng căn đó (không thì `400`); bỏ trống thì lấy căn của buổi xem đã đến gần nhất. Sau khi lập, gọi webhook `contract-requested`, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
 | GET | `/api/contracts` | JWT | Danh sách hợp đồng |
 | GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl`) |
+| POST | `/api/contracts/{id}/redraft` | JWT | Hợp đồng kẹt ở `DRAFTING` (n8n lỗi): gọi lại webhook `contract-requested`. Chưa đủ 60 giây từ lúc tạo hoặc lần soạn lại trước: `409`. Không gọi được n8n: `502`. Trạng thái khác `DRAFTING`: `400` |
+| POST | `/api/contracts/{id}/cancel` | JWT | Huỷ hợp đồng còn ở `DRAFTING`: chuyển `REJECTED`, khách về `VIEWED`, căn về `AVAILABLE`. Đã có bản nháp: `400` hoặc `409` (khi n8n lưu bản nháp đúng lúc đó) |
 | POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
 | POST | `/api/contracts/{id}/reject` | Quản lý | `{reason}`: từ chối |
 | POST | `/api/contracts/{id}/deposit-received` | Quản lý | Xác nhận đã nhận tiền cọc; chỉ khi hợp đồng đã ký, và chỉ một lần |
@@ -354,12 +356,14 @@ Cách luồng n8n chạy: [luong-4-bao-cao.md](luong/luong-4-bao-cao.md).
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
 | POST | `/api/reports` | Secret | Luồng 4 lưu báo cáo: `{periodStart, periodEnd, metrics, analysis, alerts}` |
+| POST | `/api/reports/breakdowns` | Secret | L4 mới (local 12/11): `{periodStart, periodEnd}` ISO8601, khoảng đầu gồm/cuối loại, tối đa 93 ngày và không tương lai. Trả `{version:1, periodStart, periodEnd, asOf, responseScope, sales[], properties[], dataQuality}`; thành công 201, thiếu/sai secret 401, kỳ sai 400. [Hợp đồng n8n và cách tính](luong/luong-4-sale-va-can-nha.md). Lưu nguyên kết quả tại `metrics.breakdowns`; báo cáo cũ không có trường này vẫn hợp lệ |
 | GET | `/api/reports` | Quản lý | Danh sách báo cáo |
 | GET | `/api/reports/{id}` | Quản lý | Một báo cáo. Không có: `404` |
 | POST | `/api/reports/run` | Quản lý | Tạo báo cáo ngay (gọi webhook `report-requested`) |
 | GET | `/api/stats` | JWT | `{total, hot, warm, cold, bySource, byAssignee, overdueResponses}` |
 | GET | `/api/stats/tasks` | JWT | `{pendingAttendance, wantsDeposit, notInterested, reservedBackups, customerRequests}`: việc cần làm trên trang tổng quan |
 | GET | `/api/stats/funnel` | JWT | `{total, byStatus, noShow, conversionRate, pendingApproval, failedAutomation, viewingsToday}`: phễu bán hàng |
+| GET | `/api/stats/team?period=now\|week\|month` | Quản lý | Trang Đội sale: `{period, from, to, acceptingSales, totalSales, owners[], totals}`. Mỗi phần tử `owners`: `{id, name, role, acceptingLeads, open:{CONSULTING, NEW, CONFIRMED, VIEWED, DEPOSIT, total}, overdue, idle, assigned, attended, signed, lost}`. `now` (mặc định) điền `open`, `overdue` (quá hạn phản hồi), `idle` (khách mở không có sự kiện quá 7 ngày); `week`/`month` điền `assigned`, `attended`, `signed`, `lost` theo người đang phụ trách, mốc 00:00 thứ Hai hoặc ngày 1 giờ Việt Nam. Mọi sale đều có dòng; quản lý và `id: null` (chưa phân công) chỉ hiện khi có số. `period` khác ba giá trị trên trả `400`, sale trả `403` |
 
 ### 3.9. Lịch xem và nhà (web admin, khách tự quản lý)
 
@@ -404,8 +408,8 @@ Giá trị `lead_events.type` (danh sách đầy đủ ở `backend/src/leads/le
 - Luồng 1: `AI_SCORED`, `APPROVED`, `RESCHEDULE_REQUESTED`, `APPROVAL_TIMEOUT`
 - Luồng 2: `REMINDER_SENT`, `FEEDBACK_ASKED`, `WARM_NUDGE_SENT`, `WARM_NURTURE_STARTED`, `HOT_NUDGE_SENT`, `COLD_NURTURE_STARTED`, `LEAD_EXPIRED`, `LEAD_EXPIRED_NOTIFIED`, `STAFF_NUDGE_SENT`, `FOLLOWUP_FAILED`, `ATTENDANCE_CHECK_SENT`, `ATTENDANCE_ESCALATED`
 - Lịch xem: `VIEWING_RESCHEDULED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `CUSTOMER_RESCHEDULE_REQUESTED`
-- Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`
-- Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
+- Cảm nhận: `FEEDBACK_RECEIVED`, `FEEDBACK_ANALYZED`, `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`
+- Hợp đồng: `CONTRACT_CREATED`, `CONTRACT_REDRAFT_REQUESTED`, `CONTRACT_DRAFTED`, `CONTRACT_SENT`, `CONTRACT_SIGNED`, `CONTRACT_REJECTED`, `CONTRACT_EXPIRED`, `DEPOSIT_RECEIVED`, `PROPERTY_RESERVED`, `PROPERTY_SOLD`
 - Mautic và trạng thái: `MAUTIC_SYNCED`, `MAUTIC_SCORE_CHANGED`, `STATUS_CHANGED`
 
 ## 5. Xử lý lỗi
@@ -440,6 +444,30 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 
 `route`: `COMMAND` (lệnh /start, tin không phải chữ), `BLOCKED` (Guardrails chặn), `AGENT` (AI Agent trả lời), `STAFF` (khách muốn gặp nhân viên), `OUT_OF_SCOPE` (ngoài phạm vi). Backend che email và dãy số bắt đầu bằng 0 hoặc +84 dài 9-12 chữ số (số điện thoại, CCCD) trong `question`, `reply` trước khi lưu. Cách luồng 6 chạy: [luong/luong-6-telegram-agent.md](luong/luong-6-telegram-agent.md).
 
+## 8. L5: theo dõi sau phản hồi
+
+Quy tắc: [chăm sóc mục 1.1](nghiep-vu/03-cham-soc-va-marketing.md). Bàn giao n8n và test: [L5 theo dõi](luong/luong-5-theo-doi-sau-phan-hoi.md).
+
+Backend tạo `feedback_work` cùng transaction nhận phản hồi; một dòng duy nhất/feedback. Event mới: `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`. Bảng `feedback_work_history` ghi kết quả; `feedback_work_alerts` giữ checkpoint giao thông báo. Không backfill phản hồi cũ.
+
+| Method | Đường dẫn | Quyền và hợp đồng |
+|---|---|---|
+| GET | `/api/feedback-work?filter=OPEN` | JWT; sale chỉ thấy việc khách đang phụ trách, quản lý thấy tất cả. OPEN/PENDING/IN_PROGRESS/TODAY/OVERDUE/COMPLETED/ALL; tối đa 200 dòng, hạn cũ trước |
+| GET | `/api/feedback-work/lead/{leadId}` | JWT chủ khách/quản lý; tất cả việc của khách, có lịch sử |
+| POST | `/api/feedback-work/{id}/result` | JWT chủ khách/quản lý; `{version,outcome,note,complete?,nextDueAt?,propertyId?,viewingTime?}` |
+| GET | `/api/feedback-work/context/{feedbackId}` | `X-Webhook-Secret`; dữ liệu phẳng phục vụ AI L5, đúng buổi xem của phản hồi |
+| GET | `/api/feedback-work/alerts/due` | `X-Webhook-Secret`; mảng tối đa 200 `{workId,version,assigneeId,kind}` |
+| POST | `/api/feedback-work/alerts/start` | `X-Webhook-Secret`; body một item từ due. Kiểm tra lại hạn, chủ khách, phiên bản, khóa lead/việc; trả `{allowed:false}` hoặc `{allowed:true,alertId,token,kind,leadId,assigneeId?,title,message,actions}` |
+| POST | `/api/feedback-work/alerts/{id}/finish` | `X-Webhook-Secret`; `{token,delivered,error?}`. delivered chỉ true khi nhà cung cấp xác nhận; false giữ REVIEW |
+| GET | `/api/feedback-work/alerts/review` | JWT MANAGER; REVIEW và STARTED hết lease, không trả token |
+| POST | `/api/feedback-work/alerts/{id}/resolve` | JWT MANAGER; `{delivered,note}` sau đối soát provider. true -> SENT; false xóa checkpoint để lần quét sau thử lại nếu còn đủ điều kiện; event lưu người/lý do |
+
+`outcome`: CONTACTED/NEXT_VIEWING/NEEDS_TIME/UNREACHABLE/NOT_BUYING. `note` bắt buộc, trim không rỗng, tối đa 2.000 ký tự; version là số nguyên dương. Ngày dùng ISO8601 có múi giờ; UI gửi +07:00. CONTACTED hoàn tất chỉ khi complete=true; còn lại cần nextDueAt tương lai. NEEDS_TIME/UNREACHABLE luôn cần hạn tương lai. NEXT_VIEWING cần propertyId và viewingTime, trả lỗi nếu không tạo được lịch thật; không nhận nextDueAt. NOT_BUYING áp dụng quy tắc đóng khách, chặn hợp đồng đang hiệu lực. Chưa có phiên bản mới nhất/đã hoàn tất: 409. Khác sale phụ trách: 403. Không lộ token cảm nhận hoặc thông tin kênh thông báo trong danh sách việc.
+
+Danh sách trả `id,feedbackId,leadId,viewingId,version,status,dueAt,completedAt,leadName,leadStatus,assignedUserId,assignedUserName,propertyName,viewingTime,rating,interest,comment,aiSummary,submittedAt,overdue,history[]`. History gồm actorName, outcome, note, nextDueAt, nextViewingId, createdAt. Trạng thái việc khác trạng thái lead; không tự đặt cọc khi khách chọn DEPOSIT trong phản hồi.
+
+Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn tới mốc escalateAt; ESCALATE sau thêm 2 giờ làm việc. Mỗi `(workId,version,kind,assigneeId)` chỉ một checkpoint. STARTED có lease 30 phút; hết lease giữ REVIEW, không nhận lại để gửi. Finish lặp lại sau SENT trả ok; token sai trả 409. Khi khách được đóng/ký, việc dừng và các lần gửi chưa bắt đầu bị chặn. Thông báo đã bắt đầu giao dịch ngoài trước thao tác đóng/chuyển sale có thể đang trên đường giao, không thể thu hồi bằng DB.
+
 ## Lịch sử thay đổi
 
 | Ngày | Ai sửa | Nội dung |
@@ -454,3 +482,6 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 | 11/11/2026 | Hoàng | FE-36: `GET /api/leads/{id}/chat-logs` (mục 3.3), `chatId?` cho `POST /api/leads/intake` và `POST /api/viewings` (chỉ đọc khi có `X-Webhook-Secret`), log mới của chat đã gắn lead tự theo lead |
 | 10/11/2026 | Hậu | FE-40: `GET /api/leads/{id}/mautic-context` (mục 2.7) |
 | 11/11/2026 | Hoàng | DC-03: chuyển toàn bộ sang tiếng Việt có dấu, sắp lại số mục (3.2, 3.3 lên mục 3), thêm các mục 3.4 đến 3.9 (đăng nhập, khách và người phụ trách, hợp đồng, cảm nhận, báo cáo và thống kê, lịch xem), bảng webhook backend gọi n8n, danh sách đầy đủ `lead_events.type` và trạng thái lead |
+| 12/11/2026 | Hoàng | Đội sale: `GET /api/stats/team` (chỉ quản lý), số khách và kết quả theo từng người phụ trách |
+| 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |
+| 13/11/2026 | Hoàng | Hợp đồng: `POST /api/contracts` nhận `propertyId?` (sale chọn căn, LH-22); `POST /api/contracts/{id}/redraft` và `/cancel` cho hợp đồng kẹt ở `DRAFTING`; sự kiện `CONTRACT_REDRAFT_REQUESTED`; `GET /api/leads/{id}` thêm `propertyPrice`, `propertyStatus` vào từng buổi xem |

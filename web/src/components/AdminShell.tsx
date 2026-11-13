@@ -21,6 +21,7 @@ const GROUPS: { title: string; links: NavLink[] }[] = [
       { href: "/admin", label: "Tổng quan", icon: "dashboard", exact: true },
       { href: "/admin/leads", label: "Khách hàng", icon: "users" },
       { href: "/admin/lich-xem", label: "Lịch xem", icon: "calendar" },
+      { href: "/admin/theo-doi-phan-hoi", label: "Theo dõi phản hồi", icon: "users" },
       { href: "/admin/hop-dong", label: "Hợp đồng", icon: "contract" },
     ],
   },
@@ -28,6 +29,7 @@ const GROUPS: { title: string; links: NavLink[] }[] = [
     title: "Quản lý",
     links: [
       { href: "/admin/bao-cao", label: "Báo cáo", icon: "chart", roles: ["MANAGER"] },
+      { href: "/admin/doi-sale", label: "Đội sale", icon: "team", roles: ["MANAGER"] },
       { href: "/admin/nha", label: "Quản lý nhà", icon: "home", roles: ["MANAGER"] },
       { href: "/admin/tai-khoan", label: "Tài khoản", icon: "shield", roles: ["MANAGER", "SALE"] },
     ],

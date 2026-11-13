@@ -4,17 +4,17 @@ File này là luật chung của hệ thống: ai được làm gì, và mỗi �
 
 - [01-tiep-nhan-va-phan-cong.md](01-tiep-nhan-va-phan-cong.md): quy trình 1, khách vào từ đâu, ai phụ trách, hạn phản hồi, khung giờ hẹn (đã chốt, chưa làm).
 - [02-dat-lich-den-dat-coc.md](02-dat-lich-den-dat-coc.md): quy trình 2, đặt lịch, duyệt, xem nhà và điểm danh, đặt cọc và ký.
-- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem, nuôi khách, điểm tương tác, báo cáo.
+- [03-cham-soc-va-marketing.md](03-cham-soc-va-marketing.md): quy trình 3, sau buổi xem (hỏi cảm nhận, khách im lặng, báo cáo tuần). Nuôi khách và điểm tương tác qua Mautic trong file này là mở rộng, phát triển sau.
 
 Tài liệu luồng trong `docs/luong/` chỉ link về đây, không chép lại quy tắc. Nếu code chạy khác với file này, báo trong nhóm để sửa một trong hai, không để lệch.
 
-Cập nhật lần cuối: 4/11/2026.
+Cập nhật lần cuối: 13/11/2026.
 
 ## 1. Hệ thống mô phỏng gì
 
 Một văn phòng môi giới bất động sản nhận bán nhà cho chủ nhà hoặc chủ đầu tư và tìm người mua. Khách xem danh sách nhà, đặt lịch xem, đi xem, rồi đặt cọc nếu muốn mua. AI và n8n làm phần lặp lại (chấm điểm khách, soạn thư, nhắc việc, soạn hợp đồng, tổng hợp số liệu); con người duyệt ở các bước quan trọng.
 
-Đội sale dùng chung một danh sách khách. Khách không được giao cho riêng một sale; ai thao tác thì hệ thống ghi tên người đó vào nhật ký của khách.
+Mỗi khách có một sale phụ trách: hệ thống chia lần lượt cho các sale đang nhận khách, quản lý chuyển sang sale khác bất cứ lúc nào, và mọi lần chia, chuyển được ghi vào nhật ký của khách (quy tắc đầy đủ: [01-tiep-nhan-va-phan-cong.md](01-tiep-nhan-va-phan-cong.md) mục 4). Cả đội vẫn xem được danh sách khách; người thao tác được ghi tên vào nhật ký.
 
 ## 2. Phạm vi
 
@@ -25,10 +25,10 @@ Một văn phòng môi giới bất động sản nhận bán nhà cho chủ nh�
 | Việc | Lý do |
 |---|---|
 | Hoa hồng, lương của sale | Việc của kế toán, nhân sự; không thuộc đề tài |
-| Chia khách cho từng sale, thu hồi khách khi sale chậm | Đội dùng chung danh sách (mục 1) |
+| Tự động thu hồi khách khi sale chậm | Quá hạn phản hồi thì báo quản lý, quản lý chuyển tay (mục 1) |
 | Thanh toán, hợp đồng mua bán công chứng, sang tên | Hệ thống dừng ở hợp đồng đặt cọc và "đã bán" |
 | Khách tự chọn giờ mới khi đổi lịch | Khách chỉ gửi yêu cầu, nhân viên chọn giờ |
-| Gộp nhiều lần đặt của cùng một khách thành một hồ sơ | Các lần đặt được nối với nhau qua email (mục 4.1) |
+| Gộp các hồ sơ trùng đã có từ trước trong database | Từ FE-33, khách mới được nhận ra bằng số điện thoại chuẩn hoá và đặt thêm lịch trên cùng hồ sơ; hồ sơ trùng cũ cần quản lý duyệt riêng, chưa làm |
 
 ## 3. Vai trò và quyền
 
@@ -53,6 +53,7 @@ Một văn phòng môi giới bất động sản nhận bán nhà cho chủ nh�
 | Xác nhận "Đã nhận tiền cọc", đánh dấu căn "Đã bán" | | | ✅ | |
 | Thêm, sửa, ẩn, xoá căn nhà | | | ✅ | |
 | Xem báo cáo tuần, bấm tạo báo cáo ngay | | | ✅ | Lập báo cáo mỗi thứ Hai |
+| Xem trang Đội sale (khách đang giữ và kết quả của từng sale), lọc danh sách khách theo người phụ trách | | | ✅ | Sale không thấy mục này và không thấy ô lọc |
 | Tạo tài khoản nhân viên | | | ✅ | |
 | Xem danh sách khách, lịch xem, hợp đồng, số liệu tổng quan | | ✅ | ✅ | |
 

@@ -16,14 +16,15 @@ Mọi quy tắc, ngoại lệ và bước làm tay đều nằm trong `docs/`. �
 |---|---|
 | Dự án làm gì, các luồng, lộ trình | [docs/tong-quan-du-an.md](docs/tong-quan-du-an.md) |
 | Ai làm gì tuần này, mã nhánh, mốc phát hành | [docs/danh-sach-task.md](docs/danh-sach-task.md) |
-| Quy tắc nghiệp vụ: vai trò và trạng thái, quy trình 1 tiếp nhận, 2 đặt lịch đến đặt cọc, 3 chăm sóc khách | [docs/nghiep-vu/](docs/nghiep-vu/) |
+| Quy tắc nghiệp vụ: vai trò và trạng thái, quy trình 1 tiếp nhận, 2 đặt lịch đến đặt cọc, 3 chăm sóc khách và báo cáo | [docs/nghiep-vu/](docs/nghiep-vu/) |
 | Từng luồng n8n chạy thế nào (khung chung và bảng 12 luồng) | [docs/luong/README.md](docs/luong/README.md) |
 | Định dạng API giữa web, backend và n8n | [docs/api-contract.md](docs/api-contract.md) |
 | Quy ước giao diện web (component, điện thoại, icon, font) | [docs/giao-dien-web.md](docs/giao-dien-web.md) |
 | Cách tạo nhánh, mở PR, phát hành | [docs/quy-trinh-git.md](docs/quy-trinh-git.md) |
 | Đưa code lên server, bước làm tay mỗi bản phát hành, xử lý sự cố | [docs/trien-khai.md](docs/trien-khai.md) |
-| Cài và cấu hình Mautic | [docs/mautic-setup.md](docs/mautic-setup.md) |
+| Cài và cấu hình Mautic (mở rộng, phát triển sau) | [docs/mautic-setup.md](docs/mautic-setup.md) |
 | Lỗ hổng còn lại, xếp theo vòng đời khách | [docs/danh-sach-lo-hong.md](docs/danh-sach-lo-hong.md) |
+| Kế hoạch hoàn thiện hành trình khách và các luồng n8n (13/11) | [docs/ke-hoach-hanh-trinh-va-luong-n8n.md](docs/ke-hoach-hanh-trinh-va-luong-n8n.md) |
 | Tiếp nhận khách và phân công sale (đã chốt, chưa làm) | [docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md](docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md) |
 
 ## Cau truc

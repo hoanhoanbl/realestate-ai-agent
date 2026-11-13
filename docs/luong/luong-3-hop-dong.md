@@ -85,7 +85,7 @@ Khách ký trong lúc chờ (lần 1 hoặc lần 2) thì `Email xác nhận đ�
 
 | Hướng | Gọi gì | Khi nào |
 |---|---|---|
-| Backend → luồng 3 | `POST /webhook/contract-requested` | Nhân viên tạo hợp đồng |
+| Backend → luồng 3 | `POST /webhook/contract-requested` | Nhân viên tạo hợp đồng, hoặc bấm "Soạn lại" khi hợp đồng kẹt `DRAFTING` quá 60 giây (n8n tắt lúc tạo). Nhân viên cũng có thể "Huỷ hợp đồng" để trả căn |
 | Luồng 3 → database | Đọc `contracts`, `leads`, `properties` | `Lấy dữ liệu hợp đồng` |
 | Luồng 3 → backend | `PUT /api/contracts/:id/draft` | Lưu bản nháp và `resumeUrl` |
 | Luồng 3 → backend | `POST /api/contracts/:id/issue-token` | Phát link ký sau khi duyệt |

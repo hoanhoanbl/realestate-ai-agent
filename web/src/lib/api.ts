@@ -3,6 +3,34 @@ import { clearSession, getToken, type SessionUser } from "@/lib/auth";
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/api";
 
+export interface FeedbackWorkHistory {
+  id: number; actorName: string; outcome: string; note: string; nextDueAt: string | null; nextViewingId: number | null; createdAt: string;
+}
+export interface FeedbackWork {
+  id: number; feedbackId: number; leadId: number; viewingId: number | null; version: number;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED"; dueAt: string; completedAt: string | null;
+  leadName: string; leadStatus: string; assignedUserId: number | null; assignedUserName: string | null;
+  propertyName: string | null; viewingTime: string | null; rating: number; interest: string; comment: string | null;
+  aiSummary: string | null; submittedAt: string; overdue: boolean; history: FeedbackWorkHistory[];
+}
+export const FEEDBACK_WORK_OUTCOMES: Record<string, string> = {
+  CONTACTED: "Đã liên hệ", NEXT_VIEWING: "Hẹn xem tiếp", NEEDS_TIME: "Cần thêm thời gian", UNREACHABLE: "Chưa liên hệ được", NOT_BUYING: "Không mua", CLOSED: "Kết thúc theo hồ sơ khách",
+};
+export interface FeedbackWorkInput {
+  version: number; outcome: string; note: string; complete?: boolean; nextDueAt?: string; propertyId?: number; viewingTime?: string;
+}
+export interface FeedbackAlertReview { id: number; workId: number; kind: string; state: string; error: string | null }
+export function getFeedbackWork(filter = "OPEN", leadId?: number): Promise<FeedbackWork[]> {
+  return request(leadId ? `/feedback-work/lead/${leadId}` : `/feedback-work?filter=${encodeURIComponent(filter)}`);
+}
+export function recordFeedbackWork(id: number, input: FeedbackWorkInput): Promise<unknown> {
+  return request(`/feedback-work/${id}/result`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+}
+export function getFeedbackAlertReview(): Promise<FeedbackAlertReview[]> { return request('/feedback-work/alerts/review'); }
+export function resolveFeedbackAlert(id: number, delivered: boolean, note: string): Promise<unknown> {
+  return request(`/feedback-work/alerts/${id}/resolve`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ delivered, note }) });
+}
+
 export type Level = "HOT" | "WARM" | "COLD";
 export type AutomationStatus = "PENDING" | "COMPLETED" | "FAILED";
 // Trạng thái bán hàng của khách (khác với AutomationStatus là trạng thái chạy của n8n)
@@ -149,6 +177,8 @@ export interface ViewingHistoryItem {
   id: number;
   propertyId: number;
   propertyName: string | null;
+  propertyPrice: string | number | null;
+  propertyStatus: PropertyStatus | null;
   viewingTime: string | null;
   status: ViewingStatus;
 }
@@ -185,7 +215,11 @@ export const EVENT_LABELS: Record<string, string> = {
   VIEWING_RESCHEDULED: "Đổi giờ xem nhà",
   FEEDBACK_RECEIVED: "Khách gửi cảm nhận",
   FEEDBACK_ANALYZED: "AI phân tích cảm nhận",
+  FEEDBACK_WORK_CREATED: "Tạo việc chăm sóc sau phản hồi",
+  FEEDBACK_WORK_UPDATED: "Ghi kết quả liên hệ sau phản hồi",
+  FEEDBACK_ALERT_RESOLVED: "Đối soát thông báo chăm sóc",
   CONTRACT_CREATED: "Tạo hợp đồng",
+  CONTRACT_REDRAFT_REQUESTED: "Soạn lại hợp đồng",
   CONTRACT_DRAFTED: "Hợp đồng soạn xong",
   CONTRACT_SENT: "Hợp đồng gửi khách ký",
   CONTRACT_SIGNED: "Khách ký hợp đồng",
@@ -440,12 +474,21 @@ export function getContract(id: number): Promise<ContractDetail> {
   return request<ContractDetail>(`/contracts/${id}`);
 }
 
-export function createContract(leadId: number, depositAmount: number): Promise<{ id: number }> {
+export function createContract(leadId: number, depositAmount: number, propertyId?: number): Promise<{ id: number }> {
   return request<{ id: number }>("/contracts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ leadId, depositAmount }),
+    body: JSON.stringify({ leadId, depositAmount, ...(propertyId !== undefined && { propertyId }) }),
   });
+}
+
+// Hợp đồng kẹt ở bước soạn (n8n lỗi): gọi n8n soạn lại, hoặc huỷ để trả căn
+export function redraftContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/redraft`, { method: "POST" });
+}
+
+export function cancelContract(id: number): Promise<{ ok: true }> {
+  return request(`/contracts/${id}/cancel`, { method: "POST" });
 }
 
 export function markDepositReceived(id: number): Promise<ContractDetail> {
@@ -627,6 +670,35 @@ export function updateUserRouting(id: number, input: { acceptingLeads?: boolean;
 
 export function getStats(): Promise<Stats> {
   return request<Stats>("/stats");
+}
+
+// Trang Đội sale (chỉ quản lý): số khách và kết quả của từng người phụ trách
+export type TeamPeriod = "now" | "week" | "month";
+export type TeamOpenStatus = "CONSULTING" | "NEW" | "CONFIRMED" | "VIEWED" | "DEPOSIT";
+export interface TeamOwner {
+  id: number | null; // null = chưa phân công
+  name: string;
+  role: "SALE" | "MANAGER" | null;
+  acceptingLeads: boolean | null;
+  open: Record<TeamOpenStatus | "total", number>;
+  overdue: number;
+  idle: number;
+  assigned: number;
+  attended: number;
+  signed: number;
+  lost: number;
+}
+export interface TeamStats {
+  period: TeamPeriod;
+  from: string | null;
+  to: string | null;
+  acceptingSales: number;
+  totalSales: number;
+  owners: TeamOwner[];
+  totals: Omit<TeamOwner, "id" | "name" | "role" | "acceptingLeads">;
+}
+export function getTeamStats(period: TeamPeriod): Promise<TeamStats> {
+  return request<TeamStats>(`/stats/team?period=${period}`);
 }
 
 export function createViewing(

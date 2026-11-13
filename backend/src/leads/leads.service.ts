@@ -16,6 +16,7 @@ import type { AuthUser } from '../auth/auth.types';
 import { assertViewingStarted } from '../viewings/viewing-time';
 import { NORMALIZED_PHONE_SQL } from './intake-rules';
 import { User } from '../users/entities/user.entity';
+import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 
 // Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
 // vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
@@ -114,10 +115,13 @@ export class LeadsService {
       id: number;
       propertyId: number;
       propertyName: string | null;
+      propertyPrice: string | null;
+      propertyStatus: string | null;
       viewingTime: Date | null;
       status: string;
     }[] = await this.leadRepository.query(
       `SELECT v.id, v.property_id AS "propertyId", p.name AS "propertyName",
+              p.price AS "propertyPrice", p.status AS "propertyStatus",
               v.viewing_time AS "viewingTime", v.status
          FROM viewings v LEFT JOIN properties p ON p.id = v.property_id
         WHERE v.lead_id = $1
@@ -182,6 +186,7 @@ export class LeadsService {
       }
       if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
       const saved = await repo.save(lead);
+      if (['LOST', 'SIGNED'].includes(data.status)) await closeFeedbackWork(em, id, 'Khách đã đóng hoặc đã ký');
       await em.getRepository(LeadEvent).save({ leadId: id, type: 'STATUS_CHANGED',
         note: `${oldStatus} -> ${data.status}${data.note ? `: ${data.note}` : ''}` });
       return { saved, changed: true };

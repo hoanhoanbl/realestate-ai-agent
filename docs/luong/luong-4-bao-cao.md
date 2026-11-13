@@ -1,9 +1,11 @@
 # Luồng 4: Báo cáo kinh doanh hằng tuần (AI Agent có công cụ)
 
-File: `n8n-workflows/luong-4-bao-cao.json` (18 node, không tính ghi chú; id `luong4Realestat0`).
+File: `n8n-workflows/luong-4-bao-cao.json` (19 node, không tính ghi chú; id `luong4Realestat0`).
 Kích hoạt: **Schedule** thứ Hai 8:00 (cron `0 8 * * 1`), nút **Chạy tay** trong n8n, hoặc quản lý bấm **Tạo báo cáo ngay** trên web (webhook `POST /webhook/report-requested`, có header `X-Webhook-Secret`).
 
 Khung chung của các tài liệu luồng: [README.md](README.md).
+
+**Mở rộng ngày 12/11/2026 (local):** hiệu suất sale bản gọn và hiệu quả từng căn nhà, không so sánh sale với kỳ trước. Node mới gọi `POST /api/reports/breakdowns`, lưu snapshot trong `metrics.breakdowns`, hiển thị trên web/email. Bạn phụ trách n8n đọc [hợp đồng, sơ đồ nối node và checklist triển khai](luong-4-sale-va-can-nha.md) trước khi import. Deploy backend mới trước; API lỗi phải dừng báo cáo. L5 gợi ý căn thay thế làm riêng.
 
 ## 1. Làm gì trong thực tế
 

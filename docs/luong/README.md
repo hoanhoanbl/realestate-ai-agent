@@ -1,10 +1,12 @@
 # Tài liệu các luồng n8n
 
-Hệ thống có **12 workflow n8n**, file JSON ở `n8n-workflows/`. Mỗi workflow có một tài liệu trong thư mục này, viết theo cùng một khung để người đọc biết tìm thông tin ở đâu.
+Hệ thống có **13 workflow n8n**, file JSON ở `n8n-workflows/`. Mỗi workflow có một tài liệu trong thư mục này, viết theo cùng một khung để người đọc biết tìm thông tin ở đâu.
 
 Quy tắc nghiệp vụ (khi nào áp dụng, ai xử lý, khách thấy gì) nằm ở [docs/nghiep-vu/](../nghiep-vu/). Tài liệu luồng **chỉ link sang đó**, không chép lại. Cách đưa workflow lên server, credential và biến `.env` nằm ở [trien-khai.md](../trien-khai.md); mục "Triển khai lên server" của mỗi luồng chỉ ghi phần riêng của luồng đó.
 
 ## Bảng các luồng
+
+Luồng 1, 1b, 2, 3, 4, 5, 6, 6b cùng Thông báo và Error là **phần lõi đề tài** (Visits, Document signing, Lead follow-up, Sales analytics). Luồng 7 và 8 là **mở rộng Marketing Automation (Mautic), phát triển sau**, ngoài bốn vế đề tài. Riêng luồng 2: phần nuôi khách WARM và COLD qua Mautic cũng là mở rộng. Chi tiết: mục "Phạm vi" của [tong-quan-du-an.md](../tong-quan-du-an.md).
 
 | Luồng | Việc chính | Kích hoạt | Id trên server | Tài liệu |
 |---|---|---|---|---|
@@ -16,12 +18,15 @@ Quy tắc nghiệp vụ (khi nào áp dụng, ai xử lý, khách thấy gì) n�
 | 5 | Phân tích cảm nhận sau buổi xem | Webhook `feedback-submitted` | `luong5Realestat0` | [luong-5-cam-nhan.md](luong-5-cam-nhan.md) |
 | 6 | Bot Telegram tư vấn khách (AI Agent) | Webhook `telegram-khach` | `luong6Realestat0` | [luong-6-telegram-agent.md](luong-6-telegram-agent.md) |
 | 6b | Nạp tri thức vào kho vector cho bot | 2 giờ sáng mỗi ngày (và chạy tay) | `luong6bRagNap001` | [luong-6b-nap-tri-thuc.md](luong-6b-nap-tri-thuc.md) |
-| 7 | Đồng bộ khách sang Mautic | Webhook `lead-changed` | `luong7Realestat0` | [luong-7-dong-bo-mautic.md](luong-7-dong-bo-mautic.md) |
-| 8 | Mautic báo hành vi khách về backend | Webhook `mautic-event` | `luong8Realestat0` | [luong-8-mautic-bao-ve.md](luong-8-mautic-bao-ve.md) |
+| 7 (mở rộng) | Đồng bộ khách sang Mautic | Webhook `lead-changed` | `luong7Realestat0` | [luong-7-dong-bo-mautic.md](luong-7-dong-bo-mautic.md) |
+| 8 (mở rộng) | Mautic báo hành vi khách về backend | Webhook `mautic-event` | `luong8Realestat0` | [luong-8-mautic-bao-ve.md](luong-8-mautic-bao-ve.md) |
 | Thông báo | Gửi tin cho nhân viên (email, Telegram, push) | Luồng khác gọi | `thongBaoNhanVien` | [thong-bao-nhan-vien.md](thong-bao-nhan-vien.md) |
+| Theo dõi phản hồi (phụ trợ L5) | Giao thông báo việc mới, nhắc sale, báo quản lý | L2/L5 gọi; chạy tay để test | `feedbackWorkNotifications` (ID trong repo, chưa triển khai server) | [luong-5-theo-doi-sau-phan-hoi.md](luong-5-theo-doi-sau-phan-hoi.md) |
 | Error | Báo quản lý khi một luồng khác lỗi | Luồng khác lỗi | `errorWfRealestat` | [error-workflow.md](error-workflow.md) |
 
 Bảng "Kích hoạt" và id lấy từ [trien-khai.md](../trien-khai.md) mục 4. Nếu hai nơi khác nhau, file JSON trong repo là bản đúng.
+
+L4 mở rộng local 12/11/2026: [hiệu suất sale gọn và hiệu quả từng căn nhà](luong-4-sale-va-can-nha.md), có API `/reports/breakdowns`, cấu trúc dữ liệu và checklist cho bạn n8n. Cần deploy backend trước khi import JSON mới; chưa nghiệm thu server.
 
 ## Khung chung
 

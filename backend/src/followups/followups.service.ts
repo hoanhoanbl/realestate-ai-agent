@@ -9,6 +9,7 @@ import { LeadEvent } from '../leads/entities/lead-event.entity';
 import { LeadsService } from '../leads/leads.service';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { FOLLOWUP_SNAPSHOT_SQL } from './followup-sql';
+import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 
 const LEASE_MS = 30 * 60_000;
 const RETRY_MS = 6 * 3_600_000;
@@ -66,6 +67,7 @@ export class FollowupsService {
           status: 'LOST', lostReason: 'EXPIRED', approvalUrl: null,
         });
         if (changed.affected !== 1) return { claimed: false, reason: 'Lead đã được xử lý' };
+        await closeFeedbackWork(m, dto.leadId, 'Lịch chưa duyệt đã quá hạn, khách đã đóng');
         // Dòng viewing đã khóa trước snapshot; không so timestamp bằng Date vì Postgres còn microsecond.
         const viewing = await m.getRepository(Viewing).update({ id: dto.viewingId, status: 'NEW' }, { status: 'CANCELLED' });
         if (viewing.affected !== 1) throw new ConflictException('Lịch đã thay đổi, không đóng lịch cũ');

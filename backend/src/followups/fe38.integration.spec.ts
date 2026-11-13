@@ -59,6 +59,7 @@ const url = process.env.FE33_TEST_DATABASE_URL;
         db.getRepository(Viewing),
         db.getRepository(Property),
         { callWebhook: async () => ({}) } as any,
+        {} as any, // This case only issues links; submission/work transactions have their own integration suite.
       );
       intake = new LeadIntakeService(db.getRepository(Lead));
       followups = new FollowupsService(db, leads);

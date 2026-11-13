@@ -134,6 +134,7 @@ Khi khách để lại số điện thoại trong bot (FE-36, đã làm ở loca
 - Lead nhập tay cũng tính một lượt cho người nhập, để số khách giữa các sale cân bằng.
 - Quản lý chuyển lead sang sale khác bất cứ lúc nào. Mỗi lần chuyển ghi vào nhật ký lead.
 - Không có sale nào đang nhận khách thì lead giao cho quản lý.
+- Quản lý kiểm tra việc chia có đều không ở trang **Đội sale** (`/admin/doi-sale`): mỗi sale một dòng, cột "Khách mới được chia" ở kỳ Tuần này hoặc Tháng này; bấm tên hoặc một số để xem đúng những khách đó ở trang Khách hàng.
 
 Vì sao chia lần lượt mà không chọn cách khác:
 

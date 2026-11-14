@@ -1,12 +1,12 @@
-# Tu dong deploy len VPS khi co commit vao main.
-# Job chi SSH vao server va chay /root/realestate-ai-agent-deploy.sh (git pull + docker compose + kiem tra suc khoe).
+# Deploy len VPS. Duoc goi tu build-push.yml SAU KHI image da len Docker Hub (commit vao main),
+# hoac bam tay (Run workflow) de deploy lai ban latest.
+# Job chi SSH vao server va chay /root/realestate-ai-agent-deploy.sh (git pull + docker compose pull + up -d + kiem tra suc khoe).
 # Key CI tren server bi gioi han bang command="..." trong authorized_keys nen chi chay duoc script do.
 # Secrets can co: SSH_HOST, SSH_PORT, SSH_USER, SSH_KEY, SSH_KNOWN_HOSTS.
 name: Deploy
 
 on:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:

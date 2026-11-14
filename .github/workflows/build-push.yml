@@ -1,0 +1,97 @@
+# Build image backend va web, day len Docker Hub moi khi co commit vao dev hoac main.
+# Server khong build nua: sau khi push xong, (chi voi main) job deploy goi deploy.yml, workflow do SSH vao
+# server, server `docker compose pull` roi `up -d`.
+#
+# Tag tao ra cho moi image:
+#   dev  -> dev, sha-<7 ky tu dau cua commit>
+#   main -> main, latest, sha-<7 ky tu dau cua commit>
+#
+# Can khai bao trong GitHub repo (Settings > Secrets and variables > Actions):
+#   Secret   DOCKERHUB_TOKEN     access token Docker Hub, quyen Read & Write
+#   Variable DOCKERHUB_USERNAME  ten tai khoan Docker Hub
+#   Variable PUBLIC_HOST         ten mien cong khai, giong PUBLIC_HOST trong .env tren server
+#                                (web nhung NEXT_PUBLIC_* vao bundle luc build nen can biet)
+name: Build va push image
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-push-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & push ${{ matrix.service }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            context: backend
+            build_args: ""
+          - service: web
+            context: web
+            build_args: |
+              NEXT_PUBLIC_API_URL=https://${{ vars.PUBLIC_HOST }}/api
+              NEXT_PUBLIC_MAUTIC_URL=https://mautic.${{ vars.PUBLIC_HOST }}
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+    steps:
+      - name: Kiem tra bien can co
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ]; then
+            echo "::error::Thieu variable DOCKERHUB_USERNAME (Settings > Secrets and variables > Actions > Variables)."; exit 1
+          fi
+          if [ "${{ matrix.service }}" = "web" ] && [ -z "$PUBLIC_HOST" ]; then
+            echo "::error::Thieu variable PUBLIC_HOST, image web se nhung sai dia chi API."; exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tao tag va nhan cho image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.DOCKERHUB_USERNAME }}/realestate-ai-agent-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build va push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # Chi commit vao main moi deploy, va chi khi ca hai image da len Docker Hub.
+  deploy:
+    name: Deploy len VPS
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

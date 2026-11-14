@@ -39,14 +39,33 @@ DC ps
 
 ## 2. CI tự deploy
 
-Merge vào `main` thì GitHub Actions chạy workflow **Deploy** (`.github/workflows/deploy.yml`). Workflow SSH vào server bằng key riêng của CI; key này chỉ được phép chạy `/root/realestate-ai-agent-deploy.sh`. Script làm:
+Luồng gồm hai workflow nối tiếp nhau, image build ở CI chứ không build trên server:
 
-1. `git fetch` và `git reset --hard origin/main`.
-2. `DC up -d --build`: build lại image đã đổi, tạo lại container có cấu hình đổi.
-3. Ghi `.deployed-commit`, xoá image cũ.
+1. **Build và push image** (`.github/workflows/build-push.yml`): mỗi push vào `dev` hoặc `main`, GitHub Actions build image `backend` và `web` (hai job song song) rồi đẩy lên Docker Hub: `<DOCKERHUB_USERNAME>/realestate-ai-agent-backend` và `...-web`. Tag: tên nhánh (`dev`, `main`), `sha-<7 ký tự commit>`, và `latest` khi là `main`.
+2. **Deploy** (`.github/workflows/deploy.yml`): chạy ngay sau bước 1 khi là commit vào `main`. Workflow SSH vào server bằng key riêng của CI; key này chỉ được phép chạy `/root/realestate-ai-agent-deploy.sh`.
+
+**Cấu hình một lần.** Trong GitHub repo, Settings, Secrets and variables, Actions:
+
+| Loại | Tên | Giá trị |
+|---|---|---|
+| Secret | `DOCKERHUB_TOKEN` | Access token Docker Hub (Account settings, Personal access tokens, quyền Read & Write) |
+| Variable | `DOCKERHUB_USERNAME` | Tên tài khoản Docker Hub |
+| Variable | `PUBLIC_HOST` | Giống `PUBLIC_HOST` trong `.env` của server. Web nhúng `NEXT_PUBLIC_API_URL` vào bundle lúc build nên image web gắn với tên miền này |
+
+Trong `.env` của server thêm `DOCKERHUB_USERNAME=<tên tài khoản>` (và `IMAGE_TAG` nếu muốn ghim phiên bản).
+
+Script deploy trên server (nằm ngoài repo) làm:
+
+1. `git fetch` và `git reset --hard origin/main` (để cập nhật file compose, Caddyfile, JSON n8n).
+2. `DC pull backend web` rồi `DC up -d`: tải image mới từ Docker Hub, tạo lại container có image hoặc cấu hình đổi. Không còn `--build`.
+3. Ghi `.deployed-commit`, xoá image cũ (`docker image prune -f`).
 4. Chờ ba địa chỉ trả 200 (tối đa 3 phút mỗi địa chỉ): trang web, `/api/properties`, `n8n/healthz`. Không đạt thì job đỏ và in `DC ps`.
 
 Xem kết quả ở tab **Actions** trên GitHub. Job đỏ thì đọc log bước "Deploy tren server", sửa bằng `hotfix/*` (xem quy-trinh-git.md mục 4).
+
+**Thứ tự chạy.** `build-push.yml` có job `deploy` với `needs: build-and-push`: chỉ khi cả hai image đã lên Docker Hub (và nhánh là `main`) mới gọi `deploy.yml`. Nhờ vậy server không bao giờ pull phải image cũ. Push vào `dev` chỉ build và push, không deploy. `deploy.yml` vẫn có nút **Run workflow** để deploy lại bản `latest` bằng tay.
+
+**Quay lại bản cũ nhanh:** đặt `IMAGE_TAG=sha-<7 ký tự commit cũ>` trong `.env` của server rồi `DC pull backend web && DC up -d`.
 
 **CI không làm** những việc sau, phải làm tay sau mỗi lần deploy có liên quan:
 

@@ -1,5 +1,7 @@
-# Production (VM tren GCP): chay bang
-#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# Production (VM tren GCP): backend va web lay image tu Docker Hub (CI build san), chay bang
+#   docker compose -f docker-compose.prod.yml --env-file .env pull backend web
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+# Can DOCKERHUB_USERNAME trong .env (IMAGE_TAG mac dinh latest). Muon build tai cho thay vi pull: them --build vao `up -d`.
 # Kem Mautic (docker-compose.mautic.yml cua Hau):
 #   docker compose -f docker-compose.prod.yml -f docker-compose.mautic.yml --env-file .env up -d --build
 # Khac voi docker-compose.yml (local): khong mo cong DB/backend/web/n8n ra ngoai,
@@ -55,6 +57,9 @@ services:
       - n8n_data:/home/node/.n8n
 
   backend:
+    # Image do CI build va day len Docker Hub (.github/workflows/build-push.yml); server chi pull.
+    # build giu lai de du phong: `up -d --build` van build tai cho, gan dung ten image tren.
+    image: ${DOCKERHUB_USERNAME:-local}/realestate-ai-agent-backend:${IMAGE_TAG:-latest}
     build: ./backend
     container_name: realestate-backend
     restart: unless-stopped
@@ -80,6 +85,8 @@ services:
         condition: service_healthy
 
   web:
+    # Giong backend: pull tu Docker Hub. Image web da nhung NEXT_PUBLIC_* luc CI build (bien PUBLIC_HOST cua repo).
+    image: ${DOCKERHUB_USERNAME:-local}/realestate-ai-agent-web:${IMAGE_TAG:-latest}
     build:
       context: ./web
       args:

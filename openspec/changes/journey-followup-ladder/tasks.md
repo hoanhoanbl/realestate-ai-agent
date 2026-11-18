@@ -23,7 +23,7 @@ Owners follow `docs/quy-trinh-git.md` ("Ai giữ phần nào"). Codes are on `de
 - [ ] 2.2b Add task type `LADDER_EMAIL` and event type `VIEWING_CONFIRMATION_SENT` (written later by FE-50, read by FE-54), plus the two helpers of design D10 that build and parse its note `viewing=<id>;time=<ISO UTC>`. Verify: unit test lists both in the constants; a round-trip test (build then parse gives the same viewing id and time) and a test that a malformed note parses to null.
 - [ ] 2.3 Add `contacted_at` to `lead.entity.ts` and the four archive/price columns to `contract.entity.ts` (schema only). Verify: backend starts against a fresh local database and `\d leads`, `\d contracts` show the columns.
 - [ ] 2.4 Write `backend/sql/fe-43-journey.sql` (additive, idempotent, `IF NOT EXISTS`). Verify: run it twice on a copy of the local database taken from `dev` data; the second run changes nothing; the old backend image still starts afterwards. Also backfill `leads.contacted_at` with the earliest attended viewing time where it is null (design D8). Verify the backfill: a `VIEWED` lead with an attended viewing gets that time; a second run changes nothing.
-- [ ] 2.5 Update `web/src/lib/api.ts`: `LostReason` type, `LOST_REASON_LABELS` (Vietnamese labels), event labels, `Contract` optional new fields. Verify: `cd web && npm run lint && npm run build` pass.
+- [ ] 2.5 Update `web/src/lib/api.ts`: `LostReason` type, `LOST_REASON_LABELS` (Vietnamese labels), event labels, `Contract` optional new fields, and the types and fetch helpers of the approval link (`api-contract.md` §3.10: read link, confirm link) so that FE-56 adds only the page and never edits `api.ts` (decision 19/11). Verify: `cd web && npm run lint && npm run build` pass; the helpers match the shapes in `api-contract.md` §3.10.
 - [ ] 2.6 Document the SQL step for the release in `docs/trien-khai.md` (order: back up, run script, deploy). Verify: the commands in the doc run as written on the local database.
 
 ## 3. Contact tracking (FE-44) — Hậu, after 2 merges
@@ -46,7 +46,7 @@ Owners follow `docs/quy-trinh-git.md` ("Ai giữ phần nào"). Codes are on `de
 
 ## 5. Approval page (FE-56) — Hoàng writes, Hậu reviews (customer-web area); starts once the link API shape is fixed in `docs/api-contract.md` (DC-16), merges after 4.4
 
-- [ ] 5.1 Add `web/src/app/duyet-thu/[token]/page.tsx` with: lead summary, AI action and reason, editable draft, "Gửi cho khách" and "Bỏ qua", and the states already handled / expired / no consent; helpers in `web/src/lib/api.ts`. Verify: `npm run lint`, `npm run build`, browser check at 375 px with the API mocked for each state, no customer phone or email shown.
+- [ ] 5.1 Add `web/src/app/duyet-thu/[token]/page.tsx` with: lead summary, AI action and reason, editable draft, "Gửi cho khách" and "Bỏ qua", and the states already handled / expired / no consent; use the helpers FE-43 added to `web/src/lib/api.ts` (task 2.5), do not edit that file here. Verify: `npm run lint`, `npm run build`, browser check at 375 px with the API mocked for each state, no customer phone or email shown.
 
 ## 6. Flow 9 in n8n (FE-45) — Hậu
 

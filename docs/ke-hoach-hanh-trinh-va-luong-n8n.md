@@ -2,7 +2,7 @@
 
 Ghi lại buổi rà soát ngày 13/11/2026: đối chiếu hành trình khách của hệ thống với hành trình chuẩn của các CRM bất động sản và với đề bài của thầy, rồi chốt luồng n8n nào giữ, sửa, thêm.
 
-**Trạng thái (13/11/2026):** hướng đã thống nhất và **đã cấp mã task** (FE-43 đến FE-50, DC-14, CH-09) trong [danh-sach-task.md](danh-sach-task.md). Chưa sửa code hay workflow. Các quyết định đã chốt và việc để sau nằm ở mục 9. Kế hoạch triển khai FE-43 đến FE-46: change OpenSpec `journey-followup-ladder`. Đây không phải quy tắc đang chạy; quy tắc đang chạy nằm ở [nghiep-vu/](nghiep-vu/).
+**Trạng thái (18/11/2026):** hướng đã thống nhất, **đã cấp mã task** (FE-43 đến FE-50, FE-53 đến FE-56, DC-14 đến DC-16) trong [danh-sach-task.md](danh-sach-task.md); review của Hậu ngày 18/11 đã chốt hướng ở mục 3.1 của file đó. Chưa sửa code hay workflow, trừ phần chọn căn khi lập hợp đồng (PR #82). Các quyết định đã chốt và việc để sau nằm ở mục 9. Kế hoạch triển khai FE-43 đến FE-46: change OpenSpec `journey-followup-ladder`. Đây không phải quy tắc đang chạy; quy tắc đang chạy nằm ở [nghiep-vu/](nghiep-vu/).
 
 Cách đọc nguồn: phần nào lấy từ tài liệu CRM thì có link ở mục 11. Phần **"đề xuất"** là suy luận theo thông lệ chung và thị trường Việt Nam, tìm kiếm không có nguồn xác nhận.
 
@@ -150,23 +150,22 @@ Không phải việc n8n, nhưng thiếu thì luồng không chạy được:
 | Langfuse (FE-25) | Giữ nguyên, vẫn là việc đầu tiên bị cắt nếu thiếu giờ |
 | Cấp mã task và cập nhật `danh-sach-task.md`, `danh-sach-lo-hong.md`, `README.md` | Làm ở CH-09 và DC-14 |
 | Lỗ hổng 5, trùng lịch theo sale (18/11) | **Đưa lên làm ngay** thành FE-53, không để "làm sau": đây là ràng buộc thật của nghề và dễ lộ khi demo. Hai buổi của một sale ở hai căn cách nhau 90 phút; chặn khi chia sale và khi duyệt, đổi giờ. Quy tắc: [nghiep-vu/01-visits.md](nghiep-vu/01-visits.md) mục 1.6 |
-| Thư nhắc lịch gửi thừa khi đặt sát giờ (18/11) | FE-54, **đề xuất, chờ chốt**: thư chốt lịch gửi khi giờ hẹn còn dưới 24 giờ thì không nhắc nữa. Quy tắc: [nghiep-vu/01-visits.md](nghiep-vu/01-visits.md) mục 3.1 |
+| Thư nhắc lịch gửi thừa khi đặt sát giờ (18/11) | FE-54, **chốt 18/11**: thư chốt lịch gửi khi giờ hẹn còn dưới 24 giờ thì không nhắc nữa; căn cứ là sự kiện `VIEWING_CONFIRMATION_SENT` mà luồng 1, 1b ghi sau khi gửi thư thành công (FE-50), nên FE-54 làm sau FE-50. Quy tắc: [nghiep-vu/01-visits.md](nghiep-vu/01-visits.md) mục 3.1 |
 | Báo quản lý khi sale quên điểm danh (18/11) | **Giữ 24 giờ** sau lời nhắc |
+| Chuyển sale cho lead có buổi xem đang mở mà sale mới bận (18/11, review của Hậu) | **Chặn**, báo lịch đang trùng; quản lý chọn sale khác hoặc đổi giờ trước. Buổi đã điểm danh "Có đến" vẫn tính bận (FE-53) |
+| 9 điểm review của Hậu về DC-15 (18/11) | Hướng chốt ở mục 3.1 của [danh-sach-task.md](danh-sach-task.md); ghi vào change và `nghiep-vu/` ở DC-16 |
 
 **Làm sau nếu có time (chưa cấp mã):** OCR CCCD (hợp với L3, chọn tối đa một việc tuỳ chọn), đồng bộ Google Calendar, Voice, lỗ hổng 4 (đường lui sau `SIGNED`), dọn khách dự phòng khi căn `SOLD`. Việc nào bỏ hẳn thì ghi vào "hạn chế đã biết" của báo cáo.
 
 ## 10. Thứ tự làm
 
-Mốc: web hoàn thành 22/11, khoá code 3/12, nộp 5/12.
+Thứ tự và người làm của mọi việc còn lại (kể cả ngoài kế hoạch này) chỉ ghi ở mục 3 của [danh-sach-task.md](danh-sach-task.md) (CH-11, 18/11), không chia theo tuần. Tóm tắt phần thuộc kế hoạch này:
 
-1. **CH-09 và DC-14** (Hoàng): cấp mã, đưa kế hoạch và sửa tài liệu lên `dev`.
-2. **FE-43** (Hoàng, Hậu duyệt): PR nền, trường "đã liên hệ được", lý do "Không mua" mới, cột hợp đồng (mục 8, việc 1 đến 4 phần dữ liệu). L2, L4, L9 phụ thuộc vào đây.
-3. **FE-44** (Hậu): nút "đã liên hệ được" và chọn lý do chi tiết. **FE-48** (Hoàng): giá thoả thuận, chọn căn, endpoint lưu file.
-4. **FE-45** (Hậu): L9 và trang duyệt thư, rồi **FE-46** (Hậu): sửa L2.
-5. **FE-49** (Hoàng): L3 lưu trữ bản ký. **FE-47** (Hậu): thêm số liệu cho L4.
-6. Bộ 20 lead có nhãn (FE-24) để có số đo cho báo cáo. Langfuse (FE-25) bỏ được nếu thiếu giờ.
-7. **FE-50** (Hoàng): các việc nhỏ ở L1, L6b, Error. Thông báo đẩy Expo dời cùng app.
-8. Việc tuỳ chọn, nếu còn thời gian trước 3/12.
+1. **DC-16** (Hoàng, Hậu duyệt): ghi 9 điểm chốt từ review của Hậu (18/11) vào change `journey-followup-ladder` và `docs/nghiep-vu/`.
+2. **FE-43** (Hoàng, Hậu duyệt): PR nền, thêm loại việc `LADDER_EMAIL` và sự kiện `VIEWING_CONFIRMATION_SENT`.
+3. Hoàng: **FE-53**, **FE-48** (phần còn lại; chọn căn đã xong ở PR #82), **FE-50**, **FE-56** (trang duyệt thư, tách khỏi FE-45), **FE-49**.
+4. Hậu: **FE-44** → **FE-45** (backend, rồi luồng 9) → **FE-46** → **FE-47**; **FE-54** sau FE-50.
+5. Nghiệm thu server cả 12 luồng và luồng 9 (**CH-12**), rồi báo cáo.
 
 ## 11. Nguồn
 

@@ -1,6 +1,6 @@
 # FE-35 — Thông báo gửi sale phụ trách và nút Duyệt tới giờ hẹn
 
-Triển khai local trên nền FE-33/FE-34, chưa phát hành server. Phạm vi nghiệp vụ: [quy trình 1](nghiep-vu/01-tiep-nhan-va-phan-cong.md) và [duyệt lịch](nghiep-vu/02-dat-lich-den-dat-coc.md#2-duyệt-lịch). Đóng LH-06, và phần "nút Duyệt tới giờ hẹn" của LH-07 (báo quản lý sau 2 giờ làm việc là FE-38). Change OpenSpec: `fe35-assignee-notifications-approval`.
+Triển khai local trên nền FE-33/FE-34, chưa phát hành server. Phạm vi nghiệp vụ: [tiếp nhận](nghiep-vu/00-tiep-nhan.md) và [duyệt lịch](nghiep-vu/01-visits.md#2-duyệt-lịch-đang-chạy). Đóng LH-06, và phần "nút Duyệt tới giờ hẹn" của LH-07 (báo quản lý sau 2 giờ làm việc là FE-38). Change OpenSpec: `fe35-assignee-notifications-approval`.
 
 ## Hành vi
 

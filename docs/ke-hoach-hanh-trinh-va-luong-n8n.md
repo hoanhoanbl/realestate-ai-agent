@@ -149,8 +149,11 @@ Không phải việc n8n, nhưng thiếu thì luồng không chạy được:
 | App Expo (FE-27, FE-28) | **Dời** sang "làm sau nếu có time" |
 | Langfuse (FE-25) | Giữ nguyên, vẫn là việc đầu tiên bị cắt nếu thiếu giờ |
 | Cấp mã task và cập nhật `danh-sach-task.md`, `danh-sach-lo-hong.md`, `README.md` | Làm ở CH-09 và DC-14 |
+| Lỗ hổng 5, trùng lịch theo sale (18/11) | **Đưa lên làm ngay** thành FE-53, không để "làm sau": đây là ràng buộc thật của nghề và dễ lộ khi demo. Hai buổi của một sale ở hai căn cách nhau 90 phút; chặn khi chia sale và khi duyệt, đổi giờ. Quy tắc: [nghiep-vu/01-visits.md](nghiep-vu/01-visits.md) mục 1.6 |
+| Thư nhắc lịch gửi thừa khi đặt sát giờ (18/11) | FE-54, **đề xuất, chờ chốt**: thư chốt lịch gửi khi giờ hẹn còn dưới 24 giờ thì không nhắc nữa. Quy tắc: [nghiep-vu/01-visits.md](nghiep-vu/01-visits.md) mục 3.1 |
+| Báo quản lý khi sale quên điểm danh (18/11) | **Giữ 24 giờ** sau lời nhắc |
 
-**Làm sau nếu có time (chưa cấp mã):** OCR CCCD (hợp với L3, chọn tối đa một việc tuỳ chọn), đồng bộ Google Calendar, Voice, lỗ hổng 4 (đường lui sau `SIGNED`), lỗ hổng 5 (trùng lịch theo sale), dọn khách dự phòng khi căn `SOLD`. Việc nào bỏ hẳn thì ghi vào "hạn chế đã biết" của báo cáo.
+**Làm sau nếu có time (chưa cấp mã):** OCR CCCD (hợp với L3, chọn tối đa một việc tuỳ chọn), đồng bộ Google Calendar, Voice, lỗ hổng 4 (đường lui sau `SIGNED`), dọn khách dự phòng khi căn `SOLD`. Việc nào bỏ hẳn thì ghi vào "hạn chế đã biết" của báo cáo.
 
 ## 10. Thứ tự làm
 

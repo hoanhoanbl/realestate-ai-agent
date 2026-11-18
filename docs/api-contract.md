@@ -297,7 +297,7 @@ Log đã thuộc lead khác giữ nguyên. Lỗi khi gắn chỉ ghi log ở bac
 
 ### 3.5. Khách, người phụ trách và nhân viên
 
-Quy tắc nghiệp vụ: [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md). Chi tiết FE-33: [fe-33-nen-tiep-nhan.md](fe-33-nen-tiep-nhan.md).
+Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md). Chi tiết FE-33: [fe-33-nen-tiep-nhan.md](fe-33-nen-tiep-nhan.md).
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
@@ -318,7 +318,7 @@ Quy tắc nghiệp vụ: [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-t
 
 ### 3.6. Hợp đồng đặt cọc (luồng 3)
 
-Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-dat-lich-den-dat-coc.md](nghiep-vu/02-dat-lich-den-dat-coc.md) mục 4. Cách luồng n8n chạy: [luong-3-hop-dong.md](luong/luong-3-hop-dong.md).
+Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-document-signing.md](nghiep-vu/02-document-signing.md) mục 2 đến 6. Cách luồng n8n chạy: [luong-3-hop-dong.md](luong/luong-3-hop-dong.md).
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
@@ -446,7 +446,7 @@ Cần `X-Webhook-Secret`. Bảng `chat_logs` tự tạo khi backend khởi độ
 
 ## 8. L5: theo dõi sau phản hồi
 
-Quy tắc: [chăm sóc mục 1.1](nghiep-vu/03-cham-soc-va-marketing.md). Bàn giao n8n và test: [L5 theo dõi](luong/luong-5-theo-doi-sau-phan-hoi.md).
+Quy tắc: [lead follow-up mục 3](nghiep-vu/03-lead-follow-up.md). Bàn giao n8n và test: [L5 theo dõi](luong/luong-5-theo-doi-sau-phan-hoi.md).
 
 Backend tạo `feedback_work` cùng transaction nhận phản hồi; một dòng duy nhất/feedback. Event mới: `FEEDBACK_WORK_CREATED`, `FEEDBACK_WORK_UPDATED`, `FEEDBACK_ALERT_RESOLVED`. Bảng `feedback_work_history` ghi kết quả; `feedback_work_alerts` giữ checkpoint giao thông báo. Không backfill phản hồi cũ.
 

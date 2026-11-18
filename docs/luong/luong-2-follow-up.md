@@ -1,6 +1,8 @@
 # Luồng 2: Follow-up tự động
 
-> **Lõi và mở rộng trong cùng một luồng.** Nhắc lịch, nhắc điểm danh, hỏi cảm nhận, nhắc sale gọi khách HOT là phần lõi (vế Lead follow-up). Nhánh nuôi khách WARM và COLD qua Mautic (tag `nuoi-warm`, `ban-tin-hang-thang`) là **mở rộng Marketing Automation, phát triển sau**.
+> **Lõi và mở rộng trong cùng một luồng.** Nhắc lịch, nhắc điểm danh, hỏi cảm nhận, nhắc sale gọi khách HOT là phần lõi (vế Lead follow-up). Nhánh nuôi khách WARM và COLD qua Mautic (tag `nuoi-warm`, `ban-tin-hang-thang`) là **mở rộng Marketing Automation, đóng băng từ 13/11**.
+>
+> **Sắp thay đổi** (tài liệu này sửa trong cùng PR sửa JSON): FE-45 bỏ nhắc khách HOT im lặng, chuyển sang luồng 9; FE-46 xoá các node Mautic và thêm thư mời hẹn lại khi khách không đến; FE-54 (chờ chốt) bỏ nhắc lịch thừa. Quy tắc đích: [nghiệp vụ 03 mục 4](../nghiep-vu/03-lead-follow-up.md), [01 mục 3.1 và 4.3](../nghiep-vu/01-visits.md).
 
 File: `n8n-workflows/luong-2-follow-up.json` (52 node, không tính ghi chú; id `luong2Realestat0`).
 Kích hoạt: **mỗi giờ** (node `Mỗi giờ`) hoặc nút `Chạy tay` trong n8n. Không có webhook.
@@ -14,7 +16,7 @@ Khung chung của các tài liệu luồng: [README.md](README.md). Các mục t
 
 Sau khi khách đặt lịch, nhiều việc nhỏ dễ bị quên: nhắc khách trước giờ xem, hỏi cảm nhận sau buổi xem, nhắc sale ghi nhận khách có đến không, nhắc sale duyệt, đóng lead hẹn quá giờ mà không ai xử lý, chăm lại khách im lặng. Luồng 2 chạy mỗi giờ, tìm các việc đến hạn (chín loại, xem bảng bên dưới) và làm **mỗi việc đúng một lần**: gửi email, chuyển khách sang Mautic để nuôi dưỡng, hoặc nhắc nhân viên. Cuối mỗi lượt, một báo cáo tổng hợp gửi quản lý.
 
-Quy tắc nghiệp vụ: [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 2.3 và 3, [nghiep-vu/03-cham-soc-va-marketing.md](../nghiep-vu/03-cham-soc-va-marketing.md) mục 1, 2 và 7.
+Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](../nghiep-vu/00-tiep-nhan.md) mục 7.2 (hạn phản hồi), [nghiep-vu/01-visits.md](../nghiep-vu/01-visits.md) mục 2.3, 3 và 4, [nghiep-vu/03-lead-follow-up.md](../nghiep-vu/03-lead-follow-up.md) mục 2, 3, 4.1 và 6.
 
 ## 2. Ai tham gia
 

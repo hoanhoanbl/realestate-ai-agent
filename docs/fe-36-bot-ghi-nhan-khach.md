@@ -1,6 +1,6 @@
 # FE-36 — Bot Telegram ghi nhận khách và gắn lịch sử chat vào lead
 
-Triển khai local trên nền FE-33 và FE-35, chưa phát hành server. Phạm vi nghiệp vụ: [quy trình 1, mục 3.4](nghiep-vu/01-tiep-nhan-va-phan-cong.md). Đóng LH-01 (khách để lại số trong bot mà không đặt lịch) và LH-11 (lịch sử chat không gắn với lead). Change OpenSpec: `fe36-bot-lead-capture`.
+Triển khai local trên nền FE-33 và FE-35, chưa phát hành server. Phạm vi nghiệp vụ: [tiếp nhận, mục 6](nghiep-vu/00-tiep-nhan.md). Đóng LH-01 (khách để lại số trong bot mà không đặt lịch) và LH-11 (lịch sử chat không gắn với lead). Change OpenSpec: `fe36-bot-lead-capture`.
 
 ## Hành vi
 

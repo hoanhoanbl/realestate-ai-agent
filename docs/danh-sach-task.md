@@ -70,7 +70,7 @@ Phụ thuộc: việc của Hậu không chờ Hoàng (FE-30 tự thêm `EXPIRED
 
 ### Quy trình 1: Tiếp nhận và phân công sale (chốt 10/11)
 
-Chi tiết từng task, task nào đóng lỗ hổng nào: mục 7 của [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md). **FE-33 là PR nền: merge vào `dev` trước, các task còn lại tạo nhánh sau đó** (quy định 2 ở mục 6 của [quy-trinh-git.md](quy-trinh-git.md)).
+Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md); task nào đóng lỗ hổng nào: [danh-sach-lo-hong.md](danh-sach-lo-hong.md) quy trình 1. **FE-33 là PR nền: merge vào `dev` trước, các task còn lại tạo nhánh sau đó** (quy định 2 ở mục 6 của [quy-trinh-git.md](quy-trinh-git.md)).
 
 | Mã | Nhánh | Việc | Ai | Trạng thái |
 |---|---|---|---|---|
@@ -93,6 +93,7 @@ Kế hoạch: [ke-hoach-hanh-trinh-va-luong-n8n.md](ke-hoach-hanh-trinh-va-luong
 |---|---|---|---|---|
 | CH-09 | `chore/CH-09-cap-ma-hanh-trinh` | Cấp mã cho các việc ở bảng này, đăng ký FE-51 và FE-52 cho hai việc của Hậu đã merge, dời app Expo sang "làm sau" | Hoàng | Đang làm (13/11) |
 | DC-14 | `docs/DC-14-ke-hoach-hanh-trinh` | Đưa kế hoạch hành trình vào `docs/`, sửa chỗ mâu thuẫn trong `vai-tro-va-trang-thai.md`, thêm lỗ hổng quy trình 2 và 3 vào `danh-sach-lo-hong.md`, đưa thư mục change OpenSpec lên `dev` | Hoàng | Chưa làm |
+| DC-15 | `docs/DC-15-nghiep-vu-theo-4-ve` | Viết lại `docs/nghiep-vu/` theo 4 vế đề tài (00 tiếp nhận, 01 Visits, 02 Document signing, 03 Lead follow-up, 04 Sales analytics) với bản đồ 12 giai đoạn và nhãn Đang chạy / Sắp làm; thêm FE-53, FE-54; sửa hai lỗ hổng logic của FE-45 trong change `journey-followup-ladder`; cột "Sắp thay đổi" ở `docs/luong/README.md` | Hoàng | Chờ Hậu review |
 | FE-43 | `feature/FE-43-nen-hanh-trinh` | PR nền: cột `contacted_at` của lead, lý do "Không mua" mới (`STALE` và nhóm lý do chi tiết), loại sự kiện và loại tác vụ mới, cột hợp đồng (giá thoả thuận, file đã ký, chỉ là cột), `backend/sql/fe-43-journey.sql`, kiểu trong `web/src/lib/api.ts`. Sửa file thuộc phần Hậu giữ nên Hậu duyệt | Hoàng | Chưa làm |
 | FE-44 | `feature/FE-44-lien-he-ly-do` | Nút "đã liên hệ được" và ghi lần gọi không được ở trang lead; chọn lý do "Không mua" chi tiết (backend và web) | Hậu | Chưa làm, sau FE-43 |
 | FE-45 | `feature/FE-45-l9-follow-up-bac` | Luồng 9 follow-up theo bậc: nhắc lead chưa liên hệ được (ngày 1, 3, 7) và lead im 7 ngày, tự đóng `STALE` sau 14 ngày; AI gợi ý, sale duyệt thư qua link rồi mới gửi khách; trang `/duyet-thu/[token]` | Hậu | Chưa làm, sau FE-44. Trang duyệt thuộc web khách của Hoàng: Hoàng review |
@@ -101,6 +102,8 @@ Kế hoạch: [ke-hoach-hanh-trinh-va-luong-n8n.md](ke-hoach-hanh-trinh-va-luong
 | FE-48 | `feature/FE-48-hop-dong-gia-chon-can` | Hợp đồng: ô giá thoả thuận, cho sale chọn căn khi lập hợp đồng, endpoint lưu file đã ký (backend và web). Sẽ có change OpenSpec riêng | Hoàng | Chưa làm, sau FE-43 |
 | FE-49 | `feature/FE-49-l3-luu-ban-ky` | Luồng 3: sau khi khách ký tạo PDF, lưu file, tính hash, ghi nhật ký kèm đường dẫn | Hoàng | Chưa làm, sau FE-48 |
 | FE-50 | `feature/FE-50-viec-nho-n8n` | Việc nhỏ ở luồng của Hoàng: luồng 1 ghi mốc thư tự động tới khách, luồng 6b bật retry (LH-53), Error workflow báo Telegram (LH-52) | Hoàng | Chưa làm |
+| FE-53 | `feature/FE-53-trung-lich-theo-sale` | Chống trùng lịch theo sale (LH-24): hai buổi xem của một sale ở hai căn khác nhau cách nhau ít nhất 90 phút (`SALE_GAP_MINUTES`). Chia sale lần lượt bỏ qua sale đang bận; duyệt, đổi giờ, sale đặt hộ, hẹn xem tiếp trong theo dõi phản hồi bị chặn khi sale phụ trách bận; khoá theo sale trong transaction. Quy tắc: [01-visits.md](nghiep-vu/01-visits.md) mục 1.6. Sửa `lead-intake.service.ts`, `leads.service.ts`, `feedback-work.service.ts` của Hậu nên Hậu duyệt | Hoàng (đề xuất, chờ Hậu xác nhận) | Chưa làm. Không phụ thuộc FE-43 |
+| FE-54 | `feature/FE-54-bo-nhac-lich-thua` | Luồng 2 không gửi nhắc lịch khi thư chốt lịch hoặc thư báo giờ mới gửi lúc giờ hẹn còn dưới 24 giờ (thư đó đã là lời nhắc). Sửa `followup-policy.ts`, `followup-sql.ts` kèm test. Quy tắc: [01-visits.md](nghiep-vu/01-visits.md) mục 3.1 | Hậu (đề xuất) | Chờ chốt quy tắc |
 
 ### Tuần 5 (16–22/11)
 
@@ -125,7 +128,7 @@ Video dự phòng làm không cần nhánh. Khoá code 3/12, nộp 5/12.
 - Multi-agent cho luồng 4 (kế hoạch 3.7).
 - **App Expo, dời 13/11:** FE-27 (đưa app Expo sang `main`, nhánh Expo Push, `eas init`, chạy thử điện thoại thật; lấy `app/` từ commit `6a64517` của `dev` cũ) và FE-28 (Hậu: điểm Mautic và nguồn khách trong app, chỉ làm sau FE-27). Hai mã giữ chỗ, không dùng lại. Lý do: ngoài bốn vế của đề, sale đã dùng được web trên điện thoại (FE-26) và Telegram.
 - Việc tuỳ chọn để tăng độ khó: OCR CCCD trước khi soạn hợp đồng (hợp với luồng 3), đồng bộ Google Calendar, Voice. Chọn tối đa một.
-- Lỗ hổng 4 (đường lui sau `SIGNED`: khách bỏ cọc, hoàn cọc, quản lý quên xác nhận đã nhận cọc), lỗ hổng 5 (chống trùng lịch theo sale, hiện chỉ theo căn) và dọn khách dự phòng đang giữ lịch khi căn thành `SOLD`. Nếu bỏ thì ghi vào "hạn chế đã biết" của báo cáo.
+- Lỗ hổng 4 (đường lui sau `SIGNED`: khách bỏ cọc, hoàn cọc, quản lý quên xác nhận đã nhận cọc) và dọn khách dự phòng đang giữ lịch khi căn thành `SOLD`. Nếu bỏ thì ghi vào "hạn chế đã biết" của báo cáo.
 - **Chưa chốt:** script theo dõi Mautic đang chạy cho mọi khách mà không hỏi đồng ý. Theo Nghị định 13/2023 nên có banner đồng ý theo dõi (khoảng 2 giờ); nếu không làm thì ghi vào mục "hạn chế đã biết" của báo cáo.
 
 ### Mốc phát hành

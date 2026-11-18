@@ -14,7 +14,7 @@ Khi khách muốn đặt cọc, văn phòng phải soạn hợp đồng, nhờ q
 
 Luồng này đứng chờ bằng node `Wait` của n8n: lần chạy "ngủ" cho tới khi có người bấm link hoặc hết giờ. Vì vậy một lần chạy luồng 3 có thể kéo dài nhiều ngày và nằm ở trạng thái **waiting** trong Executions. Đó là bình thường.
 
-Quy tắc nghiệp vụ (ai tạo hợp đồng, điều kiện, kết quả từng lựa chọn): [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 4. Luồng này chỉ mô tả cách n8n thực hiện.
+Quy tắc nghiệp vụ (ai tạo hợp đồng, điều kiện, kết quả từng lựa chọn): [nghiep-vu/02-document-signing.md](../nghiep-vu/02-document-signing.md) mục 2 đến 6. Luồng này chỉ mô tả cách n8n thực hiện.
 
 ## 2. Ai tham gia
 
@@ -105,7 +105,7 @@ Link trong email quản lý cũng gọi thẳng `resumeUrl` của n8n. Luồng 3
 | Không có hợp đồng | `Không có hợp đồng`, Error workflow chạy |
 | AI lỗi | Tiếp tục với kết quả quy tắc cố định (`AI rà soát` không dừng luồng) |
 | Email, lưu nháp, phát link, đánh dấu trạng thái lỗi | Mỗi node thử lại, rồi lần chạy thất bại và Error workflow chạy. Hợp đồng có thể kẹt ở trạng thái giữa chừng; xem lịch sử hợp đồng trên web admin |
-| Backend không đánh thức được n8n (`resumeUrl` hết hạn, lần chạy đã bị xoá) | Backend báo lỗi ở thao tác duyệt/ký; xem [nghiep-vu](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 4 |
+| Backend không đánh thức được n8n (`resumeUrl` hết hạn, lần chạy đã bị xoá) | Backend báo lỗi ở thao tác duyệt/ký; xem [nghiep-vu](../nghiep-vu/02-document-signing.md) mục 3 và 4 |
 
 Chạy lại: tạo lại hợp đồng mới trên web admin (hợp đồng cũ đã quá hạn hoặc bị từ chối không dùng lại). Nếu n8n khởi động lại, lần chạy đang `waiting` được giữ trong database n8n và tiếp tục chờ.
 

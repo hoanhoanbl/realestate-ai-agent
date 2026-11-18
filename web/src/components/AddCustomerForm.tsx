@@ -21,7 +21,7 @@ import { MANUAL_SOURCES, manualSourceLabel, normalizePhoneInput, type ManualSour
 import { normalizeText } from "@/lib/property";
 import LeadStatusBadge from "@/components/LeadStatusBadge";
 
-// Form nhân viên thêm khách ngoài hệ thống (FE-37). Quy tắc: docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md mục 1.1 và 2.
+// Form nhân viên thêm khách ngoài hệ thống (FE-37). Quy tắc: docs/nghiep-vu/00-tiep-nhan.md mục 1.1 và 2.
 
 const SOURCE_ICONS: Partial<Record<ManualSource, IconName>> = {
   hotline: "phone",

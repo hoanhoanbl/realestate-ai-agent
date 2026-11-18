@@ -42,7 +42,7 @@ The quiet-period anchor is the latest of: `leads.created_at` and `lead_events` o
 
 ### D4. Steps and thresholds are constants
 
-In `followup-policy.ts`: `LADDER_REACH_DAYS = [1, 3, 7]`, `LADDER_QUIET_DAYS = 7`, `LADDER_STALE_DAYS = 14`. Day 0 is the existing `STAFF_NUDGE` (FE-38), so the plan's "0, 1, 3, 7" becomes "0 (existing), 1, 3, 7". Reminders run only 08:00 to 20:00 Asia/Ho_Chi_Minh (the schedule trigger is `0 8-20 * * *` with the workflow timezone set), so nobody is pinged at night.
+In `followup-policy.ts`: `LADDER_REACH_DAYS = [1, 3, 7]`, `LADDER_QUIET_DAYS = 7`, `LADDER_STALE_DAYS = 14`. Day 0 is the existing `STAFF_NUDGE` (FE-38), so the plan's "0, 1, 3, 7" becomes "0 (existing), 1, 3, 7". Reach steps apply only to `CONSULTING` and `NEW` leads (a `CONFIRMED` lead has an agreed viewing; a `VIEWED` lead is reached through D8). Only the highest step that is due is sent: when a lead comes back to `CONSULTING` after day 1, the missed day-1 step is skipped, not sent late. Implementation: a step is due only while `now` is before the next step's time (day 7 has no upper bound). Reminders run only 08:00 to 20:00 Asia/Ho_Chi_Minh (the schedule trigger is `0 8-20 * * *` with the workflow timezone set), so nobody is pinged at night.
 
 ### D5. AI proposes, a signed link approves
 
@@ -54,7 +54,7 @@ The link follows FE-35: HMAC-signed token over `{taskId, action}`, public `GET` 
 
 ### D6. Stale closing happens inside `claim()`
 
-`LADDER_STALE` follows `EXPIRE_LEAD`: `claim()` sets `LOST` with `lostReason = 'STALE'` and writes `LEAD_STALE_CLOSED` in one transaction, guarded by "no open viewing, no live contract". Flow 9 then alerts the manager through `action-done`. The manual status endpoints reject `STALE`, `NO_SHOW`, `EXPIRED` and `CUSTOMER_CANCELLED` (new `MANUAL_LOST_REASONS` constant); only code paths that own those reasons set them.
+`LADDER_STALE` follows `EXPIRE_LEAD`: `claim()` sets `LOST` with `lostReason = 'STALE'` and writes `LEAD_STALE_CLOSED` in one transaction, guarded by "no open viewing, no live contract, no open `feedback_work` row (status not `COMPLETED`)". The same open-`feedback_work` guard applies to `LADDER_QUIET`: a sale who recorded "needs more time" with a next call 21 days away is followed by PR #79's deadline, reminder and manager alert, so the ladder stays silent instead of reminding at day 7 and closing at day 14. Completing the task writes `FEEDBACK_WORK_UPDATED`, which is in the D3 allow-list, so the quiet period restarts from that moment. Flow 9 then alerts the manager through `action-done`. The manual status endpoints reject `STALE`, `NO_SHOW`, `EXPIRED` and `CUSTOMER_CANCELLED` (new `MANUAL_LOST_REASONS` constant); only code paths that own those reasons set them.
 
 ### D7. Mautic leaves the core flows by removing selector entries, not enum values
 
@@ -62,7 +62,7 @@ The link follows FE-35: HMAC-signed token over `{taskId, action}`, public `GET` 
 
 ### D8. Contact tracking is one column plus events
 
-`leads.contacted_at` (timestamptz, null). Endpoints `POST /api/leads/:id/contacted` and `POST /api/leads/:id/contact-attempts {result}` (JWT, staff). Events `CONTACTED` and `CONTACT_ATTEMPTED` carry the actor and, for attempts, the result in `note`. Both set `first_response_at` when empty. *Alternative:* a `contact_attempts` table. Rejected: nothing queries attempts beyond the history list and the ladder anchor.
+`leads.contacted_at` (timestamptz, null). Endpoints `POST /api/leads/:id/contacted` and `POST /api/leads/:id/contact-attempts {result}` (JWT, staff). Events `CONTACTED` and `CONTACT_ATTEMPTED` carry the actor and, for attempts, the result in `note`. Both set `first_response_at` when empty. Recording "attended" on a viewing (`viewings.service.ts`, the existing attendance endpoint) also sets `contacted_at` when empty, in the same transaction, with the recording staff member and a `CONTACTED` event whose note says it came from attendance: meeting the customer at a viewing is contact, and without this every web booking would get reach reminders after the visit. `backend/sql/fe-43-journey.sql` backfills `contacted_at` with the earliest attended viewing time for existing leads (idempotent: only where `contacted_at IS NULL`). *Alternative:* a `contact_attempts` table. Rejected: nothing queries attempts beyond the history list and the ladder anchor.
 
 ### D9. Rebooking invitation is a viewing-bound flow 2 task
 
@@ -96,6 +96,8 @@ Hậu cannot see a local worktree. The visible record on git is: (1) this change
 4. Rollback: switch flow 9 off and re-import the previous flow 2 export (taken first, as `docs/trien-khai.md` already describes). Columns stay; they are harmless.
 
 ## Open Questions
+
+- A `CONSULTING` lead with no feedback task cannot carry a scheduled call further than 7 days ahead: the sale has to add a note again, or the lead is reminded at day 7 and closed at day 14. Accepted for now; a "next contact date" on the lead would solve it later.
 
 - Whether the "Không mua" result in the feedback follow-up (PR #79, currently closes with the legacy reason `NOT_INTERESTED`) should use the detailed reasons of this change. Deferrable: the reasons exist after FE-43, and Hậu can switch that screen in a later PR without changing any spec here.
 

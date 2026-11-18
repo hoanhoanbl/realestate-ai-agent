@@ -1,6 +1,6 @@
 # Luồng 8: Mautic gửi hành vi về backend
 
-> **Mở rộng, phát triển sau.** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
+> **Mở rộng, đóng băng từ 13/11 (không làm thêm).** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
 
 File: `n8n-workflows/luong-8-mautic-bao-ve.json` (25 node, không tính ghi chú; id `luong8Realestat0`).
 Kích hoạt: `POST /webhook/mautic-event?token=<token-rieng>`. Luồng này xác thực bằng **token trong URL**, không dùng Header Auth.
@@ -11,7 +11,7 @@ Khung chung của các tài liệu luồng: [README.md](README.md). Các mục "
 
 Mautic theo dõi khách thực sự làm gì: mở email, xem trang một căn nhà, điểm tương tác tăng lên. Luồng 8 nhận các sự kiện đó, cập nhật điểm hành vi của lead ở backend, ghi vào lịch sử khách, và **báo sale đúng lúc khách "nóng lên"**: điểm từ dưới ngưỡng (mặc định 20) lên đạt ngưỡng, hoặc khách vừa xem trang một căn nhà (`/nha/:id`). Điểm hành vi của Mautic là một trục riêng, không thay điểm AI chấm khi đặt lịch.
 
-Quy tắc nghiệp vụ: [nghiep-vu/03-cham-soc-va-marketing.md](../nghiep-vu/03-cham-soc-va-marketing.md) mục 4 và 5.
+Quy tắc nghiệp vụ: [nghiep-vu/03-lead-follow-up.md](../nghiep-vu/03-lead-follow-up.md) mục 7.2 và 7.3.
 
 ## 2. Ai tham gia
 

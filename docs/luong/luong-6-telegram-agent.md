@@ -18,7 +18,7 @@ Khách nhắn Telegram cho bot của văn phòng, và bot đóng vai một nhân
 
 Đây là bot **riêng cho khách**, không phải bot báo sale (hai bot khác nhau, xem mục 6).
 
-Quy tắc nghiệp vụ: bot tạo và gắn lead ở [nghiep-vu/01-tiep-nhan-va-phan-cong.md](../nghiep-vu/01-tiep-nhan-va-phan-cong.md) mục 3.4; khung giờ đặt lịch ở mục 6 của cùng file và [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 1.2.
+Quy tắc nghiệp vụ: bot tạo và gắn lead ở [nghiep-vu/00-tiep-nhan.md](../nghiep-vu/00-tiep-nhan.md) mục 6; khung giờ và điều kiện đặt lịch ở [nghiep-vu/01-visits.md](../nghiep-vu/01-visits.md) mục 1.1 và 1.3.
 
 ## 2. Ai tham gia
 

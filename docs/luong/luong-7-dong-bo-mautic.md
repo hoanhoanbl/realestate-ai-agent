@@ -1,6 +1,6 @@
 # Luồng 7: Đồng bộ lead sang Mautic
 
-> **Mở rộng, phát triển sau.** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
+> **Mở rộng, đóng băng từ 13/11 (không làm thêm).** Luồng này thuộc Marketing Automation (Mautic), không nằm trong bốn vế của đề tài. Xem [tong-quan-du-an.md](../tong-quan-du-an.md), mục "Phạm vi".
 
 File: `n8n-workflows/luong-7-dong-bo-mautic.json` (21 node, không tính ghi chú; id `luong7Realestat0`).
 Kích hoạt: `POST /webhook/lead-changed`, Header Auth `X-Webhook-Secret`.
@@ -11,7 +11,7 @@ Khung chung của các tài liệu luồng: [README.md](README.md). Các mục "
 
 Văn phòng dùng Mautic để chăm sóc khách bằng email và để chấm điểm hành vi. Mautic phải biết khách nào là ai, mức tiềm năng nào, đang ở trạng thái nào. Mỗi khi kết quả AI hoặc trạng thái của lead đổi, luồng 7 tìm (hoặc tạo) contact Mautic tương ứng, gắn tag trạng thái và mức AI, gắn `vip-prospect` khi khách nóng, rồi lưu `mauticContactId` về backend. Luồng này **không** gửi email và **không** quyết định ai nhận marketing: việc đó do đồng ý của khách và luồng 2.
 
-Quy tắc nghiệp vụ: [nghiep-vu/03-cham-soc-va-marketing.md](../nghiep-vu/03-cham-soc-va-marketing.md) mục 3 và 4.
+Quy tắc nghiệp vụ: [nghiep-vu/03-lead-follow-up.md](../nghiep-vu/03-lead-follow-up.md) mục 7.1 và 7.2.
 
 ## 2. Ai tham gia
 

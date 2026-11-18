@@ -23,6 +23,31 @@ The system SHALL let a staff member mark an open lead as "đã liên hệ đư�
 - **WHEN** someone marks a `LOST` lead as reached
 - **THEN** the request is refused and the lead is unchanged
 
+### Requirement: An attended viewing marks the customer as reached
+When staff record that the customer attended a viewing, the system SHALL mark the lead as reached if it is not marked yet, using the time of that record and the staff member who recorded it. A sale who has met the customer at a viewing has reached them, and SHALL NOT need to press a separate button.
+
+#### Scenario: Web booking, never marked by hand
+- **WHEN** a sale records "attended" on a lead that was never marked as reached
+- **THEN** the lead stores the contact time and the staff member of that record
+- **AND** the lead history shows a "contacted" entry that says it came from the attendance record
+
+#### Scenario: Already marked before the viewing
+- **WHEN** a sale records "attended" on a lead already marked as reached
+- **THEN** the stored contact time stays the original one
+- **AND** no second "contacted" entry is added
+
+#### Scenario: Customer did not come
+- **WHEN** a sale records "no-show"
+- **THEN** the lead is not marked as reached
+
+### Requirement: Existing leads with an attended viewing count as reached
+When this change is deployed, every lead that already has an attended viewing and no contact time SHALL get the time of its earliest attended viewing as its contact time, so the contact reminders do not fire for customers who have already been met.
+
+#### Scenario: Upgrade with old data
+- **WHEN** the upgrade script runs on a database with a `VIEWED` lead whose viewing was attended last week
+- **THEN** that lead is marked as reached at the time of that viewing
+- **AND** running the script a second time changes nothing
+
 ### Requirement: A sale can log a failed contact attempt
 The system SHALL let a staff member log a contact attempt that did not reach the customer, with one result from: no answer, busy, asked to call back, wrong number. A failed attempt SHALL NOT mark the lead as reached.
 

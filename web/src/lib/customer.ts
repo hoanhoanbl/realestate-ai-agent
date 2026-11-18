@@ -9,7 +9,7 @@ export function normalizePhoneInput(value: string): string | null {
   return /^\d{8,15}$/.test(phone) ? phone : null;
 }
 
-// Nguồn khách khi nhân viên nhập tay (docs/nghiep-vu/01-tiep-nhan-va-phan-cong.md mục 1.1)
+// Nguồn khách khi nhân viên nhập tay (docs/nghiep-vu/00-tiep-nhan.md mục 1.1)
 export const MANUAL_SOURCES = ["hotline", "property_sign", "walk_in", "personal_zalo", "referral", "other"] as const;
 export type ManualSource = (typeof MANUAL_SOURCES)[number];
 

@@ -6,7 +6,7 @@ File: `n8n-workflows/luong-5-cam-nhan.json` (18 node không tính ghi chú; id r
 
 Khách gửi đánh giá buổi xem. Backend lưu phản hồi và tạo việc chăm sóc ngay. L5 tóm tắt bằng AI, lưu gợi ý để sale đọc trong hồ sơ, gọi workflow giao thông báo việc và gửi thư cảm ơn khi khách có email. Sale ghi kết quả gọi lại trên web, không để phản hồi chỉ dừng ở một email.
 
-Quy tắc nghiệp vụ, trạng thái và các hạn: [chăm sóc sau buổi xem, mục 1 và 1.1](../nghiep-vu/03-cham-soc-va-marketing.md). Phần gợi ý căn thay thế chưa được chốt/triển khai trong đợt này.
+Quy tắc nghiệp vụ, trạng thái và các hạn: [lead follow-up, mục 2 và 3](../nghiep-vu/03-lead-follow-up.md). Phần gợi ý căn thay thế chưa được chốt/triển khai trong đợt này.
 
 ## 2. Ai tham gia
 

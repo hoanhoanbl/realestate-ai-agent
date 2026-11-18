@@ -1,6 +1,6 @@
 # FE-33 — Nền tiếp nhận khách và phân công sale
 
-Trạng thái: triển khai local trên `feature/FE-33-nen-tiep-nhan`, chưa PR, chưa triển khai server. Phạm vi nghiệp vụ: [quy trình 1](nghiep-vu/01-tiep-nhan-va-phan-cong.md). Không sửa workflow n8n trong task này.
+Trạng thái: triển khai local trên `feature/FE-33-nen-tiep-nhan`, chưa PR, chưa triển khai server. Phạm vi nghiệp vụ: [tiếp nhận](nghiep-vu/00-tiep-nhan.md). Không sửa workflow n8n trong task này.
 
 ## Dữ liệu và quy tắc đã có
 
@@ -53,7 +53,7 @@ Web đã có kiểu và hàm `createLead`, `lookupLeadByPhone`, `reassignLead`, 
 
 ## Ranh giới với FE-34/35/36/38
 
-- **Đặt lịch (cập nhật FE-34):** endpoint cũ `POST /viewings` dùng chung intake với tuỳ chọn `booking`. Khách mới hoặc khách cũ (cùng số điện thoại) có buổi xem mới gắn vào lead hiện có, giữ sale, nguồn, consent và bổ sung email/ngân sách/nhu cầu còn thiếu; lead về `NEW` và chạy luồng đặt lịch hiện tại. Mỗi khách tối đa **một buổi xem đang mở**: đang có buổi mở thì 409 kèm giờ buổi đó; lead `DEPOSIT`/`SIGNED` thì 409 "Bạn đang làm hợp đồng đặt cọc…"; lead `LOST` được mở lại. Hai yêu cầu đồng thời chỉ lưu một buổi. Quy tắc đầy đủ: [02-dat-lich-den-dat-coc.md](nghiep-vu/02-dat-lich-den-dat-coc.md) mục 1.4. Nhiều buổi xem mở cùng lúc và callback theo buổi xem vẫn chờ FE-35 và FE-38.
+- **Đặt lịch (cập nhật FE-34):** endpoint cũ `POST /viewings` dùng chung intake với tuỳ chọn `booking`. Khách mới hoặc khách cũ (cùng số điện thoại) có buổi xem mới gắn vào lead hiện có, giữ sale, nguồn, consent và bổ sung email/ngân sách/nhu cầu còn thiếu; lead về `NEW` và chạy luồng đặt lịch hiện tại. Mỗi khách tối đa **một buổi xem đang mở**: đang có buổi mở thì 409 kèm giờ buổi đó; lead `DEPOSIT`/`SIGNED` thì 409 "Bạn đang làm hợp đồng đặt cọc…"; lead `LOST` được mở lại. Hai yêu cầu đồng thời chỉ lưu một buổi. Quy tắc đầy đủ: [01-visits.md](nghiep-vu/01-visits.md) mục 1.4. Nhiều buổi xem mở cùng lúc và callback theo buổi xem vẫn chờ FE-35 và FE-38.
 - `POST /leads/intake` mới lưu khách và nhật ký, chưa tự gọi workflow chấm điểm/đồng bộ Mautic. Các task nối workflow cần kiểm tra `created` để không chấm lại khi khách quay lại; lead mới giữ `automationStatus=PENDING` tới khi có callback. Không tự bật đồng bộ khách không email trong FE-33 (FE-40 còn chờ chốt).
 - FE-36 gắn chat vào cột `leadId` mới; chưa có endpoint gắn/đọc chat theo lead trong FE-33.
 - FE-38 phát cảnh báo theo `responseDueAt` và `firstResponseAt`, thay mốc ba ngày. FE-33 chỉ cung cấp dữ liệu, hàm tính và loại sự kiện.

@@ -4,7 +4,7 @@ Phạm vi chốt ngày **12/11/2026**, người làm Hậu. Code hoàn tất tr�
 
 ## 1. Nghiệp vụ và phạm vi
 
-Quy tắc chuẩn nằm tại [chăm sóc và marketing, mục 6.1–6.2](../nghiep-vu/03-cham-soc-va-marketing.md#61-hiệu-suất-sale-bản-gọn). Không thêm xếp hạng sale, thời gian phản hồi trung bình/trung vị hoặc so sánh sale với kỳ trước. Các so sánh tổng quan và nguồn khách sẵn có của L4 vẫn dùng như trước.
+Quy tắc chuẩn nằm tại [sales analytics, mục 1.1–1.2](../nghiep-vu/04-sales-analytics.md#11-hiệu-suất-sale-bản-gọn). Không thêm xếp hạng sale, thời gian phản hồi trung bình/trung vị hoặc so sánh sale với kỳ trước. Các so sánh tổng quan và nguồn khách sẵn có của L4 vẫn dùng như trước.
 
 Web admin và email cùng hiển thị hai bảng, lưu vào snapshot `weekly_reports.metrics.breakdowns`. Khi mở báo cáo đã lưu, không tính lại theo dữ liệu hiện tại. Báo cáo cũ thiếu breakdowns vẫn mở được, có lời nhắc tạo báo cáo mới.
 

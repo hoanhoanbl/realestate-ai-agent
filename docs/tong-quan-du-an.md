@@ -6,7 +6,7 @@ Các tài liệu khác:
 
 - [api-contract.md](api-contract.md): luật chung về dữ liệu và API. Mâu thuẫn thì file đó thắng.
 - [luong/README.md](luong/README.md): tài liệu từng luồng n8n (làm gì, ai tham gia, nối với hệ thống, triển khai lên server).
-- [nghiep-vu/](nghiep-vu/): quy tắc nghiệp vụ theo từng quy trình.
+- [nghiep-vu/](nghiep-vu/vai-tro-va-trang-thai.md): quy tắc nghiệp vụ theo 4 vế đề tài, bắt đầu từ bản đồ hành trình khách.
 - [danh-sach-lo-hong.md](danh-sach-lo-hong.md): lỗ hổng còn lại, xếp theo vòng đời khách.
 - [mautic-setup.md](mautic-setup.md): hướng dẫn hạ tầng và cấu hình Mautic 5 (phần mở rộng, phát triển sau).
 
@@ -26,14 +26,15 @@ Theo tài liệu thầy giao:
 
 ### Phạm vi: phần lõi đề tài và phần mở rộng
 
-Đề tài có **bốn vế**. Ba quy trình nghiệp vụ trong [nghiep-vu/](nghiep-vu/) và các luồng n8n lõi bám theo bốn vế này:
+Đề tài có **bốn vế**. Tài liệu nghiệp vụ trong [nghiep-vu/](nghiep-vu/vai-tro-va-trang-thai.md) chia đúng theo bốn vế này, cộng một file nền cho tiếp nhận:
 
-| Vế đề tài | Luồng lõi | Quy trình nghiệp vụ |
+| Vế đề tài | Luồng lõi | Tài liệu nghiệp vụ |
 |---|---|---|
-| Visits | 1, 1b, 6, 6b | QT1 Tiếp nhận và phân công; QT2 mục Đặt lịch, Duyệt lịch, Trước và trong buổi xem |
-| Document signing | 3 | QT2 mục Đặt cọc và ký |
-| Lead follow-up | 2, 5 | QT3 mục Hỏi cảm nhận, Khách im lặng |
-| Sales analytics | 4 | QT3 mục Báo cáo tuần |
+| (nền) Tiếp nhận, chia sale, chạm đầu tiên | 1, 6, 6b, Thông báo nhân viên | [00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md) |
+| Visits | 1, 1b, 2 | [01-visits.md](nghiep-vu/01-visits.md) |
+| Document signing | 3 | [02-document-signing.md](nghiep-vu/02-document-signing.md) |
+| Lead follow-up | 2, 5, 5b, 9 (sắp làm) | [03-lead-follow-up.md](nghiep-vu/03-lead-follow-up.md) |
+| Sales analytics | 4 | [04-sales-analytics.md](nghiep-vu/04-sales-analytics.md) |
 
 **Mở rộng, phát triển sau: Marketing Automation (Mautic).** Đề tài không yêu cầu phần này. Nhóm đã dựng bản đầu, nhưng **không tính vào bốn vế** và không làm thêm tính năng mới cho đến khi bốn vế lõi chạy ổn. Phần mở rộng gồm:
 
@@ -78,7 +79,7 @@ Lý do: NO_SHOW, NOT_INTERESTED, CUSTOMER_CANCELLED, EXPIRED, OTHER.
 
 - `CONSULTING` có từ FE-33: khách để lại số trong bot Telegram hoặc nhân viên nhập tay, chưa đặt lịch. Huỷ hoặc không đến một buổi xem không làm mất khách: lead về `VIEWED` nếu từng đến một buổi khác, không thì về `CONSULTING` để sale gọi lại.
 - `LOST` hiện trên giao diện là "Không mua". Lead `DEPOSIT` không sang `LOST` được: quản lý phải từ chối hợp đồng trước (BF-06). `EXPIRED` là lý do hệ thống tự đóng khi giờ hẹn đã qua mà không ai duyệt (FE-30).
-- Quy tắc chi tiết từng chuyển trạng thái: [nghiep-vu/vai-tro-va-trang-thai.md](nghiep-vu/vai-tro-va-trang-thai.md) và [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md) mục 3.
+- Quy tắc chi tiết từng chuyển trạng thái: [nghiep-vu/vai-tro-va-trang-thai.md](nghiep-vu/vai-tro-va-trang-thai.md) và [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md) mục 3.
 
 Mỗi lần đổi trạng thái hoặc hệ thống làm một việc tự động, backend ghi một dòng vào bảng `lead_events`. Bảng này phục vụ chống gửi trùng, dòng thời gian của khách, báo cáo và log.
 

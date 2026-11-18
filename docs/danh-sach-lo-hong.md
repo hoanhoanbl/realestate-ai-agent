@@ -27,7 +27,7 @@ Cập nhật lần cuối: 13/11/2026.
 
 ## Quy trình 1: Tiếp nhận và gán sale
 
-Đã rà kỹ ngày 10/11. Quy trình đích và chia việc (task nào đóng lỗ nào, ai làm): [nghiep-vu/01-tiep-nhan-va-phan-cong.md](nghiep-vu/01-tiep-nhan-va-phan-cong.md) mục 7.
+Đã rà kỹ ngày 10/11. Quy trình đích: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md); task đóng từng lỗ ở cột Trạng thái bên dưới.
 
 | Mã | Lỗ hổng | Mức | Xong khi | Trạng thái |
 |---|---|---|---|---|
@@ -53,7 +53,7 @@ Rà từ [ke-hoach-hanh-trinh-va-luong-n8n.md](ke-hoach-hanh-trinh-va-luong-n8n.
 | LH-21 | `CONSULTING` và `VIEWED` không có hạn xử lý. Hạn 2 giờ chỉ đo thao tác đầu tiên; khách huỷ hoặc không đến về `CONSULTING` thì không ai bị nhắc gọi lại; không có cách tự đóng lead bị bỏ quên | Nghiêm trọng | Lead im 7 ngày được nhắc, im 14 ngày không ai xử lý thì tự đóng với lý do `STALE` và báo quản lý | Kế hoạch FE-45 |
 | LH-22 | Hợp đồng lấy căn của buổi xem đã đến gần nhất (`contracts.service.ts`, đã kiểm). Khách xem căn A rồi căn B, muốn cọc căn A thì hợp đồng ra căn B; sale không chọn được căn | Nghiêm trọng | Sale chọn căn khi lập hợp đồng, mặc định là căn của buổi xem gần nhất | Kế hoạch FE-48. **Phần chọn căn đã làm ngày 13/11** (`propertyId` khi lập hợp đồng, ô chọn căn ở trang khách); còn lại ô giá thoả thuận và lưu file ký của FE-48 |
 | LH-23 | Sau `SIGNED` không có đường lui: khách bỏ cọc, hoàn cọc, hoặc quản lý quên xác nhận "đã nhận cọc" đều không có trạng thái hay nhắc việc. Căn thành `SOLD` thì khách dự phòng đang giữ lịch xem căn đó vẫn giữ lịch | Nghiêm trọng | Có đường hoàn cọc hoặc huỷ sau ký; nhắc quản lý xác nhận cọc; dọn lịch khách dự phòng khi căn `SOLD` | Làm sau nếu có time; nếu bỏ thì ghi vào hạn chế đã biết của báo cáo |
-| LH-24 | Chống trùng lịch chỉ tính theo căn (`BOOKING_GAP_MINUTES`, 60 phút, đã kiểm), không tính theo sale. Một sale có thể bị chia hai buổi xem cùng giờ ở hai căn | Trung bình | Không chia hoặc không duyệt hai buổi trùng giờ cho cùng một sale | Làm sau nếu có time; nếu bỏ thì ghi vào hạn chế đã biết |
+| LH-24 | Chống trùng lịch chỉ tính theo căn (`BOOKING_GAP_MINUTES`, 60 phút, đã kiểm), không tính theo sale. Một sale có thể bị chia hai buổi xem cùng giờ ở hai căn | Trung bình | Không chia hoặc không duyệt hai buổi trùng giờ cho cùng một sale | Kế hoạch FE-53 (đưa lên từ "làm sau" ngày 18/11). Quy tắc: [01-visits.md](nghiep-vu/01-visits.md) mục 1.6 |
 | LH-25 | Lý do "Không mua" quá thô (`LOST_REASONS` chỉ có `NO_SHOW`, `NOT_INTERESTED`, `CUSTOMER_CANCELLED`, `EXPIRED`, `OTHER`, đã kiểm). Báo cáo không trả lời được "mất khách vì giá, vì chọn căn khác hay vì mua nơi khác" | Trung bình | Sale chọn được lý do chi tiết khi đóng lead; báo cáo tuần chia theo nhóm lý do | Kế hoạch FE-44 (nhập), FE-47 (báo cáo) |
 | LH-26 | Không ghi nhận được "đã liên hệ được": hệ thống chỉ biết sale đã thao tác lần đầu (`first_response_at`), không biết sale đã nói chuyện được với khách chưa. Nhắc việc và báo cáo không phân biệt hai trường hợp | Trung bình | Sale đánh dấu "đã liên hệ được" hoặc ghi lần gọi không được; mốc này dừng chuỗi nhắc | Kế hoạch FE-44 |
 | LH-27 | Khách không đến buổi xem không nhận lời mời hẹn lại; lead chỉ chờ sale gọi | Trung bình | Khách không đến nhận một thư mời hẹn lại, không gửi trùng | Kế hoạch FE-46 |

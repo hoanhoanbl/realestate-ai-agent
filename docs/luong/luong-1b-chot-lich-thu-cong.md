@@ -17,7 +17,7 @@ Sau khi [luồng 1](luong-1-dat-lich.md) báo sale, người thật quyết đ�
 
 Tên "thủ công" vì khác luồng 1 (tự động hoàn toàn), luồng này chạy theo hành động của người.
 
-Quy tắc nghiệp vụ: [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md) mục 2.1 (duyệt) và 2.2 (đổi giờ).
+Quy tắc nghiệp vụ: [nghiep-vu/01-visits.md](../nghiep-vu/01-visits.md) mục 2.1 (duyệt) và 2.2 (đổi giờ).
 
 ## 2. Ai tham gia
 

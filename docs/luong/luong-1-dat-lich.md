@@ -15,7 +15,7 @@ Khi khách đặt lịch xem nhà trên web, người ta thường phải: đọ
 
 Luồng **không chờ** ai duyệt. Từ FE-35 luồng kết thúc ngay sau khi báo sale; việc duyệt xảy ra ở backend khi sale bấm link (xem mục 4). Trước đó luồng dừng chờ tới 24 giờ.
 
-Quy tắc nghiệp vụ (điều kiện nhận lịch, ai duyệt, quá hạn thì sao): [nghiep-vu/02-dat-lich-den-dat-coc.md](../nghiep-vu/02-dat-lich-den-dat-coc.md), mục 1 và 2.
+Quy tắc nghiệp vụ (điều kiện nhận lịch, ai duyệt, quá hạn thì sao): [nghiep-vu/01-visits.md](../nghiep-vu/01-visits.md), mục 1 và 2.
 
 ## 2. Ai tham gia
 

@@ -7,7 +7,7 @@ Makes sure a lead that nobody is acting on is reminded in steps, escalated to th
 ## ADDED Requirements
 
 ### Requirement: Unreached leads are reminded at fixed steps
-The system SHALL remind the assigned sale about an open lead (`CONSULTING`, `NEW`, `CONFIRMED`, `VIEWED`) that is not marked as reached, 1, 3 and 7 days after the lead was assigned. Each step SHALL be sent at most once per assignment. A lead with no assignee SHALL be reminded to the manager instead. The existing 2-working-hour response alert stays as the day-0 step.
+The system SHALL remind the assigned sale about a `CONSULTING` or `NEW` lead that is not marked as reached, 1, 3 and 7 days after the lead was assigned. Only the latest due step SHALL be sent; a step already past is not sent late. Each step SHALL be sent at most once per assignment. A lead with no assignee SHALL be reminded to the manager instead. The existing 2-working-hour response alert stays as the day-0 step.
 
 #### Scenario: Day 1 without contact
 - **WHEN** a lead was assigned 1 day ago and is not marked as reached
@@ -21,8 +21,20 @@ The system SHALL remind the assigned sale about an open lead (`CONSULTING`, `NEW
 - **WHEN** the manager moves the lead to another sale
 - **THEN** the steps count from the new assignment time and go to the new sale
 
+#### Scenario: Customer already has a confirmed viewing
+- **WHEN** a web booking was approved on day 0 and the lead is `CONFIRMED` on day 1, never marked as reached
+- **THEN** no day-1 reminder is sent
+
+#### Scenario: Customer came to the viewing
+- **WHEN** the sale records "attended" on day 2
+- **THEN** the lead is marked as reached and the day-3 and day-7 reminders are never sent
+
+#### Scenario: Viewing cancelled before day 3
+- **WHEN** a lead assigned on day 0 is `CONFIRMED` on day 1, the customer cancels on day 2 and the lead returns to `CONSULTING` without being reached
+- **THEN** the day-3 and day-7 reminders are sent as usual and the day-1 reminder is not sent late
+
 ### Requirement: Quiet leads are reminded after 7 days
-The system SHALL remind the assigned sale about a `CONSULTING` or `VIEWED` lead that has had no activity for 7 days. Activity is any note, contact mark or attempt, status change, assignment change, customer feedback, or new booking; automated entries do not count. Any activity restarts the quiet period.
+The system SHALL remind the assigned sale about a `CONSULTING` or `VIEWED` lead that has had no activity for 7 days. Activity is any note, contact mark or attempt, status change, assignment change, customer feedback, or new booking; automated entries do not count. Any activity restarts the quiet period. The system SHALL NOT send this reminder while the lead has an open feedback follow-up task (not completed), because that task already has its own deadline, reminder and manager alert.
 
 #### Scenario: Silent after a viewing
 - **WHEN** a `VIEWED` lead has had no activity for 7 days, whatever its HOT, WARM or COLD level and whether or not the customer consented to marketing
@@ -32,8 +44,13 @@ The system SHALL remind the assigned sale about a `CONSULTING` or `VIEWED` lead 
 - **WHEN** the sale adds a note on day 5 of silence
 - **THEN** no reminder is sent on day 7 of the old period and a new 7-day period starts at the note
 
+#### Scenario: Sale scheduled a later call in the feedback follow-up
+- **WHEN** a sale records "needs more time" on a feedback task with the next call in 21 days, and nothing else happens on the lead
+- **THEN** no quiet-lead reminder is sent while that task is open
+- **AND** when the task's own deadline passes, the feedback follow-up reminds the sale and then the manager as it does today
+
 ### Requirement: Quiet leads are closed as stale after 14 days
-The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason stale when it has had no activity for 14 days, and SHALL tell the manager. It SHALL NOT close a lead that has an open viewing or a contract. It SHALL NOT email the customer about the closing.
+The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason stale when it has had no activity for 14 days, and SHALL tell the manager. It SHALL NOT close a lead that has an open viewing, a contract, or an open feedback follow-up task (not completed). It SHALL NOT email the customer about the closing.
 
 #### Scenario: Nobody handled the lead
 - **WHEN** a `VIEWED` lead reaches 14 days without activity
@@ -43,6 +60,11 @@ The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason sta
 #### Scenario: Lead with a deposit contract
 - **WHEN** a lead has been quiet for 14 days but has a contract that is not rejected or expired
 - **THEN** the lead is not closed
+
+#### Scenario: Lead waiting for a scheduled call
+- **WHEN** a lead has been quiet for 14 days but has an open feedback follow-up task with the next call on day 21
+- **THEN** the lead is not closed
+- **AND** once that task is completed, the quiet period starts again from that moment
 
 #### Scenario: Reopened
 - **WHEN** staff reopen a lead closed as stale

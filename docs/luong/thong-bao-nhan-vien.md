@@ -13,7 +13,7 @@ Nhiều luồng cần "báo người": lead HOT mới, khách muốn gặp nhân
 - Gửi qua **ba kênh**: email, Telegram cá nhân, thông báo đẩy trên app. Kênh nào người đó không có thì bỏ qua.
 - Trả về kết quả từng kênh để luồng gọi biết có báo được không.
 
-Quy tắc nghiệp vụ (ai nhận thông báo, quản lý nhận khi nào): [nghiep-vu/01-tiep-nhan-va-phan-cong.md](../nghiep-vu/01-tiep-nhan-va-phan-cong.md) mục 4.1.
+Quy tắc nghiệp vụ (ai nhận thông báo, quản lý nhận khi nào): [nghiep-vu/00-tiep-nhan.md](../nghiep-vu/00-tiep-nhan.md) mục 7.1.
 
 ## 2. Ai tham gia
 

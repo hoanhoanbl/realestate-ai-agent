@@ -4,7 +4,7 @@ File `n8n-workflows/luong-5-theo-doi-phan-hoi.json`, ID repo `feedbackWorkNotifi
 
 ## 1. Làm gì trong thực tế
 
-Giao thông báo việc mới, nhắc sale khi chưa xử lý tới hạn, báo quản lý khi quá hạn tiếp. Backend tạo việc cùng lúc khách nộp phản hồi; AI chỉ hỗ trợ tóm tắt. Quy tắc nguồn duy nhất: [nghiệp vụ chăm sóc mục 1.1](../nghiep-vu/03-cham-soc-va-marketing.md#11-theo-dõi-sau-khi-khách-đã-phản-hồi-l5). Gợi ý căn thay thế chưa được chốt; không nằm trong code đợt này.
+Giao thông báo việc mới, nhắc sale khi chưa xử lý tới hạn, báo quản lý khi quá hạn tiếp. Backend tạo việc cùng lúc khách nộp phản hồi; AI chỉ hỗ trợ tóm tắt. Quy tắc nguồn duy nhất: [lead follow-up mục 3](../nghiep-vu/03-lead-follow-up.md#3-theo-dõi-sau-khi-khách-phản-hồi-l5b-đang-chạy). Gợi ý căn thay thế chưa được chốt; không nằm trong code đợt này.
 
 ## 2. Ai tham gia
 

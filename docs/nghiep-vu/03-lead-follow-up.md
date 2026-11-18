@@ -11,7 +11,7 @@ Cập nhật lần cuối: 18/11/2026.
 | | GĐ3. Cố liên hệ | GĐ6b. Cảm nhận và theo dõi | GĐ12. Lead im lặng, đóng | Nuôi dài hạn |
 |---|---|---|---|---|
 | Mục tiêu | Nói chuyện được với khách | Biết khách nghĩ gì sau buổi xem, gọi lại đúng hạn | Lead nguội được nhắc; lead bị bỏ quên được đóng | Giữ liên lạc với khách chưa cần mua |
-| Bắt đầu khi | Lead được giao, chưa "đã liên hệ được" | Khách đã đến xem 2 giờ | Lead "Đang tư vấn" hoặc "Đã xem nhà" im 7 ngày | Khách đồng ý nhận tin |
+| Bắt đầu khi | Lead được giao, chưa "đã liên hệ được" | Khách đã đến xem 2 giờ | Lead "Đang tư vấn" hoặc "Đã xem nhà" đã liên hệ được, im 7 ngày | Khách đồng ý nhận tin |
 | Kết thúc khi | Sale bấm "Đã liên hệ được", hoặc hết bậc nhắc | Việc chăm sóc hoàn tất | Có hoạt động mới, hoặc đóng `STALE` sau 14 ngày | Khách mua, đóng, hoặc huỷ nhận tin |
 | Khách làm | Nghe máy | Chấm sao, chọn mong muốn | Nhận thư sale đã duyệt (nếu đồng ý nhận tin) | Nhận bản tin |
 | Sale, quản lý làm | Sale gọi, ghi kết quả từng lần | Sale ghi kết quả gọi. Quản lý nhận báo khi quá hạn, khi cảm nhận tiêu cực | Sale đọc gợi ý AI, sửa và duyệt thư. Quản lý nhận báo khi lead bị đóng | |
@@ -25,7 +25,7 @@ Cập nhật lần cuối: 18/11/2026.
      ngày 0: hạn 2 giờ làm việc (đang chạy, 00-tiep-nhan)
                   |
      "Đang tư vấn"/"Mới", chưa liên hệ được? --- L9 nhắc sale ngày 1, 3, 7 [FE-45]
-                  |                         |
+                  |                         |    (bậc rơi vào lúc đã chốt lịch thì bỏ)
           đã liên hệ được             hết bậc 7 vẫn chưa
                   |                         |
                   v                         v
@@ -35,11 +35,13 @@ Cập nhật lần cuối: 18/11/2026.
                   |                                     |
    L5 AI phân tích -> việc chăm sóc, hạn 2 giờ          |
                   |                                     |
-     CONSULTING / VIEWED im 7 ngày <--------------------+
-                  |
-     L9 nhắc sale + AI gợi ý + nháp thư -> sale duyệt -> gửi khách (nếu đồng ý nhận tin)
-                  |
-     im 14 ngày, không lịch mở, không hợp đồng
+     CONSULTING / VIEWED im 7 ngày                      |
+     (đã liên hệ được, hoặc đã lỡ hết bậc, mục 4.2)     |
+                  |                                     |
+     L9 nhắc sale + AI gợi ý + nháp thư                 |
+     -> sale duyệt -> gửi khách (nếu đồng ý nhận tin)   |
+                  |                                     |
+     im 14 ngày, không lịch mở, không hợp đồng <--------+
                   v
      LOST (STALE), báo quản lý
 ```
@@ -83,9 +85,11 @@ API: `POST /api/leads/:id/contacted`, `POST /api/leads/:id/contact-attempts`.
 | Bậc | Ngày 1, 3, 7 kể từ lúc giao. Mỗi bậc gửi tối đa một lần cho mỗi lần giao |
 | Đã liên hệ được trước bậc | Các bậc sau không gửi nữa (ví dụ bấm ngày 2 thì không có nhắc ngày 3, ngày 7) |
 | Chuyển sale | Các bậc tính lại từ lúc giao mới và gửi cho sale mới |
-| Lịch bị huỷ, lead về "Đang tư vấn" | Các bậc tiếp tục tính từ lúc giao cũ. Chỉ gửi bậc đang đến hạn, **không gửi bù** bậc đã qua (ví dụ huỷ ngày 2 thì không gửi nhắc ngày 1, vẫn gửi ngày 3 và 7) |
+| Mốc "đủ điều kiện từ lúc" | Lúc gần nhất lead **bắt đầu** ở "Đang tư vấn" hoặc "Mới": lúc tạo lead, lúc giao hoặc chuyển sale, lúc mở lại lead, hoặc lần đổi trạng thái gần nhất vào một trong hai trạng thái này. Một bậc chỉ gửi khi **mốc ≤ giờ của bậc ≤ hiện tại < giờ bậc kế tiếp** (bậc 7 không có giờ kế tiếp) |
+| Lịch bị huỷ, lead về "Đang tư vấn" | Giờ các bậc vẫn tính từ lúc giao cũ, nhưng bậc nào rơi vào lúc lead đang "Đã chốt lịch" thì bỏ, **không gửi bù**. Ví dụ giao ngày 0, chốt lịch ngày 1, huỷ ngày 2: mốc là ngày 2, nên không có nhắc ngày 1, vẫn có nhắc ngày 3 và 7 |
+| Mở lại lead đã "Không mua" | Mở lại là giao lại, nên các bậc tính lại từ lúc mở; không gửi bậc nào của lần giao trước |
 | Mỗi lời nhắc | Kèm gợi ý của AI (mục 4.3) |
-| Hết bậc 7 vẫn chưa liên hệ được | Lead đi vào quy tắc im lặng ở mục 4.2; sale có thể đóng với lý do "Không liên lạc được" |
+| Hết bậc 7 vẫn chưa liên hệ được | Không nhận thêm nhắc im lặng (mục 4.2). Không ai làm gì thì lead bị đóng `STALE` khi đủ 14 ngày im; sale có thể đóng trước với lý do "Không liên lạc được" |
 
 ## 2. Hỏi cảm nhận sau buổi xem **[Đang chạy]**
 
@@ -161,9 +165,11 @@ Mỗi phản hồi mới tạo **một việc** cho sale, có hạn, có nhắc,
 | Quy tắc | Nội dung |
 |---|---|
 | Áp dụng cho | Lead "Đang tư vấn" hoặc "Đã xem nhà", **mọi mức** HOT, WARM, COLD, **có hay không** đồng ý nhận tin |
-| Im 7 ngày | Nhắc sale phụ trách, kèm gợi ý AI (mục 4.3) |
+| Im 7 ngày | Nhắc sale phụ trách, kèm gợi ý AI (mục 4.3). Chỉ cho lead **đã liên hệ được**: lead chưa liên hệ được đã có bậc nhắc ở mục 1.2, nên ngày 7 không nhận cả hai lời nhắc |
+| Ngoại lệ: lead chưa liên hệ được đã lỡ hết bậc | Khi giờ bậc 7 rơi trước mốc "đủ điều kiện từ lúc" (mục 1.2), không bậc nào còn gửi được nữa. Lead này được nhắc im lặng như lead đã liên hệ được. Ví dụ giao ngày 0, chốt lịch ngày 1, khách huỷ ngày 10 và không ai làm gì thêm: không có bậc nhắc, nhắc im lặng ngày 17, đóng `STALE` ngày 24. Không có ngoại lệ này thì lead bị đóng mà sale chưa nhận lời nhắc nào |
 | Không nhắc, không đóng khi | Lead còn **việc chăm sóc sau phản hồi chưa hoàn tất** (mục 3). Việc đó đã có hạn, nhắc sale và báo quản lý riêng, nên luồng 9 im lặng. Ví dụ sale ghi "Cần thêm thời gian", hẹn gọi lại sau 21 ngày: lead không bị nhắc ngày 7, không bị đóng ngày 14. Việc hoàn tất thì đếm 7 ngày lại từ lúc đó |
-| Im 14 ngày | Tự đóng "Không mua" lý do **`STALE`** (Lead nguội, không ai xử lý), ghi `LEAD_STALE_CLOSED`, báo quản lý |
+| Im 14 ngày | Tự đóng "Không mua" lý do **`STALE`** (Lead nguội, không ai xử lý), ghi `LEAD_STALE_CLOSED`, báo quản lý. Áp dụng cho cả lead đã và chưa liên hệ được |
+| Đóng rồi mà luồng dừng trước khi báo quản lý | Lượt chạy sau vẫn tìm lại được việc đóng đó (lead "Không mua" lý do `STALE`, có `LEAD_STALE_CLOSED` ghi đúng mã việc) và chỉ chạy nốt bước báo quản lý, không đóng lại lần nữa. Cách làm giống việc đóng lead quá hạn `EXPIRED` của luồng 2 |
 | Không đóng khi | Lead có buổi xem đang mở, có hợp đồng chưa bị từ chối, chưa hết hạn, hoặc có việc chăm sóc chưa hoàn tất |
 | Mở lại | Nhân viên mở lại lead `STALE` (hoặc khách đặt lịch lại) thì đếm lại từ lúc mở |
 | Hoạt động là gì | Thời điểm muộn nhất trong: lúc tạo lead, và các sự kiện ghi chú, đã liên hệ được, ghi lần gọi, đổi trạng thái, giao hoặc chuyển sale, mở lại lead, khách gửi cảm nhận, duyệt lịch, khách không đến, huỷ lịch, đổi giờ, khách xin đổi lịch, sale ghi kết quả chăm sóc phản hồi, sale duyệt thư L9 |
@@ -186,7 +192,8 @@ Mỗi lời nhắc của luồng 9 (bậc liên hệ ở mục 1.2 và nhắc im
 | Báo sale | Qua "Thông báo nhân viên", kèm việc nên làm, lý do và link duyệt |
 | Sale duyệt | Mở link `/duyet-thu/<mã>` (không cần đăng nhập): xem tóm tắt lead, sửa nháp (tối đa 1500 ký tự, chữ thường), bấm "Gửi cho khách" hoặc "Bỏ qua" |
 | Gửi khách | Chỉ khi khách **có email và đã đồng ý nhận tin**. Không đồng ý thì lời nhắc không có nút gửi, sale được nhắc liên hệ trực tiếp |
-| Link | Dùng một lần; hết hiệu lực khi lead đã đóng hoặc bậc nhắc không còn là bậc hiện tại. Mở lại sau khi gửi: "đã xử lý" |
+| Link | Dùng một lần; hết hiệu lực khi lead đã đóng hoặc đã có bậc nhắc mới hơn. Mở lại sau khi gửi: "đã xử lý" |
+| Hai việc tách nhau | Việc nhắc (`LADDER_REACH`, `LADDER_QUIET`) **xong ngay khi đã báo sale**, kèm gợi ý AI đã lưu. Sale bấm "Gửi cho khách" thì hệ thống tạo **một việc riêng** `LADDER_EMAIL` (mã `LADDER_EMAIL:<mã việc nhắc>`) để gửi thư. Mã này là duy nhất, nên sale bấm hai lần hay mở hai tab cũng chỉ một thư đi; lần bấm sau thấy "đã xử lý". Ghi kết quả gửi không xoá gợi ý AI đã lưu |
 | Nhật ký | `LADDER_STEP_SENT` khi nhắc sale, `LADDER_APPROVED` khi sale duyệt |
 
 Vì sao không gửi thẳng cho khách: đề bài yêu cầu bước người duyệt (Human Approval), và thư do AI viết gửi khách mà không ai xem là rủi ro.

@@ -387,6 +387,63 @@ Trạng thái căn (`properties.status`): `AVAILABLE` (mở bán), `RESERVED` (�
 - `SOLD` chỉ đặt được khi căn đang `RESERVED` và hợp đồng đã `SIGNED`; sai thì `400` `Chỉ đánh dấu "đã bán" được khi căn đang giữ cọc và hợp đồng đã ký`. Thành công thì ghi sự kiện `PROPERTY_SOLD` cho lead của hợp đồng.
 - Những lịch xem đã đặt trước khi căn thành `RESERVED` vẫn giữ nguyên; nhân viên gọi báo khách.
 
+### 3.10. Link duyệt thư của luồng 9 (FE-45, FE-56) **[Sắp làm]**
+
+Chốt ở DC-16 để trang `/duyet-thu/<mã>` (FE-56) làm song song với backend (FE-45, việc 4.4). Quy tắc nghiệp vụ: [lead follow-up mục 4.3](nghiep-vu/03-lead-follow-up.md); thiết kế: change `journey-followup-ladder`, design D5.
+
+| Method | Đường dẫn | Quyền | Kết quả |
+|---|---|---|---|
+| POST | `/api/followups/{id}/ladder-link` | Secret | `{approveUrl}` trỏ tới `/duyet-thu/<mã>` trên web. `{id}` là việc nhắc `LADDER_REACH` hoặc `LADDER_QUIET` của luồng 9. 404 nếu không có việc đó |
+| GET | `/api/followups/ladder-links/{token}` | Công khai (token có chữ ký) | Tóm tắt, không đổi gì (bảng dưới). Token sai: 404 |
+| POST | `/api/followups/ladder-links/{token}/confirm` | Công khai (token có chữ ký) | Body `{decision: "SEND" \| "SKIP", text?}`. Trả `{ok, decision, already?}` |
+
+Token là `base64url({t: taskId}).HMAC-SHA256(WEBHOOK_SECRET)`, giống link của FE-35 (mục 3.2). Token không chứa hành động: một link, hai nút trên trang.
+
+**Tóm tắt trả về** (`GET`):
+
+```json
+{
+  "state": "OPEN",
+  "refusal": null,
+  "leadName": "Nguyễn Văn A",
+  "leadStatus": "CONSULTING",
+  "assigneeName": "Sale An",
+  "kind": "REACH",
+  "step": 3,
+  "propertyName": "Căn Sơn Trà 2PN",
+  "suggestion": {
+    "action": "CALL",
+    "reason": "Khách chưa nghe máy 2 lần, nên gọi buổi chiều",
+    "emailDraft": "Chào anh A, ..."
+  },
+  "canSend": true
+}
+```
+
+| Trường | Giá trị |
+|---|---|
+| `state` | `OPEN` (còn dùng được), `HANDLED` (đã gửi hoặc đã bỏ qua), `EXPIRED` (lead đã đóng, hoặc đã có việc nhắc mới hơn cho lead) |
+| `refusal` | `null`, hoặc lý do không gửi được thư: `NO_CONSENT` (khách chưa đồng ý nhận tin), `NO_EMAIL` (khách không có email) |
+| `kind`, `step` | `REACH` kèm `step` 1, 3 hoặc 7; `QUIET` thì `step` là `null` |
+| `propertyName` | Căn của buổi xem gần nhất, `null` nếu khách chưa đặt lịch |
+| `suggestion` | `action` là `CALL`, `SEND_EMAIL`, `OFFER_VIEWING` hoặc `WAIT`. `emailDraft` là `null` khi AI lỗi hoặc nháp bị guardrail bỏ |
+| `canSend` | `true` khi `state = OPEN` và `refusal = null`. `false` thì trang chỉ hiện gợi ý và nút "Bỏ qua" |
+
+Không trả số điện thoại, email của khách hay token việc.
+
+**Xác nhận** (`POST .../confirm`):
+
+| Trường hợp | Trả về |
+|---|---|
+| `SEND` hợp lệ | Lưu nội dung sale đã sửa, tạo việc `LADDER_EMAIL` (khoá `LADDER_EMAIL:{taskId}`), ghi `LADDER_APPROVED`, gọi lối vào thứ hai của luồng 9 để gửi. Trả `{ok: true, decision: "SEND"}` |
+| `SKIP` | Không gửi gì, link hết hiệu lực. Trả `{ok: true, decision: "SKIP"}` |
+| Bấm lại sau khi đã gửi hoặc đã bỏ qua, kể cả hai tab cùng lúc | `{ok: true, decision, already: true}`; không gửi thêm thư |
+| `text` rỗng sau khi bỏ khoảng trắng, hoặc dài quá 1500 ký tự (chỉ xét với `SEND`) | 400 |
+| Lead đã đóng, đã có việc nhắc mới hơn, khách chưa đồng ý nhận tin, khách không có email | 400 kèm lý do, cùng mã với `state`/`refusal` ở trên |
+| Gọi n8n lỗi | 502. Trang báo "Chưa gửi được, thử lại sau". Khoá `LADDER_EMAIL:{taskId}` bảo đảm bấm lại không gửi trùng; cách thử lại do FE-45 chốt |
+
+`text` là chữ thường (không HTML); web và thư đều escape khi hiển thị.
+
 ## 4. Dữ liệu (bảng chính)
 
 | Bảng | Trường chính |
@@ -485,3 +542,4 @@ Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn 
 | 12/11/2026 | Hoàng | Đội sale: `GET /api/stats/team` (chỉ quản lý), số khách và kết quả theo từng người phụ trách |
 | 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |
 | 13/11/2026 | Hoàng | Hợp đồng: `POST /api/contracts` nhận `propertyId?` (sale chọn căn, LH-22); `POST /api/contracts/{id}/redraft` và `/cancel` cho hợp đồng kẹt ở `DRAFTING`; sự kiện `CONTRACT_REDRAFT_REQUESTED`; `GET /api/leads/{id}` thêm `propertyPrice`, `propertyStatus` vào từng buổi xem |
+| 18/11/2026 | Hoàng (Hậu duyệt) | DC-16: thêm mục 3.10, hình dạng API link duyệt thư của luồng 9 (chưa có code, FE-45 làm backend, FE-56 làm trang) |

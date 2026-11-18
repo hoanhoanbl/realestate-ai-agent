@@ -29,9 +29,16 @@ The system SHALL remind the assigned sale about a `CONSULTING` or `NEW` lead tha
 - **WHEN** the sale records "attended" on day 2
 - **THEN** the lead is marked as reached and the day-3 and day-7 reminders are never sent
 
+### Requirement: A reach step needs the lead to be eligible at the step's time
+A reach step SHALL be sent only if, at the step's time, the lead had already been in `CONSULTING` or `NEW` since its creation, its assignment, its reopening or its last return to one of these statuses. A step whose time fell while the lead was in another status SHALL NOT be sent later.
+
 #### Scenario: Viewing cancelled before day 3
 - **WHEN** a lead assigned on day 0 is `CONFIRMED` on day 1, the customer cancels on day 2 and the lead returns to `CONSULTING` without being reached
 - **THEN** the day-3 and day-7 reminders are sent as usual and the day-1 reminder is not sent late
+
+#### Scenario: Unreached lead reopened after being lost
+- **WHEN** a lead that was never reached was closed `LOST`, and the customer contacts the company again so the lead is reopened in `CONSULTING`
+- **THEN** the steps count from the reopening, and no step from before the closing is sent
 
 ### Requirement: Quiet leads are reminded after 7 days
 The system SHALL remind the assigned sale about a `CONSULTING` or `VIEWED` lead that has had no activity for 7 days. Activity is any note, contact mark or attempt, status change, assignment change, customer feedback, or new booking; automated entries do not count. Any activity restarts the quiet period. The system SHALL NOT send this reminder while the lead has an open feedback follow-up task (not completed), because that task already has its own deadline, reminder and manager alert.
@@ -49,8 +56,22 @@ The system SHALL remind the assigned sale about a `CONSULTING` or `VIEWED` lead 
 - **THEN** no quiet-lead reminder is sent while that task is open
 - **AND** when the task's own deadline passes, the feedback follow-up reminds the sale and then the manager as it does today
 
+### Requirement: Quiet reminders do not overlap the reach steps
+The quiet-lead reminder SHALL apply to leads marked as reached. It SHALL apply to a lead not marked as reached only when its day-7 reach step fell before the lead became eligible again, so no reach step can be sent any more. A lead SHALL NOT get both a reach step and a quiet reminder for the same silence.
+
+#### Scenario: Unreached lead on day 7
+- **WHEN** a `CONSULTING` lead assigned 7 days ago has had no activity since and was never marked as reached
+- **THEN** the sale gets the day-7 reach reminder only
+- **AND** no quiet-lead reminder is sent for it
+
+#### Scenario: Unreached lead cancels after the reach steps are over
+- **WHEN** a lead assigned on day 0 is `CONFIRMED` from day 1, the customer cancels on day 10, the lead returns to `CONSULTING` without being reached, and nothing else happens
+- **THEN** no reach step is sent
+- **AND** the sale gets a quiet-lead reminder on day 17
+- **AND** the lead is closed as stale on day 24, not before
+
 ### Requirement: Quiet leads are closed as stale after 14 days
-The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason stale when it has had no activity for 14 days, and SHALL tell the manager. It SHALL NOT close a lead that has an open viewing, a contract, or an open feedback follow-up task (not completed). It SHALL NOT email the customer about the closing.
+The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason stale when it has had no activity for 14 days, whether or not it was marked as reached, and SHALL tell the manager. The manager alert SHALL be sent even if the run stopped right after the lead was closed. It SHALL NOT close a lead that has an open viewing, a contract, or an open feedback follow-up task (not completed). It SHALL NOT email the customer about the closing.
 
 #### Scenario: Nobody handled the lead
 - **WHEN** a `VIEWED` lead reaches 14 days without activity
@@ -70,6 +91,11 @@ The system SHALL close a `CONSULTING` or `VIEWED` lead as `LOST` with reason sta
 - **WHEN** staff reopen a lead closed as stale
 - **THEN** the quiet period starts again from the reopening
 
+#### Scenario: Run stopped after closing
+- **WHEN** a run closes a lead as stale and stops before alerting the manager
+- **THEN** a later run finds the closed lead and sends the manager alert once
+- **AND** the lead is not closed a second time and its history has one closing entry
+
 ### Requirement: Each reminder carries an AI suggestion
 For each due reminder the system SHALL ask the AI for a structured suggestion: the next action (call, send email, offer a new viewing, or wait), a short reason, and an email draft for the customer. The draft SHALL be checked before use and SHALL be dropped if it promises a price or discount, states a fact not in the lead data, or is empty or too long. If the AI fails or the draft is dropped, the reminder SHALL still be sent without a draft.
 
@@ -88,7 +114,6 @@ For each due reminder the system SHALL ask the AI for a structured suggestion: t
 
 ### Requirement: The customer is emailed only after the sale approves
 The system SHALL send a ladder email to the customer only when the assigned sale approves it from the reminder, and only if the customer has an email and consented to marketing messages. The sale SHALL be able to edit the draft before approving. An approval link SHALL work once, only while the lead is still open and the step is the current one.
-
 #### Scenario: Sale approves an edited draft
 - **WHEN** the sale opens the link, changes the text and approves
 - **THEN** the customer receives the edited text
@@ -101,6 +126,18 @@ The system SHALL send a ladder email to the customer only when the assigned sale
 #### Scenario: Link used twice or lead closed
 - **WHEN** the link is opened again after sending, or after the lead became `LOST`
 - **THEN** nothing is sent and the page says it was already handled or is no longer valid
+
+### Requirement: An approved email is sent once and the suggestion is kept
+The reminder SHALL count as done once the sale is notified. Sending the approved email SHALL be tracked as its own piece of work, so approving the same reminder more than once sends one email. Marking the reminder done SHALL NOT erase the stored AI suggestion.
+
+#### Scenario: Sale confirms twice at the same time
+- **WHEN** the sale presses "Gửi cho khách" in two tabs at almost the same moment
+- **THEN** the customer receives one email
+- **AND** the other tab says it was already handled
+
+#### Scenario: Suggestion kept after the reminder is done
+- **WHEN** the reminder has been sent and its work marked done
+- **THEN** the AI suggestion and draft are still stored and still shown on the approval page
 
 ### Requirement: A step is never repeated and failures are recorded
 The system SHALL NOT send the same step for the same lead and quiet period twice, even if the flow runs again or overlaps. When sending a reminder fails, the system SHALL retry up to three times, then record a failure in the lead history and report it to the error workflow.

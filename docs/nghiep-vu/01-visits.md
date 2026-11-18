@@ -140,7 +140,9 @@ Giữ nguyên người phụ trách, nguồn, tên và đồng ý nhận tin c�
 
 **Vì sao:** một sale chỉ ở được một nơi tại một thời điểm, và đi giữa hai căn cần thời gian. Hiện hệ thống chỉ chống trùng theo căn, nên một sale có thể bị xếp 09:00 ở Sơn Trà và 09:00 ở Hải Châu (LH-24).
 
-**Sale "bận" lúc T** khi sale đó đang phụ trách một lead có buổi xem "Chờ xem" (lead "Mới" hoặc "Đã chốt lịch") ở **căn khác**, giờ hẹn cách T dưới **90 phút**. Buổi xem cùng căn vẫn theo quy tắc 60 phút ở mục 1.3. Buổi đã xem, không đến, đã huỷ không tính.
+**Sale "bận" lúc T** khi sale đó đang phụ trách một lead có buổi xem ở **căn khác**, giờ hẹn cách T dưới **90 phút**, trừ buổi "Đã huỷ" và "Khách không đến". Buổi xem cùng căn vẫn theo quy tắc 60 phút ở mục 1.3.
+
+Buổi đã điểm danh "Khách đã đến" **vẫn tính bận**: bận theo giờ hẹn, không theo trạng thái buổi xem. Sale điểm danh được từ 30 phút trước giờ hẹn (mục 4.1), lúc đó sale vẫn đang ở căn; nếu bỏ buổi này ra thì hệ thống coi sale là rảnh và xếp thêm lịch trùng giờ.
 
 **Khó khăn:** khách mới chỉ được chia sale ngay lúc gửi form, nên form đặt lịch không thể gạch khung theo lịch của sale. Vì vậy hệ thống chặn ở hai chỗ:
 
@@ -150,8 +152,11 @@ Giữ nguyên người phụ trách, nguồn, tên và đồng ý nhận tin c�
 | Khách cũ đặt thêm lịch | Giữ sale cũ dù sale đó bận; bước duyệt xử lý | Như trên |
 | Duyệt lịch (nút trong thông báo, trang xác nhận, web admin) | Kiểm tra lịch của **sale phụ trách lead**, kể cả khi quản lý duyệt thay. Bận thì không duyệt được | "Sale … đã có lịch xem căn … lúc …. Hãy đổi giờ hoặc nhờ quản lý chuyển sale." |
 | Đổi giờ, sale đặt hộ, hẹn xem tiếp trong theo dõi phản hồi | Cùng kiểm tra và cùng thông báo như duyệt | Như trên |
+| Chuyển sale (quản lý chuyển lead đang có buổi xem "Chờ xem") | Kiểm tra lịch của **sale mới** với từng buổi xem đang mở của lead. Sale mới bận thì **không chuyển được** | "Sale … đã có lịch xem căn … lúc …; chọn sale khác hoặc đổi giờ trước." |
 
-Kiểm tra chạy trong transaction có khoá theo sale (giống khoá theo căn), để hai lượt duyệt cùng lúc không lọt cả hai. Quản lý chuyển lead sang sale khác thì lịch được kiểm tra với sale mới khi duyệt.
+Kiểm tra chạy trong transaction có khoá theo sale (giống khoá theo căn), để hai lượt duyệt hay chuyển cùng lúc không lọt cả hai.
+
+**Vì sao chuyển sale bị chặn, không chỉ cảnh báo:** quản lý thấy xung đột ngay lúc ra quyết định và chọn được sale khác. Nếu chỉ cảnh báo, lead vẫn chuyển được và trùng lịch chỉ lộ ra vào ngày xem. Lead không có buổi xem mở thì chuyển như cũ.
 
 Ví dụ với sale An:
 
@@ -193,7 +198,7 @@ Ví dụ với sale An:
 
 Lead "Đã chốt lịch" có giờ xem trong 24 giờ tới và khách có email: khách nhận thư nhắc lịch, một lần cho mỗi giờ hẹn. Đổi giờ sau khi đã nhắc thì nhắc lại theo giờ mới. **[Đang chạy]**
 
-**Bỏ nhắc khi thư chốt lịch vừa gửi [Sắp làm FE-54]** (đề xuất, chờ chốt). Hiện luồng 2 không xét thư chốt lịch gửi lúc nào, nên khách đặt sát giờ nhận hai thư gần giống nhau trong vòng một giờ:
+**Bỏ nhắc khi thư chốt lịch vừa gửi [Sắp làm FE-54]**. Hiện luồng 2 không xét thư chốt lịch gửi lúc nào, nên khách đặt sát giờ nhận hai thư gần giống nhau trong vòng một giờ:
 
 | Trường hợp | Đang chạy (code trên `dev`) | Sau khi làm FE-54 (dự kiến, chưa có code) |
 |---|---|---|
@@ -203,7 +208,14 @@ Lead "Đã chốt lịch" có giờ xem trong 24 giờ tới và khách có emai
 | Sale đổi giờ lúc 16:00 sang 10:00 sáng mai | Nhắc lúc 17:00, một giờ sau thư báo giờ mới | Không nhắc: thư báo giờ mới đã là lời nhắc |
 | Chốt lịch thứ Hai, thứ Ba sale đổi sang 09:00 thứ Sáu | Nhắc 09:00 thứ Năm theo giờ mới | Như cũ |
 
-Quy tắc: chỉ nhắc khi lần duyệt lịch hoặc đổi giờ gần nhất (sự kiện "Nhân viên duyệt lịch" hoặc "Đổi giờ xem nhà") xảy ra **trước giờ hẹn hơn 24 giờ**, tức là trước khi khoảng nhắc lịch bắt đầu. Thư chốt lịch gửi khi đã vào khoảng 24 giờ đó thì tự nó đã là lời nhắc. Lời nhắc vẫn gửi đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
+Quy tắc: **không nhắc** khi luồng 1 hoặc 1b đã gửi thư chốt lịch hay thư báo giờ mới cho **đúng buổi xem và đúng giờ hẹn đó**, vào lúc giờ hẹn còn dưới 24 giờ. Thư đó tự nó đã là lời nhắc. Các trường hợp khác nhắc đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
+
+| Câu hỏi | Trả lời |
+|---|---|
+| Biết thư đã gửi bằng gì | Sự kiện `VIEWING_CONFIRMATION_SENT` ("Đã gửi thư xác nhận lịch"). Luồng 1 và 1b ghi sự kiện này **sau khi gửi thư thành công** (FE-50), ghi chú dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>` |
+| Vì sao không dựa vào "Nhân viên duyệt lịch" hay "Đổi giờ xem nhà" | Hai sự kiện này ghi **trước** khi gọi n8n: thư có thể chưa đi hoặc gửi lỗi, khách sẽ không nhận được cả thư chốt lẫn lời nhắc |
+| Thư chốt gửi lỗi | Không có sự kiện, nên khách vẫn nhận lời nhắc như hiện tại |
+| Đổi giờ sau khi đã có sự kiện | Sự kiện cũ ghi giờ cũ nên không còn khớp. Giờ mới được xét lại theo thư báo giờ mới |
 
 ### 3.2. Link quản lý lịch
 
@@ -253,7 +265,8 @@ Khách vắng mặt thường chỉ bận đột xuất; ngành coi đây là kh
 |---|---|
 | Khi nào | Sale điểm danh "không đến" và **không** hẹn lại ngay (buổi xem thành "Khách không đến") |
 | Gửi gì | Một thư trong vòng 2 giờ, nêu căn đã hẹn và link tới trang căn `/nha/<số>` để khách chọn giờ mới |
-| Không gửi khi | Lead đã "Không mua"; khách đã có buổi xem mở khác; đã gửi cho buổi xem này rồi; khách không có email (ghi vào nhật ký "không gửi được thư mời") |
+| Không gửi khi | Lead đã "Không mua"; lead "Đang làm hợp đồng cọc" hoặc "Đã ký hợp đồng cọc"; căn của buổi xem không còn "Đang bán"; khách đã có buổi xem mở khác; đã gửi cho buổi xem này rồi; khách không có email (ghi vào nhật ký "không gửi được thư mời") |
+| Kiểm tra lại | Ngay trước lúc gửi, vì lead hoặc căn có thể đổi trong lúc chờ. Bỏ không gửi vì trạng thái lead hoặc căn thì ghi vào nhật ký kèm lý do |
 | Đồng ý nhận tin | Không cần: đây là thư dịch vụ về chính lịch hẹn của khách, không phải marketing |
 | Nhật ký | `REBOOK_INVITE_SENT` |
 

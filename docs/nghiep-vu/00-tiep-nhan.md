@@ -114,7 +114,7 @@ Nhiều buổi xem mở cùng lúc, mỗi buổi duyệt riêng: **[Làm sau]**,
 - Mỗi sale có công tắc **"Đang nhận khách"** (trang Tài khoản). Nghỉ phép, ốm thì tắt; lượt chia bỏ qua người đang tắt.
 - Lead nhập tay cũng tính một lượt cho người nhập, để số khách giữa các sale cân bằng.
 - Khách mới đặt lịch: lượt chia bỏ qua sale đang có buổi xem ở căn khác cách giờ khách chọn dưới 90 phút; sale bị bỏ qua giữ nguyên lượt **[Sắp làm FE-53]**, quy tắc ở [01-visits.md](01-visits.md) mục 1.6.
-- Quản lý chuyển lead sang sale khác bất cứ lúc nào trên trang lead. Mỗi lần chia, chuyển ghi vào nhật ký lead.
+- Quản lý chuyển lead sang sale khác bất cứ lúc nào trên trang lead. Mỗi lần chia, chuyển ghi vào nhật ký lead. Ngoại lệ: lead đang có buổi xem "Chờ xem" mà sale mới bận trong vòng 90 phút quanh giờ đó thì **không chuyển được** **[Sắp làm FE-53]**, quy tắc ở [01-visits.md](01-visits.md) mục 1.6.
 - Quản lý kiểm tra việc chia có đều không ở trang **Đội sale** ([04-sales-analytics.md](04-sales-analytics.md) mục 3).
 
 Vì sao chia lần lượt:

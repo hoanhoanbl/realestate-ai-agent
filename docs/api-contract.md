@@ -17,9 +17,9 @@ Tài liệu từng luồng n8n: [docs/luong/](luong/README.md). Quy tắc nghi�
 
 **Cập nhật gần đây (đã vào `dev`):**
 
-- **FE-39:** `GET /api/users/me/routing` có JWT trả cấu hình nhận khách của chính người đăng nhập (`id, name, email, role, telegramChatId, acceptingLeads`), không trả hash hay push token. Sale vẫn không được xem `/users` hay sửa routing của người khác. Xem [FE-39](fe-39-admin-phu-trach.md).
-- **FE-38:** `POST /feedback/link/:leadId` nhận body tùy chọn `{viewingId}` cho buổi ATTENDED; mỗi buổi có link riêng, link hex cũ thuộc buổi đầu. `/stats` thêm `bySource`, `byAssignee`, `overdueResponses`. `/followups/claim` dùng `type: STAFF_NUDGE, viewingId: 0, viewingTime: assignedAt` cho cảnh báo phản hồi theo phiên; lịch xem vẫn dùng ID và giờ thật. Triển khai, quyền readonly và checkpoint cũ: [FE-38](fe-38-han-phan-hoi.md).
-- **FE-33:** [Hợp đồng API tiếp nhận và phân công sale](fe-33-nen-tiep-nhan.md#hợp-đồng-api) bổ sung `POST /leads`, `POST /leads/intake`, lookup theo số điện thoại, chuyển người phụ trách, ghi chú và cấu hình nhận khách. Lead có trạng thái `CONSULTING`; email và ngân sách có thể `null` với khách chưa đặt lịch. Các API đặt lịch cũ giữ đầu vào bắt buộc; phần chuyển tiếp chống trùng số được ghi tại tài liệu FE-33.
+- **FE-39:** `GET /api/users/me/routing` có JWT trả cấu hình nhận khách của chính người đăng nhập (`id, name, email, role, telegramChatId, acceptingLeads`), không trả hash hay push token. Sale vẫn không được xem `/users` hay sửa routing của người khác.
+- **FE-38:** `POST /feedback/link/:leadId` nhận body tùy chọn `{viewingId}` cho buổi ATTENDED; mỗi buổi có link riêng, link hex cũ thuộc buổi đầu. `/stats` thêm `bySource`, `byAssignee`, `overdueResponses`. `/followups/claim` dùng `type: STAFF_NUDGE, viewingId: 0, viewingTime: assignedAt` cho cảnh báo phản hồi theo phiên; lịch xem vẫn dùng ID và giờ thật. Triển khai, quyền readonly và checkpoint cũ: FE-38.
+- **FE-33:** Hợp đồng API tiếp nhận và phân công sale ([mục 3.5](#35-khách-người-phụ-trách-và-nhân-viên)) bổ sung `POST /leads`, `POST /leads/intake`, lookup theo số điện thoại, chuyển người phụ trách, ghi chú và cấu hình nhận khách. Lead có trạng thái `CONSULTING`; email và ngân sách có thể `null` với khách chưa đặt lịch. Các API đặt lịch cũ giữ đầu vào bắt buộc; phần chuyển tiếp chống trùng số được ghi tại tài liệu FE-33.
 
 ## Tổng quan luồng
 
@@ -191,7 +191,7 @@ Chung cho mọi callback:
 
 - Header: `X-Webhook-Secret: <WEBHOOK_SECRET>`.
 - Trả `leadId`, `name`, `email` (có thể `null`), `phone`, `phoneNormalized`, `level`, `status`, `source`, `score`, `mauticContactId`. Không trả link duyệt hay mã bí mật.
-- L7 đọc lại hồ sơ hiện tại bằng API này để đồng bộ contact kể cả khách chưa có email. Xem [FE-40](fe-40-l7-khong-email.md).
+- L7 đọc lại hồ sơ hiện tại bằng API này để đồng bộ contact kể cả khách chưa có email.
 
 ## 3. API backend
 
@@ -276,7 +276,7 @@ Chặn đặt trùng và lạm dụng cho `POST /api/viewings` (khách, bot):
 | POST | `/api/viewings/staff-links/{token}/confirm` | Công khai (token có chữ ký) | `{ok, action, already?}`; 400 kèm lý do khi khách đã hủy, đã duyệt, có buổi xem mới hơn, quá giờ hẹn, hoặc AI chưa chấm (chỉ với duyệt); 502 nếu n8n lỗi |
 | GET | `/api/users/{id}/notify-target` | Secret | `{id, name, email, role, telegramChatId, pushToken}` cho sub-workflow thông báo; không trả hash |
 
-Token là `base64url({v: viewingId, a: approve|reschedule}).HMAC-SHA256(WEBHOOK_SECRET)`; hạn dùng tính theo giờ hẹn hiện tại của buổi xem lúc bấm, không nằm trong token. Xác nhận gọi webhook `viewing-admin-action` với `event` = `approved` | `reschedule_requested` và `viewingId` (luồng 1b). Xem [FE-35](fe-35-thong-bao-phu-trach.md).
+Token là `base64url({v: viewingId, a: approve|reschedule}).HMAC-SHA256(WEBHOOK_SECRET)`; hạn dùng tính theo giờ hẹn hiện tại của buổi xem lúc bấm, không nằm trong token. Xác nhận gọi webhook `viewing-admin-action` với `event` = `approved` | `reschedule_requested` và `viewingId` (luồng 1b).
 
 ### 3.3. Lịch sử chat Telegram của lead (FE-36)
 
@@ -297,7 +297,7 @@ Log đã thuộc lead khác giữ nguyên. Lỗi khi gắn chỉ ghi log ở bac
 
 ### 3.5. Khách, người phụ trách và nhân viên
 
-Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md). Chi tiết FE-33: [fe-33-nen-tiep-nhan.md](fe-33-nen-tiep-nhan.md).
+Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md). Các bước phát hành: [trien-khai.md mục 9f](trien-khai.md#9f-nền-tiếp-nhận-hạn-phản-hồi-người-phụ-trách-fe-33-fe-38-fe-39-fe-40).
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|

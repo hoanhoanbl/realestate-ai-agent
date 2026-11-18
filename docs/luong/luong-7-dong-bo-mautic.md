@@ -5,7 +5,7 @@
 File: `n8n-workflows/luong-7-dong-bo-mautic.json` (21 node, không tính ghi chú; id `luong7Realestat0`).
 Kích hoạt: `POST /webhook/lead-changed`, Header Auth `X-Webhook-Secret`.
 
-Khung chung của các tài liệu luồng: [README.md](README.md). Các mục "Cấu hình sau khi import", "Thứ tự xử lý", "Kiểm tra thực tế" và "Giới hạn" là phần chi tiết riêng của luồng này. Phần "Thứ tự xử lý" đã cập nhật theo FE-40 (đồng bộ cả khách chưa có email); chi tiết FE-40: [fe-40-l7-khong-email.md](../fe-40-l7-khong-email.md).
+Khung chung của các tài liệu luồng: [README.md](README.md). Các mục "Cấu hình sau khi import", "Thứ tự xử lý", "Kiểm tra thực tế" và "Giới hạn" là phần chi tiết riêng của luồng này. Phần "Thứ tự xử lý" đã cập nhật theo FE-40 (đồng bộ cả khách chưa có email).
 
 ## 1. Làm gì trong thực tế
 

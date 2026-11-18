@@ -95,7 +95,7 @@ API: `POST /api/leads/:id/contacted`, `POST /api/leads/:id/contact-attempts`.
 
 1. Luồng 2 tạo link riêng `/cam-nhan/<mã>` cho buổi xem, AI soạn thư hỏi thăm (AI lỗi thì dùng mẫu dự phòng), gửi khách, ghi "Đã hỏi cảm nhận". Lead không đổi trạng thái. Sale không phải tự gửi thư.
 2. Khách mở link (không cần đăng nhập), chấm 1–5 sao, viết nhận xét, chọn mong muốn tiếp theo: **muốn đặt cọc**, **muốn xem căn khác**, **chưa có nhu cầu nữa**.
-3. Mỗi buổi xem có link riêng, gửi một lần; buổi xem sau có link mới. Link hex cũ thuộc buổi đầu. Gửi lại cùng link đã nộp: "Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị". Chi tiết: [FE-38](../fe-38-han-phan-hoi.md).
+3. Mỗi buổi xem có link riêng, gửi một lần; buổi xem sau có link mới. Link hex cũ thuộc buổi đầu. Gửi lại cùng link đã nộp: "Anh/chị đã gửi cảm nhận rồi, cảm ơn anh/chị".
 4. Luồng 5: AI phân tích cảm xúc (tích cực, trung lập, tiêu cực), tóm tắt và gợi ý việc nên làm; ghi "AI phân tích cảm nhận".
 5. Backend tạo việc chăm sóc cùng transaction lưu phản hồi (mục 3). Khách có email hợp lệ nhận email cảm ơn.
 6. Cảm nhận **tiêu cực hoặc từ 2 sao trở xuống**: quản lý nhận thêm email cảnh báo.
@@ -234,7 +234,7 @@ Marketing Automation qua Mautic nằm ngoài đề tài, đóng băng từ 13/11
 
 **Khi nào:** mỗi khi AI chấm điểm xong hoặc lead đổi trạng thái, backend báo luồng 7.
 
-- Tìm contact Mautic **đúng email**, chưa có thì tạo mới; lead không có email xử lý theo [FE-40](../fe-40-l7-khong-email.md). Lưu số contact vào lead, ghi "Đồng bộ sang Mautic".
+- Tìm contact Mautic **đúng email**, chưa có thì tạo mới; lead không có email xử lý theo FE-40. Lưu số contact vào lead, ghi "Đồng bộ sang Mautic".
 - Gắn tag theo mức khách, trạng thái lead, nguồn khách (mặc định `direct`). Tag mức và trạng thái cũ được gỡ, nên mỗi contact chỉ mang một mức và một trạng thái.
 - Khách HOT hoặc điểm AI từ 80 được gắn thêm `vip-prospect`.
 - Mọi khách đều có contact để theo dõi tương tác; **gửi** nội dung marketing chỉ cho khách đã đồng ý nhận tin.

@@ -95,7 +95,7 @@ Ba node `Email khách HOT`, `Email khách WARM`, `Email khách COLD` gửi nội
 
 Body backend gửi: `leadId`, `viewingId`, `name`, `email`, `phone`, `budget`, `needs`, `source`, `propertyId`, `viewingTime`, `manageToken`, `assignedUserId`, `eventId`. Chi tiết trường và mã lỗi: [api-contract.md](../api-contract.md).
 
-**Sau khi sale bấm nút.** Luồng 1 đã kết thúc nên nút không chạy lại luồng này. Link `/duyet/<mã>` do backend cấp: mở link chỉ hiện tóm tắt (không có số điện thoại, email), chỉ khi bấm nút xác nhận mới duyệt, để bộ quét link của email không tự duyệt. Link dùng được tới giờ hẹn. Khi duyệt, backend gọi [luồng 1b](luong-1b-chot-lich-thu-cong.md) để gửi thư chốt lịch cho khách. Chi tiết: [FE-35](../fe-35-thong-bao-phu-trach.md).
+**Sau khi sale bấm nút.** Luồng 1 đã kết thúc nên nút không chạy lại luồng này. Link `/duyet/<mã>` do backend cấp: mở link chỉ hiện tóm tắt (không có số điện thoại, email), chỉ khi bấm nút xác nhận mới duyệt, để bộ quét link của email không tự duyệt. Link dùng được tới giờ hẹn. Khi duyệt, backend gọi [luồng 1b](luong-1b-chot-lich-thu-cong.md) để gửi thư chốt lịch cho khách.
 
 **Bộ chống đặt lịch dồn.** Giới hạn 5 lần trên 10 phút cho mỗi địa chỉ IP ở `POST /api/viewings` do backend làm, không phải luồng này.
 

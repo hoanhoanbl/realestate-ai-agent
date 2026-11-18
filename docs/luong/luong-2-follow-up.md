@@ -85,7 +85,7 @@ Hiện trạng:
 | ATTENDANCE_CHECK | CONFIRMED + buổi xem NEW + qua giờ hẹn hơn 2 giờ, chưa nhắc trong lịch hiện tại | Nhắc nhân viên ghi nhận khách có đến hay không |
 | ATTENDANCE_ESCALATE | Vẫn CONFIRMED + buổi xem NEW, đã nhắc xác nhận hơn 24 giờ và chưa báo quản lý trong lịch hiện tại | Thông báo tới email quản lý qua sub-workflow |
 
-FE-38 phân biệt nhắc lịch/điểm danh/hỏi cảm nhận theo viewing ID và giờ hẹn; cảnh báo phản hồi theo phiên nhận khách, kể cả khi chưa có lịch. Link cảm nhận thuộc đúng buổi xem, link cũ vẫn hoạt động. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic L7/L8 không chặn nhắc lịch. Chi tiết triển khai và tương thích checkpoint: [FE-38](../fe-38-han-phan-hoi.md).
+FE-38 phân biệt nhắc lịch/điểm danh/hỏi cảm nhận theo viewing ID và giờ hẹn; cảnh báo phản hồi theo phiên nhận khách, kể cả khi chưa có lịch. Link cảm nhận thuộc đúng buổi xem, link cũ vẫn hoạt động. Lỗi cùng tác vụ L2 mới áp dụng chờ 6 giờ; lỗi Mautic L7/L8 không chặn nhắc lịch. Các bước phát hành: [trien-khai.md mục 9f](../trien-khai.md#9f-nền-tiếp-nhận-hạn-phản-hồi-người-phụ-trách-fe-33-fe-38-fe-39-fe-40).
 
 ## Luồng xử lý
 

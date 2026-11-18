@@ -98,7 +98,7 @@ Telegram -> Telegram Webhook -> Cấu hình -> Chuẩn hoá tin nhắn -> Hợp 
 | Luồng 6 → database | Truy vấn chỉ đọc lịch đã đặt; bộ nhớ hội thoại; kho vector `rag_chunks` |
 | Luồng 6 → sub-workflow | `Thông báo nhân viên` (hai node: `Báo nhân viên` và `Báo sale khách mới`) |
 
-Lead tạo qua bot có nguồn `telegram`, không có email nên chưa đồng bộ sang Mautic ([FE-40](../fe-40-l7-khong-email.md)). Lịch sử chat được gắn vào lead khi khách để lại số hoặc đặt lịch, và hiện ở trang lead trong mục "Lịch sử chat Telegram". Phạm vi và giới hạn: [FE-36](../fe-36-bot-ghi-nhan-khach.md).
+Lead tạo qua bot có nguồn `telegram`, không có email nên chưa đồng bộ sang Mautic (FE-40). Lịch sử chat được gắn vào lead khi khách để lại số hoặc đặt lịch, và hiện ở trang lead trong mục "Lịch sử chat Telegram". Quy tắc: [nghiệp vụ 00 mục 6](../nghiep-vu/00-tiep-nhan.md).
 
 ## 5. Khi lỗi thì sao
 

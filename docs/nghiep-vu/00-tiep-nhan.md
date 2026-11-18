@@ -151,7 +151,7 @@ Phần sàng lọc của người (hỏi ngân sách, khả năng vay, thời gi
 
 ## 6. Bot Telegram ghi nhận khách **[Đang chạy]**
 
-Khi khách để lại số trong bot, chat Telegram đó được gắn vào lead (bảng `chat_logs`): log cũ của chat chưa thuộc lead nào chuyển sang lead, log sau tự theo lead. Một chat theo lead đầu tiên; để lại số thứ hai trong cùng chat không chuyển chat sang lead mới. Sale phụ trách nhận thông báo ngay ("Khách Telegram để lại số", hoặc "Khách cũ nhắn lại" nếu số đã có hồ sơ) và đọc lịch sử chat trong trang lead. Bot không hỏi email, ngân sách và không thu đồng ý nhận tin quảng cáo. Chi tiết: [FE-36](../fe-36-bot-ghi-nhan-khach.md).
+Khi khách để lại số trong bot, chat Telegram đó được gắn vào lead (bảng `chat_logs`): log cũ của chat chưa thuộc lead nào chuyển sang lead, log sau tự theo lead. Một chat theo lead đầu tiên; để lại số thứ hai trong cùng chat không chuyển chat sang lead mới. Sale phụ trách nhận thông báo ngay ("Khách Telegram để lại số", hoặc "Khách cũ nhắn lại" nếu số đã có hồ sơ) và đọc lịch sử chat trong trang lead. Bot không hỏi email, ngân sách và không thu đồng ý nhận tin quảng cáo.
 
 Bot còn trả lời câu hỏi về căn nhà bằng RAG (luồng 6b nạp tri thức) và đặt lịch hộ khách theo quy tắc khung giờ ở [01-visits.md](01-visits.md) mục 1.
 
@@ -200,5 +200,5 @@ Thao tác đầu tiên chỉ dừng lời nhắc 2 giờ. Nếu sale đã gọi 
 
 ## 8. Còn mở
 
-- Mautic tìm contact theo email. Lead không có email đồng bộ sang Mautic theo [FE-40](../fe-40-l7-khong-email.md) **[Mở rộng]**.
+- Mautic tìm contact theo email. Lead không có email vẫn đồng bộ sang Mautic, tìm bằng số điện thoại ([luồng 7](../luong/luong-7-dong-bo-mautic.md)) **[Mở rộng]**.
 - Dữ liệu cũ: các lead trùng số điện thoại trước FE-33 có gộp không. Hiện không gộp, cần quản lý duyệt riêng.

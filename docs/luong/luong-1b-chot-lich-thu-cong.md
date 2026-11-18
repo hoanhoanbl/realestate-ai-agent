@@ -79,7 +79,7 @@ Chú ý thứ tự khi duyệt: **email gửi trước, trạng thái đổi sau
 | 1b → backend | `PUT /api/leads/:id/status` | Đặt `CONFIRMED` |
 | 1b → backend | `POST /api/leads/:id/events` | Ghi `APPROVED` hoặc `RESCHEDULE_REQUESTED` |
 
-Body gồm `event`, `leadId`, `by` (tên người làm) và `viewingId` (có thể thiếu). Chi tiết hợp đồng: [api-contract.md](../api-contract.md). Backend gọi webhook qua `N8nService.callWebhook`; link duyệt ở thông báo xem [FE-35](../fe-35-thong-bao-phu-trach.md).
+Body gồm `event`, `leadId`, `by` (tên người làm) và `viewingId` (có thể thiếu). Chi tiết hợp đồng: [api-contract.md](../api-contract.md). Backend gọi webhook qua `N8nService.callWebhook`; link duyệt ở thông báo: [api-contract.md mục 3.2](../api-contract.md).
 
 ## 5. Khi lỗi thì sao
 

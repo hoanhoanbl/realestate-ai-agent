@@ -90,7 +90,7 @@ Chế độ `update` (sửa tin Telegram bằng `telegramMessageId`) vẫn còn 
 
 [Luồng 3](luong-3-hop-dong.md) **không** gọi sub-workflow này: nó gửi email trực tiếp.
 
-Backend chỉ cung cấp `GET /api/users/:id/notify-target` (header `X-Webhook-Secret`), trả `{ id, name, email, role, telegramChatId, pushToken }`, không trả mật khẩu. Hợp đồng chi tiết: [api-contract.md](../api-contract.md). Sale tự nhập chat id Telegram ở trang Tài khoản (FE-39) và backend có `POST /api/users/me/push-token` để app Expo (FE-27, chưa đưa sang `main`) lưu push token. Thiết kế thông báo đúng người: [FE-35](../fe-35-thong-bao-phu-trach.md).
+Backend chỉ cung cấp `GET /api/users/:id/notify-target` (header `X-Webhook-Secret`), trả `{ id, name, email, role, telegramChatId, pushToken }`, không trả mật khẩu. Hợp đồng chi tiết: [api-contract.md](../api-contract.md). Sale tự nhập chat id Telegram ở trang Tài khoản (FE-39) và backend có `POST /api/users/me/push-token` để app Expo (FE-27, chưa đưa sang `main`) lưu push token. Quy tắc: [nghiệp vụ 00 mục 7.1](../nghiep-vu/00-tiep-nhan.md).
 
 ## 5. Khi lỗi thì sao
 

@@ -417,9 +417,22 @@ Chỉ đổi vị trí node và thêm sticky note màu trong 12 file JSON; logic
 
 Kiểm tra: mở từng luồng trong n8n, thấy các khung màu và sticky "Chú thích màu"; Executions của lần chạy kế tiếp vẫn thành công như trước.
 
+## 9f. Nền tiếp nhận, hạn phản hồi, người phụ trách (FE-33, FE-38, FE-39, FE-40)
+
+Thuộc `v0.4.0`. **Chạy mục này trước 9d và 9e.** Gộp từ các ghi chú riêng của từng task (đã xoá 18/11).
+
+1. **Sao lưu database**, thử trên bản sao trước. Phải có ít nhất một tài khoản quản lý; kiểm tra có sale đang bật "Đang nhận khách".
+2. **SQL FE-33:** chạy `backend/sql/fe-33-intake.sql` bằng tài khoản sở hữu bảng, với `ON_ERROR_STOP=1`, **trước khi** khởi động backend mới. Script chạy lặp được: nới email và ngân sách thành nullable, thêm cột, backfill số điện thoại chuẩn hoá và in danh sách số trùng. Không chép số điện thoại thật vào log công khai.
+3. **Quyền chỉ đọc (FE-38):** chạy lại `backend/sql/readonly-role.sql`, vì báo cáo đọc thêm `source`, `assigned_user_id` và các mốc phản hồi. Bảng `users` vẫn không cấp quyền đọc.
+4. **Build và deploy backend cùng web một bản.** Không có biến `.env` hay credential mới cho FE-33, FE-38, FE-39.
+5. **n8n:** import và publish lại luồng 2 và luồng 4 (FE-38), restart n8n. Luồng 7 (FE-40, mở rộng) chỉ import sau khi backend mới đã chạy; gắn lại credential Basic Auth Mautic và webhook, nghiệm thu bằng contact nội bộ trước khi publish.
+6. **Kiểm tra:** tạo khách mới; tra trùng với nhiều định dạng số; nhập tay số trùng phải báo 409; chuyển sale, ghi chú, quyền xem; duyệt hoặc đổi giờ ghi `first_response_at`. Lead cũ chưa có `assigned_at`, `response_due_at` không bị cảnh báo quá hạn: quản lý gán hoặc chuyển sale để bắt đầu tính hạn.
+7. **Không hạ code cũ** trên database đã có khách thiếu email hoặc ngân sách: ORM cũ có thể đặt lại NOT NULL và lỗi. Muốn quay lại thì phục hồi bản sao lưu.
+8. Việc tác vụ cũ của luồng 2: checkpoint `ACTION_DONE` cũ chỉ hoàn tất dữ liệu, không gửi lại; việc `REVIEW` vẫn cần kiểm tra hộp thư trước khi xử lý.
+
 ## 9d. Thông báo theo sale và duyệt lịch qua link (FE-35)
 
-Chỉ phát hành cùng FE-38 (`v0.4.0`). Chi tiết: [FE-35](fe-35-thong-bao-phu-trach.md). Không có SQL, không có biến `.env` mới.
+Chỉ phát hành cùng FE-38 (`v0.4.0`), **sau mục 9f**. Không có SQL, không có biến `.env` mới.
 
 1. Deploy backend trước (thêm endpoint `/api/viewings/{id}/staff-links`, `/api/viewings/staff-links/...`, `/api/users/{id}/notify-target`).
 2. Import và publish theo thứ tự: `thong-bao-nhan-vien.json`, rồi `luong-1b-chot-lich-thu-cong.json`, rồi `luong-1-dat-lich.json`. Luồng 1 gọi 1b và sub-workflow bản mới, nên không đảo thứ tự. Restart n8n.
@@ -429,7 +442,7 @@ Chỉ phát hành cùng FE-38 (`v0.4.0`). Chi tiết: [FE-35](fe-35-thong-bao-ph
 
 ## 9e. Bot Telegram ghi nhận khách (FE-36)
 
-Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Chi tiết: [FE-36](fe-36-bot-ghi-nhan-khach.md). Không có SQL, không có biến `.env` mới.
+Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Không có SQL, không có biến `.env` mới.
 
 1. Deploy backend trước (thêm `chatId` cho `POST /api/leads/intake` và `POST /api/viewings`, endpoint `GET /api/leads/{id}/chat-logs`, trang lead có mục lịch sử chat).
 2. Sub-workflow `thong-bao-nhan-vien` bản FE-35 phải đã import. Import và publish `luong-6-telegram-agent.json`, restart n8n.

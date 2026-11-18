@@ -38,6 +38,11 @@ export class Lead {
   @Column({ name: 'first_response_at', type: 'timestamptz', nullable: true })
   firstResponseAt: Date | null;
 
+  // Lần đầu liên hệ được với khách (FE-43; ghi bởi FE-44). Khác first_response_at: đó là lúc sale phản hồi,
+  // đây là lúc nói chuyện được với khách. Null nghĩa là chưa liên hệ được.
+  @Column({ name: 'contacted_at', type: 'timestamptz', nullable: true })
+  contactedAt: Date | null;
+
   @Column({ name: 'interested_property_ids', type: 'integer', array: true, nullable: true })
   interestedPropertyIds: number[] | null;
 

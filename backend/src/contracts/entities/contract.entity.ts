@@ -85,6 +85,19 @@ export class Contract {
   @Column({ name: 'deposit_received_by', type: 'varchar', length: 100, nullable: true })
   depositReceivedBy: string | null;
 
+  // FE-43 (chỉ là cột; FE-48 ghi giá thoả thuận, FE-49 ghi bản đã ký). Null nghĩa là theo giá niêm yết / chưa lưu file.
+  @Column({ name: 'agreed_price', type: 'bigint', nullable: true })
+  agreedPrice: number | null;
+
+  @Column({ name: 'signed_file_path', type: 'varchar', length: 300, nullable: true })
+  signedFilePath: string | null;
+
+  @Column({ name: 'signed_file_sha256', type: 'varchar', length: 64, nullable: true })
+  signedFileSha256: string | null;
+
+  @Column({ name: 'signed_file_stored_at', type: 'timestamptz', nullable: true })
+  signedFileStoredAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

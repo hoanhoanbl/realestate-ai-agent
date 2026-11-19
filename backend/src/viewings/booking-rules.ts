@@ -58,3 +58,88 @@ export async function assertNoDuplicateBooking(em: EntityManager, propertyId: nu
     );
   }
 }
+
+// FE-53: hai buổi xem của cùng một sale ở hai căn khác nhau phải cách nhau ít nhất 90 phút (60 phút xem + 30 phút đi lại)
+export const SALE_GAP_MINUTES = 90;
+
+// Nhóm khoá advisory theo sale. Thứ tự khoá toàn hệ thống: căn (1001) → chia sale (1002) → lead (FOR UPDATE) → sale (1003)
+export const SALE_LOCK_NAMESPACE = 1003;
+
+// Khoá theo sale trong transaction hiện tại: tạo buổi xem, đổi giờ, hẹn xem tiếp, chuyển sale của cùng sale chạy lần lượt
+export async function lockSale(em: EntityManager, saleId: number): Promise<void> {
+  await em.query('SELECT pg_advisory_xact_lock($1, $2)', [SALE_LOCK_NAMESPACE, saleId]);
+}
+
+export interface SaleConflict {
+  viewingId: number;
+  viewingTime: Date;
+  propertyName: string;
+  saleName: string;
+}
+
+// Buổi xem làm sale bận lúc `time`: lead do sale phụ trách, căn khác, cách dưới 90 phút.
+// ATTENDED tính theo giờ hẹn (không xét trạng thái lead); NEW chỉ tính khi lead còn NEW/CONFIRMED
+// (cùng điều kiện "đang chờ" với luật theo căn); CANCELLED và NO_SHOW không tính.
+export async function findSaleConflict(
+  em: EntityManager,
+  saleId: number,
+  time: Date,
+  opts: { propertyId: number; excludeViewingId?: number | null },
+): Promise<SaleConflict | null> {
+  const rows: { id: number; viewing_time: Date; property_name: string; sale_name: string }[] = await em.query(
+    `SELECT v.id, v.viewing_time, p.name AS property_name, u.name AS sale_name
+       FROM viewings v
+       JOIN leads l ON l.id = v.lead_id
+       JOIN properties p ON p.id = v.property_id
+       JOIN users u ON u.id = l.assigned_user_id
+      WHERE l.assigned_user_id = $1
+        AND v.property_id <> $2
+        AND (v.status = 'ATTENDED' OR (v.status = 'NEW' AND l.status IN ('NEW', 'CONFIRMED')))
+        AND abs(extract(epoch FROM (v.viewing_time - $3::timestamptz))) < $4 * 60
+        AND ($5::int IS NULL OR v.id <> $5)
+      ORDER BY v.viewing_time, v.id
+      LIMIT 1`,
+    [saleId, opts.propertyId, time.toISOString(), SALE_GAP_MINUTES, opts.excludeViewingId ?? null],
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { viewingId: r.id, viewingTime: r.viewing_time, propertyName: r.property_name, saleName: r.sale_name };
+}
+
+export function saleConflictMessage(c: SaleConflict, context: 'schedule' | 'reassign'): string {
+  const base = `Sale ${c.saleName} đã có lịch xem căn ${c.propertyName} lúc ${fmt(c.viewingTime)}`;
+  return context === 'reassign'
+    ? `${base}; chọn sale khác hoặc đổi giờ trước.`
+    : `${base}. Hãy đổi giờ hoặc nhờ quản lý chuyển sale.`;
+}
+
+// Ném 409 khi sale bận. `schedule`: duyệt, đổi giờ, hẹn lại, hẹn xem tiếp; `reassign`: chuyển sale.
+export async function assertSaleFree(
+  em: EntityManager,
+  saleId: number,
+  time: Date,
+  opts: { propertyId: number; excludeViewingId?: number | null },
+  context: 'schedule' | 'reassign' = 'schedule',
+): Promise<void> {
+  const conflict = await findSaleConflict(em, saleId, time, opts);
+  if (conflict) throw new ConflictException(saleConflictMessage(conflict, context));
+}
+
+// Duyệt (web admin hoặc nút trong thông báo): kiểm sale phụ trách với buổi xem NEW mới nhất của lead.
+// Chỉ đọc, không khoá: duyệt không đổi giờ hay chủ lead (design D4).
+export async function assertSaleFreeForApproval(em: EntityManager, leadId: number): Promise<void> {
+  const rows: { id: number; property_id: number; viewing_time: Date; assigned_user_id: number | null }[] = await em.query(
+    `SELECT v.id, v.property_id, v.viewing_time, l.assigned_user_id
+       FROM viewings v JOIN leads l ON l.id = v.lead_id
+      WHERE v.lead_id = $1 AND v.status = 'NEW'
+      ORDER BY v.id DESC
+      LIMIT 1`,
+    [leadId],
+  );
+  const v = rows[0];
+  if (!v || !v.assigned_user_id || !v.viewing_time) return;
+  await assertSaleFree(em, v.assigned_user_id, new Date(v.viewing_time), {
+    propertyId: v.property_id,
+    excludeViewingId: v.id,
+  });
+}

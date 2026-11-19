@@ -26,7 +26,14 @@ import {
   vnDateKey,
   vnTimeKey,
 } from './viewing-time';
-import { assertNoBookingConflict, BOOKING_GAP_MINUTES, lockProperty } from './booking-rules';
+import {
+  assertNoBookingConflict,
+  assertSaleFree,
+  assertSaleFreeForApproval,
+  BOOKING_GAP_MINUTES,
+  lockProperty,
+  lockSale,
+} from './booking-rules';
 import { LeadsService } from '../leads/leads.service';
 import { LeadIntakeService } from '../leads/lead-intake.service';
 import { N8nService } from '../n8n/n8n.service';
@@ -99,7 +106,7 @@ export class ViewingsService {
       const { lead: savedLead } = await this.intake.receive(em, {
         name, email, phone, budget, needs, source: source || 'direct', consentMarketing,
         interestedPropertyIds: [propertyId],
-      }, { status: 'NEW', booking: true });
+      }, { status: 'NEW', booking: true, slot: { time: viewingDate, propertyId } });
       const savedViewing = await em.save(
         em.create(Viewing, {
           propertyId,
@@ -289,6 +296,14 @@ export class ViewingsService {
         throw new BadRequestException('Khách hoặc lịch đã được xử lý, hãy tải lại trước khi đổi giờ.');
       }
       await assertNoBookingConflict(em, viewing.propertyId, date, viewing.id);
+      // FE-53: sale phụ trách không được có buổi xem ở căn khác cách giờ mới dưới 90 phút
+      if (currentLead.assignedUserId) {
+        await lockSale(em, currentLead.assignedUserId);
+        await assertSaleFree(em, currentLead.assignedUserId, date, {
+          propertyId: viewing.propertyId,
+          excludeViewingId: viewing.id,
+        });
+      }
       oldTime = currentViewing.viewingTime;
       lead.status = currentLead.status;
       currentViewing.viewingTime = date;
@@ -491,6 +506,9 @@ export class ViewingsService {
         [lead.id],
       );
       if (recent.length > 0) return { ok: true, action: parsed.action, already: true };
+    } else {
+      // FE-53: chặn trước khi gọi n8n nếu sale phụ trách đang bận ở căn khác
+      await assertSaleFreeForApproval(this.viewingRepository.manager, lead.id);
     }
 
     try {

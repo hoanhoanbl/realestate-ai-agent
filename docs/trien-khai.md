@@ -427,6 +427,28 @@ Chỉ phát hành cùng FE-38 (`v0.4.0`). Chi tiết: [FE-35](fe-35-thong-bao-ph
 4. Kiểm tra: đặt một lịch thử bằng khách nội bộ. Sale phụ trách nhận thông báo (email, và Telegram/push nếu đã cấu hình); Executions của luồng 1 là "success" và không có lần nào "waiting"; mở nút Duyệt thấy trang xác nhận, bấm thì khách nhận thư chốt lịch.
 5. Sale nào muốn nhận Telegram cá nhân: nhập chat id ở trang Tài khoản (FE-39). Chưa có thì chỉ nhận email.
 
+## 9d-2. Chống trùng lịch theo sale (FE-53)
+
+Chỉ đổi backend: không có SQL, không có biến `.env` mới, không phải import lại luồng n8n. Rollback là chạy lại image cũ.
+
+1. Trước khi deploy, chạy câu SELECT chỉ đọc dưới đây trên DB server để biết lead nào sẽ bị chặn ở lần duyệt kế tiếp (lead `NEW` mà sale phụ trách đang có buổi xem ở căn khác cách dưới 90 phút). Báo quản lý đổi giờ hoặc chuyển sale cho các cặp này.
+
+```sql
+SELECT v1.id AS viewing_a, l1.id AS lead_a, v2.id AS viewing_b, l2.id AS lead_b, u.name AS sale,
+       v1.viewing_time AS gio_a, v2.viewing_time AS gio_b
+  FROM viewings v1
+  JOIN leads l1 ON l1.id = v1.lead_id
+  JOIN viewings v2 ON v2.id <> v1.id AND v2.property_id <> v1.property_id
+  JOIN leads l2 ON l2.id = v2.lead_id AND l2.assigned_user_id = l1.assigned_user_id
+  JOIN users u ON u.id = l1.assigned_user_id
+ WHERE v1.status = 'NEW' AND l1.status = 'NEW'
+   AND (v2.status = 'ATTENDED' OR (v2.status = 'NEW' AND l2.status IN ('NEW', 'CONFIRMED')))
+   AND abs(extract(epoch FROM (v1.viewing_time - v2.viewing_time))) < 90 * 60
+ ORDER BY v1.viewing_time;
+```
+
+2. Kiểm tra sau deploy: duyệt một lead mà sale đang có buổi khác cách 60 phút ở căn khác thì báo `409` kèm tên sale, căn và giờ; đổi giờ ra ngoài 90 phút rồi duyệt được.
+
 ## 9e. Bot Telegram ghi nhận khách (FE-36)
 
 Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Chi tiết: [FE-36](fe-36-bot-ghi-nhan-khach.md). Không có SQL, không có biến `.env` mới.

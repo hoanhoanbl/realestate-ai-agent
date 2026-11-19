@@ -46,7 +46,7 @@ Owners follow `docs/quy-trinh-git.md` ("Ai giữ phần nào"). Codes are on `de
 
 ## 5. Approval page (FE-56) — Hoàng writes, Hậu reviews (customer-web area); starts once the link API shape is fixed in `docs/api-contract.md` (DC-16), merges after 4.4
 
-- [ ] 5.1 Add `web/src/app/duyet-thu/[token]/page.tsx` with: lead summary, AI action and reason, editable draft, "Gửi cho khách" and "Bỏ qua", and the states already handled / expired / no consent; use the helpers FE-43 added to `web/src/lib/api.ts` (task 2.5), do not edit that file here. Verify: `npm run lint`, `npm run build`, browser check at 375 px with the API mocked for each state, no customer phone or email shown.
+- [x] 5.1 Add `web/src/app/duyet-thu/[token]/page.tsx` with: lead summary, AI action and reason, editable draft, "Gửi cho khách" and "Bỏ qua", and the states already handled / expired / no consent; use the helpers FE-43 added to `web/src/lib/api.ts` (task 2.5), do not edit that file here. Verify: `npm run lint`, `npm run build`, browser check at 375 px with the API mocked for each state, no customer phone or email shown.
 
 ## 6. Flow 9 in n8n (FE-45) — Hậu
 

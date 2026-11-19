@@ -102,10 +102,21 @@ export const LOST_REASONS = [
   'NO_LONGER_NEEDED',
 ];
 
-// Lý do nhân viên được chọn tay. Bốn lý do do hệ thống sở hữu (STALE, NO_SHOW, EXPIRED, CUSTOMER_CANCELLED)
-// chỉ do đường mã tương ứng đặt. FE-44 áp danh sách này vào API đổi trạng thái thủ công.
+// Lý do nhân viên được chọn tay: đúng sáu nhóm của spec lead-contact-tracking, liệt kê thẳng (không suy ra bằng
+// phép lọc) để mã mới thêm vào LOST_REASONS không tự lọt vào danh sách chọn tay.
+// Bốn lý do do hệ thống sở hữu (STALE, NO_SHOW, EXPIRED, CUSTOMER_CANCELLED) chỉ do đường mã tương ứng đặt.
+// NOT_INTERESTED là mã cũ: vẫn nằm trong LOST_REASONS để đọc dữ liệu cũ và kết quả "Không mua" của theo dõi
+// phản hồi, nhưng không chọn tay được nữa (trùng nghĩa với NO_LONGER_NEEDED). FE-44 áp danh sách này vào API đổi trạng thái thủ công.
 export const SYSTEM_LOST_REASONS = ['STALE', 'NO_SHOW', 'EXPIRED', 'CUSTOMER_CANCELLED'];
-export const MANUAL_LOST_REASONS = LOST_REASONS.filter(r => !SYSTEM_LOST_REASONS.includes(r));
+export const LEGACY_LOST_REASONS = ['NOT_INTERESTED'];
+export const MANUAL_LOST_REASONS = [
+  'PRICE_TOO_HIGH',
+  'CHOSE_OTHER_PROPERTY',
+  'BOUGHT_ELSEWHERE',
+  'UNREACHABLE',
+  'NO_LONGER_NEEDED',
+  'OTHER',
+];
 
 // Ghi chú của sự kiện VIEWING_CONFIRMATION_SENT (design D10). lead_events không có cột buổi xem hay JSON,
 // nên buổi xem và giờ hẹn nằm trong note theo đúng một dạng: viewing=<id>;time=<ISO 8601 UTC>.

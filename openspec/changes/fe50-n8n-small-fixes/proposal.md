@@ -11,7 +11,7 @@ Ba việc nhỏ ở luồng n8n của Hoàng đều chặn hoặc làm yếu vi�
 ## What Changes
 
 - Luồng 1b: thêm một node ghi sự kiện `VIEWING_CONFIRMATION_SENT` ngay sau `Email chốt lịch` và sau `Email báo giờ mới`, ghi chú theo định dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>`. Node ghi sự kiện lỗi thì luồng vẫn chạy tiếp.
-- Luồng 1 **không** ghi sự kiện này: thư của luồng 1 là "đã nhận yêu cầu", không khẳng định lịch (xem design D1). Mốc "thư tự động tới khách" cho báo cáo đã có sẵn ở `AI_SCORED` kèm `emailSent`.
+- Luồng 1 **không** ghi sự kiện này: thư của luồng 1 là "đã nhận yêu cầu", không khẳng định lịch (xem design D1). Không có mốc gửi thư tiếp nhận chính xác; `AI_SCORED` chỉ là mốc hoàn tất xử lý của luồng 1 (ghi sau thư, báo sale và lưu AI), nên báo cáo phải gọi đúng tên đó (xem design D1).
 - Luồng 6b: bật thử lại (3 lần, cách 5 giây) cho các node gọi Postgres và nhúng Gemini.
 - Error workflow: thêm nhánh gửi Telegram cho nhóm quản lý song song với email; không cấu hình Telegram thì bỏ qua, không làm hỏng việc gửi email.
 - Tài liệu luồng 1b, 6b, Error workflow và `docs/nghiep-vu/01-visits.md` mục 3.1 cập nhật cho khớp. Đóng LH-52, LH-53.

@@ -78,9 +78,9 @@ export const LOST_REASON_LABELS: Record<LostReason, string> = {
   UNREACHABLE: "Không liên lạc được",
   NO_LONGER_NEEDED: "Không còn cần mua",
 };
-// Lý do nhân viên được chọn tay (khớp MANUAL_LOST_REASONS ở backend). Bốn lý do của hệ thống không có ở đây.
+// Lý do nhân viên được chọn tay (khớp MANUAL_LOST_REASONS ở backend): đúng sáu nhóm. Bốn lý do của hệ thống
+// và mã cũ NOT_INTERESTED không có ở đây; NOT_INTERESTED vẫn hiện nhãn khi đọc dữ liệu cũ.
 export const MANUAL_LOST_REASONS: LostReason[] = [
-  "NOT_INTERESTED",
   "OTHER",
   "PRICE_TOO_HIGH",
   "CHOSE_OTHER_PROPERTY",

@@ -110,10 +110,10 @@ Hậu cannot see a local worktree. The visible record on git is: (1) this change
 
 ## Migration Plan
 
-1. Merge FE-43 (base). On the VPS, back up the database, run `backend/sql/fe-43-journey.sql` before the new backend starts (additive columns only, so the old backend keeps working if the script runs first).
+1. Merge FE-43 (base). On the VPS, back up the database, run `backend/sql/fe-43-journey.sql` before merging the release PR, then run it again after the deploy (it is idempotent). The new backend creates the same columns itself at startup (`synchronize: true`; checked on a copy of the local data: the columns made by the script and by the backend are identical), so the script's real work is the `contacted_at` backfill. **Checked on 19/11:** the old backend still *starts* after the script ran, but `synchronize: true` makes it **drop all five new columns** at startup. So the second run after deploy covers an old-backend restart between the two steps.
 2. Deploy backend and web (FE-44, FE-45 backend parts).
 3. Import flow 9 **switched off**; test with one lead on the demo data; then import flow 2 and switch flow 9 on.
-4. Rollback: switch flow 9 off and re-import the previous flow 2 export (taken first, as `docs/trien-khai.md` already describes). Columns stay; they are harmless.
+4. Rollback: switch flow 9 off and re-import the previous flow 2 export (taken first, as `docs/trien-khai.md` already describes). Do **not** roll the backend image back casually: the old backend drops the five new columns and the data in them (corrected 19/11; the earlier text said the columns stay). Rolling back then forward restores `contacted_at` for attended customers by re-running the script, but loses `contacted_at` set by hand (FE-44), agreed prices (FE-48) and archive records (FE-49), unless those columns were copied out first. Prefer a forward fix. `docs/trien-khai.md` §9f says the same.
 
 ## Open Questions
 

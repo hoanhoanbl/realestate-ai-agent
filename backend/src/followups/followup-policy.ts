@@ -11,6 +11,11 @@ export interface FollowupSnapshot {
   email?: string | null;
   assigned_at?: string | Date | null; response_due_at?: string | Date | null; first_response_at?: string | Date | null;
 }
+// Bậc nhắc của luồng 9 (design D4). Ngày 0 là STAFF_NUDGE có sẵn (FE-38), nên bậc bắt đầu từ ngày 1.
+export const LADDER_REACH_DAYS = [1, 3, 7];
+export const LADDER_QUIET_DAYS = 7;
+export const LADDER_STALE_DAYS = 14;
+
 export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date): boolean {
   if (type === 'STAFF_NUDGE') return !s.cooling_down && ['CONSULTING','NEW','CONFIRMED','VIEWED'].includes(s.status) &&
     !!s.assigned_at && !!s.response_due_at && !s.first_response_at && !s.staff_nudged &&
@@ -38,5 +43,7 @@ export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date
     case 'ATTENDANCE_ESCALATE': return s.status === 'CONFIRMED' && s.viewing_status === 'NEW' &&
       !s.attendance_escalated && s.attendance_check_at !== null &&
       now.getTime() - new Date(s.attendance_check_at).getTime() > 24 * hour;
+    // Các loại của luồng 9 và thư mời hẹn lại có điều kiện riêng (FE-45, FE-46): chưa nhận qua đường lịch xem này.
+    case 'LADDER_REACH': case 'LADDER_QUIET': case 'LADDER_STALE': case 'LADDER_EMAIL': case 'REBOOK_INVITE': return false;
   }
 }

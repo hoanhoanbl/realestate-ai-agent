@@ -436,6 +436,41 @@ Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Chi tiết: [FE-36](fe-36-b
 3. Kiểm tra bằng bot nội bộ: nhắn hỏi nhà, nói "gọi lại cho tôi", đưa tên và số, xác nhận. Lead xuất hiện với nguồn Telegram, sale phụ trách nhận thông báo "Khách Telegram để lại số", trang lead hiện lịch sử chat. Nhắn lại bằng cùng số: thông báo "Khách cũ nhắn lại", không có lead thứ hai.
 4. Hoàn tác: import lại luồng 6 bản trước. Phần backend chỉ thêm trường tuỳ chọn và một endpoint đọc.
 
+## 9f. Cột nền của hành trình khách (FE-43, bản `v0.5.0`)
+
+Chỉ phát hành cùng các task của change `journey-followup-ladder` (`v0.5.0`, CH-12 đợt 2). FE-43 chỉ thêm cột và hằng số, chưa đổi cách hệ thống chạy. Script: `backend/sql/fe-43-journey.sql`.
+
+Script thêm năm cột (`leads.contacted_at`; `contracts.agreed_price`, `signed_file_path`, `signed_file_sha256`, `signed_file_stored_at`) và điền `contacted_at` cho khách đã từng được điểm danh "Khách đã đến" (giờ hẹn sớm nhất của buổi đó). Script chạy lại nhiều lần không đổi thêm gì.
+
+**Backend bản mới tự tạo đúng các cột này khi khởi động** (`synchronize: true` trong `app.module.ts`); kiểm trên bản sao dữ liệu local, cột do script tạo giống hệt cột do backend tạo. Vì vậy script có hai việc: tạo cột trước, và **điền `contacted_at` cho khách cũ** (backend không tự điền).
+
+1. Sao lưu tay một lần: `/root/realestate-backup.sh`.
+2. Chạy script (trước khi merge PR release):
+
+   ```bash
+   docker cp backend/sql/fe-43-journey.sql realestate-db:/tmp/fe-43-journey.sql
+   docker exec realestate-db psql -U realestate -d realestate -v ON_ERROR_STOP=1 -f /tmp/fe-43-journey.sql
+   ```
+
+   Cuối kết quả có bảng "leads_co_contacted_at"; số này phải bằng số khách có ít nhất một buổi xem "Khách đã đến".
+3. Merge PR release, chờ job Deploy xanh.
+4. **Chạy lại đúng lệnh ở bước 2** sau khi deploy. Không hại gì, và bù lại nếu backend cũ khởi động lại ở giữa hai bước (xem lưu ý dưới).
+5. Kiểm tra:
+
+   ```bash
+   docker exec realestate-db psql -U realestate -d realestate -Atc \
+     "select count(*) from leads where contacted_at is not null"
+   docker exec realestate-db psql -U realestate -d realestate -Atc \
+     "select column_name from information_schema.columns where table_name='contracts' and column_name in ('agreed_price','signed_file_path','signed_file_sha256','signed_file_stored_at') order by 1"
+   ```
+
+   Số khách có `contacted_at` bằng số ở bước 2; truy vấn thứ hai ra bốn tên cột.
+
+**Lưu ý khi quay về bản cũ.** Backend cũ vẫn khởi động được sau khi script chạy, nhưng vì `synchronize: true` nó **xoá cả năm cột** vì không có trong entity cũ. Hai hệ quả:
+
+- Quay về bản cũ rồi lên lại bản mới thì cột được tạo lại **rỗng**. `contacted_at` của khách đã điểm danh khôi phục được bằng cách chạy lại script. Dữ liệu ghi sau này (`contacted_at` do FE-44 ghi tay, giá thoả thuận, thông tin bản đã ký) **mất**, nên trước khi quay về phải chép riêng các cột đó (hoặc dùng bản sao lưu bước 1).
+- Vì vậy khi cần hoàn tác, ưu tiên sửa lỗi tiến lên (hotfix) hơn là quay về image cũ.
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

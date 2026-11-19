@@ -16,7 +16,7 @@ import { Property } from '../properties/entities/property.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 import { formatVn } from '../viewings/viewing-time';
-import { assertSaleFree, findSaleConflict, lockSale } from '../viewings/booking-rules';
+import { assertNotMidVisit, assertSaleFree, findSaleConflict, lockSale } from '../viewings/booking-rules';
 import type { AuthUser } from '../auth/auth.types';
 import { AssignLeadDto, CreateLeadDto } from './dto/create-lead.dto';
 import {
@@ -304,6 +304,7 @@ export class LeadIntakeService {
       const lead = await this.lockLead(em, id);
       if (lead.assignedUserId === dto.assignedUserId) return lead; // Không gia hạn bằng cách chọn lại cùng người.
       const previous = lead.assignedUserId;
+      await assertNotMidVisit(em, lead.id, previous); // FE-53: không kéo lịch bận của sale đang dẫn buổi xem
       const owner = await this.chooseOwner(em, dto.assignedUserId);
       await this.assertNewOwnerFree(em, lead, owner.id);
       this.setOwner(lead, owner.id);

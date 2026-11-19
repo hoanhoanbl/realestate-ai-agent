@@ -288,9 +288,28 @@ const url = process.env.FE33_TEST_DATABASE_URL;
       expect((await db.getRepository(Lead).findOneByOrFail({ id: lead.id })).assignedUserId).toBe(chi.id);
     });
 
-    it('lead không còn buổi xem mở thì chuyển sang sale đang có lịch dày vẫn được', async () => {
-      const { lead } = await booked(an, props[0], t[0], { viewingStatus: 'ATTENDED', leadStatus: 'VIEWED' });
+    it('lead đã xem xong từ lâu, không còn buổi xem mở thì chuyển sang sale đang có lịch dày vẫn được', async () => {
+      const { lead } = await booked(an, props[0], at(new Date(), -180), { viewingStatus: 'ATTENDED', leadStatus: 'VIEWED' });
       await booked(binh, props[1], t[1]);
+      await intake.reassign(lead.id, { assignedUserId: binh.id }, asUser(manager));
+      expect((await db.getRepository(Lead).findOneByOrFail({ id: lead.id })).assignedUserId).toBe(binh.id);
+    });
+
+    it('đang trong 90 phút của buổi đã điểm danh thì không chuyển được, lịch bận ở lại với sale đang dẫn', async () => {
+      const { lead } = await booked(an, props[0], at(new Date(), -30), { viewingStatus: 'ATTENDED', leadStatus: 'VIEWED' });
+      const probe = at(new Date(), 30); // giờ trong tương lai, cách buổi vừa dẫn 60 phút
+      expect(await conflict(an, props[1], probe)).not.toBeNull();
+      const err = await intake.reassign(lead.id, { assignedUserId: binh.id }, asUser(manager)).catch((e) => e);
+      expect(err).toBeInstanceOf(ConflictException);
+      expect(err.message).toContain('Sale An đang dẫn buổi xem');
+      expect((await db.getRepository(Lead).findOneByOrFail({ id: lead.id })).assignedUserId).toBe(an.id);
+      expect(await db.getRepository(LeadEvent).countBy({ leadId: lead.id, type: 'LEAD_REASSIGNED' })).toBe(0);
+      expect(await conflict(an, props[1], probe)).not.toBeNull(); // vẫn bận như trước khi thử chuyển
+      expect(await conflict(binh, props[1], probe)).toBeNull();
+    });
+
+    it('buổi đã điểm danh quá 90 phút thì chuyển được', async () => {
+      const { lead } = await booked(an, props[0], at(new Date(), -100), { viewingStatus: 'ATTENDED', leadStatus: 'VIEWED' });
       await intake.reassign(lead.id, { assignedUserId: binh.id }, asUser(manager));
       expect((await db.getRepository(Lead).findOneByOrFail({ id: lead.id })).assignedUserId).toBe(binh.id);
     });
@@ -341,6 +360,6 @@ const url = process.env.FE33_TEST_DATABASE_URL;
         expect(rejected.reason).toBeInstanceOf(ConflictException);
         expect(await db.getRepository(Viewing).countBy({ status: 'NEW' })).toBe(1);
       }
-    });
+    }, 60000); // 10 vòng, mỗi vòng dựng lại dữ liệu: máy chậm có thể quá 5 giây mặc định
   });
 });

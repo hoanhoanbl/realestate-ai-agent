@@ -156,6 +156,8 @@ Buổi đã điểm danh "Khách đã đến" **vẫn tính bận**: bận theo 
 
 Kiểm tra chạy trong transaction có khoá theo sale (giống khoá theo căn), để hai lượt duyệt hay chuyển cùng lúc không lọt cả hai.
 
+**Chuyển sale khi sale cũ đang dẫn buổi xem:** hệ thống không lưu ai dẫn buổi đã điểm danh, mà tính bận theo người phụ trách lead hiện tại. Nên lead có buổi "Khách đã đến" mà giờ hẹn mới qua chưa tới 90 phút thì **không chuyển được**: "Sale … đang dẫn buổi xem căn … lúc …. Chuyển người phụ trách sau …". Quá 90 phút buổi này không còn ảnh hưởng lịch nào nên chuyển bình thường.
+
 **Vì sao chuyển sale bị chặn, không chỉ cảnh báo:** quản lý thấy xung đột ngay lúc ra quyết định và chọn được sale khác. Nếu chỉ cảnh báo, lead vẫn chuyển được và trùng lịch chỉ lộ ra vào ngày xem. Lead không có buổi xem mở thì chuyển như cũ.
 
 Ví dụ với sale An:

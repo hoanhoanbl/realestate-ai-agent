@@ -143,3 +143,28 @@ export async function assertSaleFreeForApproval(em: EntityManager, leadId: numbe
     excludeViewingId: v.id,
   });
 }
+
+// Chuyển sale khi người cũ đang dẫn buổi xem: hệ thống không lưu ai dẫn buổi đã điểm danh, mà tính bận theo
+// người phụ trách lead hiện tại. Chuyển lead trong lúc buổi còn ảnh hưởng lịch (dưới 90 phút kể từ giờ hẹn)
+// sẽ kéo lịch bận của sale cũ sang sale mới, nên chặn tới hết khoảng đó. Sau mốc này buổi xem không còn
+// ảnh hưởng lịch nào (giờ mới luôn ở tương lai), nên chuyển thoải mái.
+export async function assertNotMidVisit(em: EntityManager, leadId: number, saleId: number | null): Promise<void> {
+  if (!saleId) return;
+  const rows: { viewing_time: Date; property_name: string; sale_name: string }[] = await em.query(
+    `SELECT v.viewing_time, p.name AS property_name, u.name AS sale_name
+       FROM viewings v
+       JOIN properties p ON p.id = v.property_id
+       JOIN users u ON u.id = $2
+      WHERE v.lead_id = $1 AND v.status = 'ATTENDED'
+        AND v.viewing_time > now() - make_interval(mins => $3)
+      ORDER BY v.viewing_time DESC
+      LIMIT 1`,
+    [leadId, saleId, SALE_GAP_MINUTES],
+  );
+  if (rows.length === 0) return;
+  const r = rows[0];
+  const until = new Date(new Date(r.viewing_time).getTime() + SALE_GAP_MINUTES * 60000);
+  throw new ConflictException(
+    `Sale ${r.sale_name} đang dẫn buổi xem căn ${r.property_name} lúc ${fmt(r.viewing_time)}. Chuyển người phụ trách sau ${fmt(until)}.`,
+  );
+}

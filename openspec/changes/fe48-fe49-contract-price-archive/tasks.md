@@ -10,7 +10,7 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
 ## 2. FE-48: luồng 3 dùng giá thoả thuận
 
 - [ ] 2.1 Sửa `luong-3-hop-dong.json` theo design D2: SQL `Lấy dữ liệu hợp đồng`, node `Soạn hợp đồng` (giá hiệu lực, điều khoản hai dòng giá, cờ lệch 20%), `priceText` trong thư. Verify: JSON hợp lệ; import vào n8n local; chạy hai hợp đồng thử (có và không giá thoả thuận): văn bản đúng, hợp đồng không có giá thoả thuận soạn y như bản cũ (so sánh `content`).
-- [ ] 2.2 Thêm `scripts/check-contract-draft.cjs` đọc node `Soạn hợp đồng` từ JSON, chạy với dữ liệu mẫu và kiểm: có giá thoả thuận thì có hai dòng giá và phần trăm theo giá thoả thuận; không có thì giống bản cũ; lệch 25% thì có cảnh báo. Verify: `node scripts/check-contract-draft.cjs` in PASS.
+- [x] 2.2 Thêm `scripts/check-contract-draft.cjs` đọc node `Soạn hợp đồng` từ JSON, chạy với dữ liệu mẫu và kiểm: có giá thoả thuận thì có hai dòng giá và phần trăm theo giá thoả thuận; không có thì giống bản cũ; lệch 25% thì có cảnh báo. Verify: `node scripts/check-contract-draft.cjs` in PASS.
 
 ## 3. FE-48: web
 

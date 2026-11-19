@@ -53,14 +53,41 @@ export const VIEWING_STATUS_LABELS: Record<ViewingStatus, string> = {
 };
 
 // Lý do mất khách (leads.lost_reason)
-export type LostReason = "NO_SHOW" | "NOT_INTERESTED" | "CUSTOMER_CANCELLED" | "EXPIRED" | "OTHER";
+export type LostReason =
+  | "NO_SHOW"
+  | "NOT_INTERESTED"
+  | "CUSTOMER_CANCELLED"
+  | "EXPIRED"
+  | "OTHER"
+  | "STALE"
+  | "PRICE_TOO_HIGH"
+  | "CHOSE_OTHER_PROPERTY"
+  | "BOUGHT_ELSEWHERE"
+  | "UNREACHABLE"
+  | "NO_LONGER_NEEDED";
 export const LOST_REASON_LABELS: Record<LostReason, string> = {
   NO_SHOW: "Khách không đến xem",
   NOT_INTERESTED: "Không còn nhu cầu",
   CUSTOMER_CANCELLED: "Khách tự huỷ lịch",
   EXPIRED: "Quá hạn không xử lý",
   OTHER: "Lý do khác",
+  STALE: "Khách im lặng quá 14 ngày",
+  PRICE_TOO_HIGH: "Giá quá cao",
+  CHOSE_OTHER_PROPERTY: "Chọn căn khác",
+  BOUGHT_ELSEWHERE: "Đã mua nơi khác",
+  UNREACHABLE: "Không liên lạc được",
+  NO_LONGER_NEEDED: "Không còn cần mua",
 };
+// Lý do nhân viên được chọn tay (khớp MANUAL_LOST_REASONS ở backend): đúng sáu nhóm. Bốn lý do của hệ thống
+// và mã cũ NOT_INTERESTED không có ở đây; NOT_INTERESTED vẫn hiện nhãn khi đọc dữ liệu cũ.
+export const MANUAL_LOST_REASONS: LostReason[] = [
+  "OTHER",
+  "PRICE_TOO_HIGH",
+  "CHOSE_OTHER_PROPERTY",
+  "BOUGHT_ELSEWHERE",
+  "UNREACHABLE",
+  "NO_LONGER_NEEDED",
+];
 
 // Trạng thái căn nhà: RESERVED do hệ thống đặt khi có hợp đồng cọc
 export type PropertyStatus = "AVAILABLE" | "RESERVED" | "SOLD" | "HIDDEN";
@@ -126,6 +153,8 @@ export interface Lead {
   assignedAt: string | null;
   responseDueAt: string | null;
   firstResponseAt: string | null;
+  // Lần đầu liên hệ được với khách (FE-44 ghi); null nghĩa là chưa liên hệ được
+  contactedAt?: string | null;
   interestedPropertyIds: number[] | null;
   needs: string | null;
   score: number | null;
@@ -237,6 +266,15 @@ export const EVENT_LABELS: Record<string, string> = {
   DEPOSIT_RECEIVED: "Đã nhận tiền cọc",
   PROPERTY_RESERVED: "Căn chuyển sang giữ cọc",
   PROPERTY_SOLD: "Căn đã bán",
+  CONTACTED: "Đã liên hệ được khách",
+  CONTACT_ATTEMPTED: "Đã gọi, chưa liên hệ được",
+  LADDER_STEP_SENT: "Đã nhắc theo bậc follow-up",
+  LADDER_APPROVED: "Nhân viên duyệt thư gửi khách",
+  LEAD_STALE_CLOSED: "Đóng khách im lặng quá 14 ngày",
+  REBOOK_INVITE_SENT: "Đã mời khách hẹn xem lại",
+  CONTRACT_PRICE_AGREED: "Ghi giá thoả thuận",
+  CONTRACT_ARCHIVED: "Lưu bản hợp đồng đã ký",
+  VIEWING_CONFIRMATION_SENT: "Đã gửi thư xác nhận lịch",
 };
 
 export function eventLabel(type: string): string {
@@ -459,6 +497,10 @@ export interface ContractDetail {
   signedIp: string | null;
   depositReceivedAt: string | null;
   depositReceivedBy: string | null;
+  // FE-48, FE-49 ghi; null nghĩa là theo giá niêm yết / chưa lưu bản đã ký
+  agreedPrice?: string | number | null;
+  signedFileSha256?: string | null;
+  signedFileStoredAt?: string | null;
   expiresAt: string | null;
   createdAt: string;
   signUrl: string | null;
@@ -890,6 +932,48 @@ export function getStaffLink(token: string): Promise<StaffLinkInfo> {
 
 export function confirmStaffLink(token: string): Promise<{ ok: true; action: "approve" | "reschedule"; already?: true }> {
   return request(`/viewings/staff-links/${encodeURIComponent(token)}/confirm`, { method: "POST" });
+}
+
+// FE-45, FE-56: sale duyệt thư AI soạn cho khách (không đăng nhập, token có chữ ký).
+// Hình dạng chốt ở docs/api-contract.md mục 3.10; backend làm ở FE-45, trang `/duyet-thu/[token]` làm ở FE-56.
+export type LadderLinkState = "OPEN" | "HANDLED" | "EXPIRED";
+export type LadderLinkRefusal = "NO_CONSENT" | "NO_EMAIL";
+export type LadderSuggestionAction = "CALL" | "SEND_EMAIL" | "OFFER_VIEWING" | "WAIT";
+
+export interface LadderLinkInfo {
+  state: LadderLinkState;
+  refusal: LadderLinkRefusal | null;
+  leadName: string;
+  leadStatus: LeadStatus;
+  assigneeName: string | null;
+  kind: "REACH" | "QUIET";
+  // Bậc nhắc 1, 3 hoặc 7 khi kind là REACH; null khi kind là QUIET
+  step: 1 | 3 | 7 | null;
+  propertyName: string | null;
+  suggestion: { action: LadderSuggestionAction; reason: string; emailDraft: string | null };
+  // true khi state là OPEN và không có refusal; false thì trang chỉ hiện gợi ý và nút "Bỏ qua"
+  canSend: boolean;
+}
+
+export type LadderDecision = "SEND" | "SKIP";
+export const LADDER_EMAIL_MAX_LENGTH = 1500;
+
+export function getLadderLink(token: string): Promise<LadderLinkInfo> {
+  return request<LadderLinkInfo>(`/followups/ladder-links/${encodeURIComponent(token)}`);
+}
+
+// `text` bắt buộc khi decision là SEND (không rỗng sau khi bỏ khoảng trắng, tối đa LADDER_EMAIL_MAX_LENGTH ký tự).
+// `already` có khi link đã được dùng trước đó (kể cả hai tab bấm cùng lúc): không gửi thêm thư.
+export function confirmLadderLink(
+  token: string,
+  decision: LadderDecision,
+  text?: string,
+): Promise<{ ok: true; decision: LadderDecision; already?: true }> {
+  return request(`/followups/ladder-links/${encodeURIComponent(token)}/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(decision === "SEND" ? { decision, text } : { decision }),
+  });
 }
 
 export function rescheduleViewing(viewingId: number, viewingTime: string): Promise<Viewing> {

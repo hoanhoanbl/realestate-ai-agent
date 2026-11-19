@@ -825,6 +825,24 @@ export function approveLead(id: number): Promise<{ via: "resume" | "manual" }> {
   return request(`/leads/${id}/approve`, { method: "POST" });
 }
 
+export const CONTACT_ATTEMPT_OPTIONS = [
+  { value: "NO_ANSWER", label: "Không nghe máy" },
+  { value: "BUSY", label: "Máy bận" },
+  { value: "CALL_BACK", label: "Hẹn gọi lại" },
+  { value: "WRONG_NUMBER", label: "Sai số điện thoại" },
+] as const;
+export type ContactAttemptResult = (typeof CONTACT_ATTEMPT_OPTIONS)[number]["value"];
+
+export function markLeadContacted(id: number): Promise<Lead & { contactedAt: string }> {
+  return request(`/leads/${id}/contacted`, { method: "POST" });
+}
+
+export function recordLeadContactAttempt(id: number, result: ContactAttemptResult): Promise<Lead> {
+  return request(`/leads/${id}/contact-attempts`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ result }),
+  });
+}
+
 export function setLeadStatus(
   id: number,
   status: "VIEWED" | "LOST",

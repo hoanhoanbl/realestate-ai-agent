@@ -17,6 +17,7 @@ import { assertViewingStarted } from '../viewings/viewing-time';
 import { NORMALIZED_PHONE_SQL } from './intake-rules';
 import { User } from '../users/entities/user.entity';
 import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
+import { manualLostReason, planContactAttempt, planContactMark } from './contact.rules';
 
 // Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
 // vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
@@ -170,6 +171,7 @@ export class LeadsService {
     id: number,
     data: { status: string; note?: string; lostReason?: string },
   ): Promise<Lead> {
+    const reason = data.status === 'LOST' ? manualLostReason(data.lostReason) : undefined;
     const result = await this.leadRepository.manager.transaction(async em => {
       // Cùng khóa với L2: callback duyệt cũ không mở lại lead vừa bị đóng EXPIRED.
       const repo = em.getRepository(Lead);
@@ -184,7 +186,10 @@ export class LeadsService {
       if (oldStatus === 'NEW' && data.status === 'CONFIRMED' && !lead.firstResponseAt) {
         lead.firstResponseAt = new Date();
       }
-      if (data.status === 'LOST') lead.lostReason = data.lostReason ?? 'OTHER';
+      if (data.status === 'LOST') {
+        lead.lostReason = reason!;
+        await em.getRepository(Viewing).update({ leadId: id, status: 'NEW' }, { status: 'CANCELLED' });
+      }
       const saved = await repo.save(lead);
       if (['LOST', 'SIGNED'].includes(data.status)) await closeFeedbackWork(em, id, 'Khách đã đóng hoặc đã ký');
       await em.getRepository(LeadEvent).save({ leadId: id, type: 'STATUS_CHANGED',
@@ -298,50 +303,91 @@ export class LeadsService {
     return { via: 'manual' };
   }
 
-  // Nhân viên tự đặt trạng thái VIEWED (đã xem) hoặc LOST (mất khách / khách không đến)
+  markContacted(id: number, user: AuthUser): Promise<Lead> {
+    return this.saveContact(id, user, { kind: 'mark' });
+  }
+
+  recordContactAttempt(id: number, result: unknown, user: AuthUser): Promise<Lead> {
+    return this.saveContact(id, user, { kind: 'attempt', result });
+  }
+
+  private saveContact(id: number, user: AuthUser, action: { kind: 'mark' } | { kind: 'attempt'; result: unknown }): Promise<Lead> {
+    return this.leadRepository.manager.transaction(async em => {
+      const repo = em.getRepository(Lead);
+      const lead = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
+      const now = new Date();
+      const plan = action.kind === 'mark' ? planContactMark(lead, user, now) : planContactAttempt(lead, user, action.result, now);
+      if (Object.keys(plan.patch).length) {
+        Object.assign(lead, plan.patch);
+        await repo.save(lead);
+      }
+      if (plan.event) await em.getRepository(LeadEvent).save({ leadId: id, ...plan.event });
+      return lead;
+    });
+  }
+
+  // Nhân viên tự đặt VIEWED hoặc đóng LOST bằng một lý do thủ công.
   async adminSetStatus(
     id: number,
     data: { status: string; note?: string; reason?: string },
     user: AuthUser,
   ): Promise<Lead> {
-    const lead = await this.findOne(id);
-    const viewing = await this.viewingRepository.findOne({ where: { leadId: id }, order: { id: 'DESC' } });
     if (data.status === 'VIEWED') {
+      const lead = await this.findOne(id);
+      const viewing = await this.viewingRepository.findOne({ where: { leadId: id }, order: { id: 'DESC' } });
       if (!viewing) throw new BadRequestException('Khách chưa có lịch xem');
       return this.markAttended(lead, viewing, user, data.note);
     }
-    if (lead.status === 'SIGNED' || lead.status === 'LOST') {
-      throw new BadRequestException('Khách này đã ký hoặc đã mất, không đổi được');
-    }
-    assertNotLosingDeposit(lead.status, 'LOST');
-    // Mất khách khi buổi xem còn chờ: huỷ buổi xem để không còn chặn khung giờ của căn
-    if (viewing && viewing.status === 'NEW') {
-      await this.viewingRepository.update(viewing.id, { status: 'CANCELLED' });
-    }
-    const saved = await this.updateStatus(id, {
-      status: 'LOST',
-      lostReason: data.reason ?? 'OTHER',
-      note: `${data.note ? data.note + ' ' : ''}(bởi ${user.name})`,
+    if (data.status !== 'LOST') throw new BadRequestException('Trạng thái thủ công không hợp lệ');
+    const reason = manualLostReason(data.reason);
+    const saved = await this.leadRepository.manager.transaction(async em => {
+      const repo = em.getRepository(Lead);
+      const lead = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
+      if (['SIGNED', 'LOST'].includes(lead.status)) throw new BadRequestException('Khách này đã ký hoặc đã mất, không đổi được');
+      assertNotLosingDeposit(lead.status, 'LOST');
+      const old = lead.status;
+      lead.status = 'LOST'; lead.lostReason = reason;
+      if (!lead.firstResponseAt && (user.role === 'MANAGER' || user.id === lead.assignedUserId)) lead.firstResponseAt = new Date();
+      await em.getRepository(Viewing).update({ leadId: id, status: 'NEW' }, { status: 'CANCELLED' });
+      await repo.save(lead);
+      await closeFeedbackWork(em, id, 'Khách không mua');
+      await em.getRepository(LeadEvent).save({ leadId: id, type: 'STATUS_CHANGED', actorUserId: user.id,
+        note: `${old} -> LOST: ${reason}${data.note ? ` - ${data.note}` : ''} (bởi ${user.name})` });
+      return lead;
     });
-    await this.recordFirstResponse(id, user);
+    this.fireLeadChanged(saved, 'status_changed');
     return saved;
   }
 
   // Khách có đến xem: buổi xem ATTENDED, khách VIEWED. Dùng cho cả nút "Đã xem nhà" cũ và API ghi nhận buổi xem.
   async markAttended(lead: Lead, viewing: Viewing, user: AuthUser, note?: string): Promise<Lead> {
-    if (lead.status !== 'CONFIRMED') {
-      throw new BadRequestException('Chỉ đánh dấu "đã xem" được khi khách đã chốt lịch (CONFIRMED)');
-    }
-    if (viewing.status !== 'NEW') {
-      throw new BadRequestException('Buổi xem này đã được ghi nhận rồi');
-    }
-    assertViewingStarted(viewing.viewingTime);
-    await this.viewingRepository.update(viewing.id, { status: 'ATTENDED' });
-    const saved = await this.updateStatus(lead.id, {
-      status: 'VIEWED',
-      note: `${note ? note + ' ' : ''}(bởi ${user.name})`,
+    const saved = await this.leadRepository.manager.transaction(async em => {
+      const repo = em.getRepository(Lead);
+      const current = await repo.findOne({ where: { id: lead.id }, lock: { mode: 'pessimistic_write' } });
+      if (!current) throw new NotFoundException(`Lead with id ${lead.id} not found`);
+      const views = em.getRepository(Viewing);
+      const currentViewing = await views.findOne({ where: { id: viewing.id, leadId: current.id }, lock: { mode: 'pessimistic_write' } });
+      if (!currentViewing) throw new BadRequestException('Buổi xem không thuộc khách này');
+      if (current.status !== 'CONFIRMED') throw new BadRequestException('Chỉ đánh dấu "đã xem" được khi khách đã chốt lịch (CONFIRMED)');
+      if (currentViewing.status !== 'NEW') throw new BadRequestException('Buổi xem này đã được ghi nhận rồi');
+      assertViewingStarted(currentViewing.viewingTime);
+      const now = new Date();
+      currentViewing.status = 'ATTENDED'; current.status = 'VIEWED';
+      if (!current.contactedAt) {
+        current.contactedAt = now;
+        await em.getRepository(LeadEvent).save({ leadId: current.id, type: 'CONTACTED', actorUserId: user.id,
+          note: `Đã liên hệ được khi điểm danh có đến buổi xem #${viewing.id}` });
+      }
+      if (!current.firstResponseAt && (user.role === 'MANAGER' || user.id === current.assignedUserId)) current.firstResponseAt = now;
+      await views.save(currentViewing);
+      await repo.save(current);
+      await em.getRepository(LeadEvent).save({ leadId: current.id, type: 'STATUS_CHANGED', actorUserId: user.id,
+        note: `CONFIRMED -> VIEWED${note ? `: ${note}` : ''} (bởi ${user.name})` });
+      return current;
     });
-    await this.recordFirstResponse(lead.id, user);
+    this.fireLeadChanged(saved, 'status_changed');
     return saved;
   }
 

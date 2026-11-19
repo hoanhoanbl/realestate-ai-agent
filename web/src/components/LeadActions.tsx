@@ -10,6 +10,8 @@ import {
   formatDateTime,
   formatVnd,
   getContracts,
+  LOST_REASON_LABELS,
+  MANUAL_LOST_REASONS,
   PROPERTY_STATUS_LABELS,
   recordAttendance,
   setLeadStatus,
@@ -301,8 +303,9 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 onChange={(e) => setLoseReason(e.target.value as LostReason)}
                 className="mt-1 block w-full rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
               >
-                <option value="OTHER">Lý do khác</option>
-                <option value="NOT_INTERESTED">Không còn nhu cầu</option>
+                {MANUAL_LOST_REASONS.map(reason => (
+                  <option key={reason} value={reason}>{LOST_REASON_LABELS[reason]}</option>
+                ))}
               </select>
             </label>
             <input

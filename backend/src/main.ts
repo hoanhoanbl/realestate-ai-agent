@@ -12,7 +12,8 @@ async function bootstrap() {
   app.set('trust proxy', Number.isInteger(hops) && hops >= 0 ? hops : 1);
 
   app.setGlobalPrefix('api');
-  app.enableCors();
+  // Web khác nguồn (localhost:3000) cần đọc hai header của việc tải bản lưu trữ
+  app.enableCors({ exposedHeaders: ['X-Archive-Verified', 'Content-Disposition'] });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

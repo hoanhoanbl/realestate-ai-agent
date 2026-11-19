@@ -21,6 +21,7 @@ import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
 import { lockProperty } from '../viewings/booking-rules';
 import { N8nService } from '../n8n/n8n.service';
+import { ContractArchiveService } from './archive/contract-archive.service';
 import type { AuthUser } from '../auth/auth.types';
 
 const SIGN_VALID_DAYS = 7;
@@ -42,6 +43,7 @@ export class ContractsService {
     private readonly propertyRepository: Repository<Property>,
     private readonly leadsService: LeadsService,
     private readonly n8nService: N8nService,
+    private readonly archiveService: ContractArchiveService,
   ) {}
 
   // ---- Lấy hợp đồng, kèm các cột bị ẩn mặc định ----
@@ -205,12 +207,14 @@ export class ContractsService {
     if (!contract) throw new NotFoundException(`Contract with id ${id} not found`);
     const lead = await this.leadRepository.findOne({ where: { id: contract.leadId } });
     const property = await this.propertyRepository.findOne({ where: { id: contract.propertyId } });
-    const { resumeUrl: _hidden, signToken, ...rest } = contract;
+    // Không trả đường dẫn file lưu trữ: chỉ nhân viên cần mã băm, giờ lưu và kết quả kiểm
+    const { resumeUrl: _hidden, signToken, signedFilePath: _path, ...rest } = contract;
     const base = (process.env.PUBLIC_WEB_URL || 'http://localhost:3000').replace(/\/$/, '');
     return {
       ...rest,
       // Chỉ nhân viên đăng nhập mới thấy link ký (để hỗ trợ khách khi cần)
       signUrl: signToken && contract.status === 'SENT' ? `${base}/ky/${signToken}` : null,
+      archive: await this.archiveService.summary(contract),
       lead: lead ? { id: lead.id, name: lead.name, email: lead.email, phone: lead.phone } : null,
       property,
     };

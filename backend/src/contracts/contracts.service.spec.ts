@@ -21,7 +21,7 @@ describe('FE-34: hợp đồng cọc dùng buổi xem đã đến gần nhất',
     const leadsService = { findOne: jest.fn().mockResolvedValue({ id: 5, status: 'VIEWED' }) };
     const service = new ContractsService(
       contractRepo as any, {} as any, { findOne: findViewing } as any, { findOne: findProperty } as any,
-      leadsService as any, {} as any,
+      leadsService as any, {} as any, {} as any,
     );
     return { service, findViewing, findProperty };
   };
@@ -57,7 +57,7 @@ describe('Sale chọn căn khi lập hợp đồng (LH-22)', () => {
     const findProperty = jest.fn().mockResolvedValue({ id: 12, name: 'Nhà B', price: 3000000000, status: 'AVAILABLE' });
     const service = new ContractsService(
       contractRepo as any, {} as any, { findOne: findViewing } as any, { findOne: findProperty } as any,
-      leadsService as any, {} as any,
+      leadsService as any, {} as any, {} as any,
     );
     return { service, findViewing, findProperty };
   };
@@ -94,7 +94,7 @@ describe('Hợp đồng kẹt ở bước soạn', () => {
     };
     const propertyRepo = { query: jest.fn().mockResolvedValue(undefined) };
     const service = new ContractsService(
-      contractRepo as any, {} as any, {} as any, propertyRepo as any, leadsService as any, { callWebhook: webhook } as any,
+      contractRepo as any, {} as any, {} as any, propertyRepo as any, leadsService as any, { callWebhook: webhook } as any, {} as any,
     );
     return { service, query, leadsService, propertyRepo, webhook };
   };
@@ -172,7 +172,7 @@ describe('FE-48: giá thoả thuận', () => {
     const n8n = { callWebhook: jest.fn().mockResolvedValue(undefined) };
     const service = new ContractsService(
       contractRepo as any, {} as any, { findOne: jest.fn().mockResolvedValue(viewing) } as any,
-      { findOne: jest.fn().mockResolvedValue(property) } as any, leadsService as any, n8n as any,
+      { findOne: jest.fn().mockResolvedValue(property) } as any, leadsService as any, n8n as any, {} as any,
     );
     return { service, created, leadsService, contractRepo, em };
   };
@@ -256,8 +256,9 @@ describe('FE-48: giá thoả thuận', () => {
       const contractRepo = { createQueryBuilder: () => qb };
       const leadsService = { findOne: jest.fn().mockResolvedValue({ id: 5, name: 'Lan', email: 'l@x.vn', phone: '09' }) };
       const propertyRepo = { findOne: jest.fn().mockResolvedValue(property) };
+      const archive = { summary: jest.fn().mockResolvedValue(null) };
       const leadRepo = { findOne: jest.fn().mockResolvedValue({ id: 5, name: 'Lan', email: 'l@x.vn', phone: '09' }) };
-      return new ContractsService(contractRepo as any, leadRepo as any, {} as any, propertyRepo as any, leadsService as any, {} as any);
+      return new ContractsService(contractRepo as any, leadRepo as any, {} as any, propertyRepo as any, leadsService as any, {} as any, archive as any);
     };
 
     it('getPublic: có và không có giá thoả thuận', async () => {
@@ -270,6 +271,12 @@ describe('FE-48: giá thoả thuận', () => {
     it('findDetail: có và không có giá thoả thuận', async () => {
       expect((await build(2850000000).findDetail(7)).agreedPrice).toBe(2850000000);
       expect((await build(null).findDetail(7)).agreedPrice).toBeNull();
+    });
+
+    it('findDetail: không lộ đường dẫn file lưu trữ, có khối archive', async () => {
+      const detail = await build(null).findDetail(7);
+      expect(JSON.stringify(detail)).not.toMatch(/signedFilePath|signed_file_path/);
+      expect(detail).toHaveProperty('archive', null);
     });
   });
 });

@@ -10,6 +10,7 @@ import {
   ApiError,
   approveContract,
   cancelContract,
+  downloadSignedFile,
   formatDateTime,
   formatVnd,
   getContract,
@@ -62,6 +63,8 @@ function ContractDetailContent() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -105,6 +108,27 @@ function ContractDetailContent() {
       setActionError(e instanceof Error ? e.message : "Thao tác thất bại.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Tải bản lưu trữ bằng fetch kèm token rồi lưu blob (link thường không mang được header đăng nhập)
+  async function downloadArchive() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const { blob, fileName } = await downloadSignedFile(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      setDownloadError(e instanceof Error ? e.message : "Không tải được bản lưu.");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -317,6 +341,49 @@ function ContractDetailContent() {
             {message && <p className="mt-2 text-emerald-700">{message}</p>}
             {actionError && (
               <p role="alert" className="mt-2 rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{actionError}</p>
+            )}
+          </div>
+          <div className="mt-4 border-t border-emerald-200 pt-3" aria-labelledby="archive-title">
+            <h3 id="archive-title" className="text-sm font-semibold text-slate-700">Bản lưu trữ</h3>
+            {!contract.archive ? (
+              <p className="mt-1 text-slate-600">Chưa lưu.</p>
+            ) : (
+              <div className="mt-1 space-y-2">
+                {contract.archive.verified ? (
+                  <p>
+                    <span className="inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-300">Khớp</span>{" "}
+                    <span className="text-slate-600">file không bị thay đổi từ lúc lưu</span>
+                  </p>
+                ) : (
+                  <p role="alert" className="rounded-lg bg-rose-50 p-3 font-medium text-rose-800 ring-1 ring-rose-200">
+                    Bản lưu đã bị thay đổi hoặc mất
+                    <span className="mt-0.5 block text-xs font-normal">
+                      {contract.archive.problem === "MISSING"
+                        ? "Không còn file trong thư mục lưu trữ."
+                        : "Mã băm của file hiện có khác mã đã lưu lúc ký."}
+                    </span>
+                  </p>
+                )}
+                <dl className="grid gap-x-3 gap-y-1 text-xs text-slate-600 sm:grid-cols-[auto_1fr]">
+                  <dt>Mã băm (SHA-256)</dt>
+                  <dd className="font-mono break-all text-slate-800">{contract.archive.sha256}</dd>
+                  <dt>Lưu lúc</dt>
+                  <dd className="text-slate-800">{contract.archive.storedAt ? formatDateTime(contract.archive.storedAt) : "-"}</dd>
+                </dl>
+                {contract.archive.problem !== "MISSING" && (
+                  <button
+                    type="button"
+                    disabled={downloading}
+                    onClick={downloadArchive}
+                    className="min-h-11 rounded-lg bg-white px-4 py-2 text-sm font-medium text-blue-700 ring-1 ring-blue-300 hover:bg-blue-50 disabled:opacity-60 sm:min-h-0"
+                  >
+                    {downloading ? "Đang tải..." : "Tải bản đã ký (PDF)"}
+                  </button>
+                )}
+                {downloadError && (
+                  <p role="alert" className="rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{downloadError}</p>
+                )}
+              </div>
             )}
           </div>
         </div>

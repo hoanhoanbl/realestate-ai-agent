@@ -479,6 +479,15 @@ export interface ContractRow {
   propertyName: string;
 }
 
+// Kết quả kiểm bản lưu: backend tính lại SHA-256 của file hiện có và so với mã đã lưu
+export interface ContractArchive {
+  sha256: string;
+  storedAt: string | null;
+  verified: boolean;
+  // MISSING: file không còn. MODIFIED: file còn nhưng mã băm không khớp.
+  problem: "MISSING" | "MODIFIED" | null;
+}
+
 export interface ContractDetail {
   id: number;
   leadId: number;
@@ -501,6 +510,8 @@ export interface ContractDetail {
   agreedPrice?: string | number | null;
   signedFileSha256?: string | null;
   signedFileStoredAt?: string | null;
+  // Bản lưu trữ PDF đã ký (FE-48); null là chưa lưu. Backend không trả đường dẫn file.
+  archive?: ContractArchive | null;
   expiresAt: string | null;
   createdAt: string;
   signUrl: string | null;
@@ -533,6 +544,31 @@ export function createContract(
       ...(agreedPrice !== undefined && { agreedPrice }),
     }),
   });
+}
+
+// Tải bản đã ký (PDF). Gọi bằng fetch kèm token rồi lưu blob, vì link thường không mang được header Authorization.
+export async function downloadSignedFile(id: number): Promise<{ blob: Blob; fileName: string; verified: boolean }> {
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/contracts/${id}/signed-file`, { cache: "no-store", headers });
+  } catch {
+    throw new ApiError(`Không kết nối được backend (${API_URL}). Hãy kiểm tra backend đã chạy chưa.`, 0);
+  }
+  if (!res.ok) {
+    let message = `Lỗi ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.message) message = Array.isArray(body.message) ? body.message.join("; ") : body.message;
+    } catch {
+      // giữ thông báo mặc định
+    }
+    throw new ApiError(message, res.status);
+  }
+  const fileName = /filename="?([^";]+)"?/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `HD-${id}.pdf`;
+  return { blob: await res.blob(), fileName, verified: res.headers.get("X-Archive-Verified") === "true" };
 }
 
 // Hợp đồng kẹt ở bước soạn (n8n lỗi): gọi n8n soạn lại, hoặc huỷ để trả căn

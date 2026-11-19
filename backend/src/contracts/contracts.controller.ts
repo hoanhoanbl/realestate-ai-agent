@@ -2,15 +2,20 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Ip,
   Param,
   ParseIntPipe,
   Post,
   Put,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ContractsService } from './contracts.service';
+import { ARCHIVE_BROKEN_MESSAGE, ContractArchiveService } from './archive/contract-archive.service';
 import {
   CreateContractDto,
   DraftContractDto,
@@ -26,7 +31,10 @@ import type { AuthUser } from '../auth/auth.types';
 
 @Controller('contracts')
 export class ContractsController {
-  constructor(private readonly contractsService: ContractsService) {}
+  constructor(
+    private readonly contractsService: ContractsService,
+    private readonly archiveService: ContractArchiveService,
+  ) {}
 
   // --- Nhân viên, quản lý (đã đăng nhập) ---
 
@@ -46,6 +54,22 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.contractsService.findDetail(id);
+  }
+
+  // Tải bản đã ký (PDF). Kiểm lại SHA-256 khi tải; kết quả ở header X-Archive-Verified.
+  @Get(':id/signed-file')
+  @UseGuards(JwtAuthGuard)
+  async signedFile(@Param('id', ParseIntPipe) id: number, @Res({ passthrough: true }) res: Response) {
+    const file = await this.archiveService.read(id);
+    if (!file) throw new NotFoundException('Hợp đồng này chưa có bản lưu trữ');
+    if (!file.buffer) throw new NotFoundException(ARCHIVE_BROKEN_MESSAGE);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${file.fileName}"`,
+      'X-Archive-Verified': String(file.verified),
+      'Cache-Control': 'no-store',
+    });
+    return new StreamableFile(file.buffer);
   }
 
   // Hợp đồng kẹt ở bước soạn (n8n lỗi): nhân viên soạn lại hoặc huỷ

@@ -14,8 +14,8 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
 
 ## 3. FE-48: web
 
-- [ ] 3.1 `web/src/lib/api.ts`: `createContract(leadId, depositAmount, propertyId?, agreedPrice?)` và kiểu chi tiết hợp đồng có `agreedPrice`. Form "Lập hợp đồng" trong `LeadActions.tsx` thêm ô "Giá thoả thuận (tuỳ chọn)" hiện kèm giá niêm yết của căn đã chọn, kiểm cọc không vượt giá hiệu lực trước khi gửi. Verify: `npm run lint && npm run build`; thử trên trình duyệt 375 px (không cuộn ngang, ô nhập cao tối thiểu 44 px, chữ 16 px).
-- [ ] 3.2 Hiển thị giá thoả thuận (kèm giá niêm yết) ở `/admin/hop-dong/[id]`, `/ky/[token]`, trang in và danh sách hợp đồng; không có thì như cũ. Verify: duyệt tay bốn trang với hợp đồng có và không có giá thoả thuận.
+- [x] 3.1 `web/src/lib/api.ts`: `createContract(leadId, depositAmount, propertyId?, agreedPrice?)` và kiểu chi tiết hợp đồng có `agreedPrice`. Form "Lập hợp đồng" trong `LeadActions.tsx` thêm ô "Giá thoả thuận (tuỳ chọn)" hiện kèm giá niêm yết của căn đã chọn, kiểm cọc không vượt giá hiệu lực trước khi gửi. Verify: `npm run lint && npm run build`; thử trên trình duyệt 375 px (không cuộn ngang, ô nhập cao tối thiểu 44 px, chữ 16 px).
+- [x] 3.2 Hiển thị giá thoả thuận (kèm giá niêm yết) ở `/admin/hop-dong/[id]`, `/ky/[token]`, trang in và danh sách hợp đồng; không có thì như cũ. Verify: duyệt tay bốn trang với hợp đồng có và không có giá thoả thuận.
 
 ## 4. FE-48: nền lưu trữ
 

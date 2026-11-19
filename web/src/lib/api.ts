@@ -516,11 +516,22 @@ export function getContract(id: number): Promise<ContractDetail> {
   return request<ContractDetail>(`/contracts/${id}`);
 }
 
-export function createContract(leadId: number, depositAmount: number, propertyId?: number): Promise<{ id: number }> {
+// agreedPrice (tuỳ chọn): giá đã thoả thuận với khách; bỏ trống thì hợp đồng theo giá niêm yết của căn (FE-48)
+export function createContract(
+  leadId: number,
+  depositAmount: number,
+  propertyId?: number,
+  agreedPrice?: number,
+): Promise<{ id: number }> {
   return request<{ id: number }>("/contracts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ leadId, depositAmount, ...(propertyId !== undefined && { propertyId }) }),
+    body: JSON.stringify({
+      leadId,
+      depositAmount,
+      ...(propertyId !== undefined && { propertyId }),
+      ...(agreedPrice !== undefined && { agreedPrice }),
+    }),
   });
 }
 
@@ -558,6 +569,8 @@ export interface SignInfo {
   propertyName: string | null;
   propertyAddress: string | null;
   propertyPrice: string | number;
+  // Giá thoả thuận (FE-48); null là theo giá niêm yết
+  agreedPrice: string | number | null;
   depositAmount: string | number;
   status: ContractStatus;
   expiresAt: string | null;

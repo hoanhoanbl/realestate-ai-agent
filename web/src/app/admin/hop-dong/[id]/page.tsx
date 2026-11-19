@@ -144,7 +144,10 @@ function ContractDetailContent() {
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <ContractStatusBadge status={contract.status} />
             <span className="text-sm text-slate-500">
-              Tiền cọc {formatVnd(contract.depositAmount)} / giá {formatVnd(contract.propertyPrice)}
+              Tiền cọc {formatVnd(contract.depositAmount)} /{" "}
+              {contract.agreedPrice != null
+                ? `giá thoả thuận ${formatVnd(contract.agreedPrice)} (niêm yết ${formatVnd(contract.propertyPrice)})`
+                : `giá ${formatVnd(contract.propertyPrice)}`}
             </span>
           </div>
         </div>

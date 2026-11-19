@@ -27,6 +27,8 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
   const [busy, setBusy] = useState<string | null>(null);
   // Tiền cọc gợi ý 10% giá nhà; nhân viên sửa được
   const [deposit, setDeposit] = useState("");
+  // Giá đã thoả thuận với khách (tuỳ chọn). Rỗng thì hợp đồng theo giá niêm yết.
+  const [agreedPrice, setAgreedPrice] = useState("");
   const [contractId, setContractId] = useState<number | null>(null);
   // Căn khách muốn cọc (id), khi khách đã xem nhiều căn. Rỗng thì dùng căn đầu danh sách.
   const [pickedProperty, setPickedProperty] = useState("");
@@ -91,7 +93,10 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
     attendedProperties.find((v) => String(v.propertyId) === pickedProperty) ?? attendedProperties[0] ?? null;
   const chosenPrice = chosen?.propertyPrice != null ? Number(chosen.propertyPrice) : lead.property ? Number(lead.property.price) : 0;
   const chosenUnavailable = chosen !== null && chosen.propertyStatus !== null && chosen.propertyStatus !== "AVAILABLE";
-  const defaultDeposit = Math.round(chosenPrice * 0.1);
+  // Giá hiệu lực: giá thoả thuận nếu đã nhập hợp lệ, không thì giá niêm yết. Cọc gợi ý 10% giá này.
+  const agreedValue = agreedPrice === "" ? null : Number(agreedPrice);
+  const effectivePrice = agreedValue !== null && Number.isInteger(agreedValue) && agreedValue >= 1 ? agreedValue : chosenPrice;
+  const defaultDeposit = Math.round(effectivePrice * 0.1);
 
   const contractLink = contractId !== null && (
     <Link href={`/admin/hop-dong/${contractId}`} className={`${BTN} bg-white text-blue-700 ring-1 ring-blue-300 hover:bg-blue-50`}>
@@ -229,7 +234,10 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
             {attendedProperties.length > 1 && (
               <select
                 value={chosen ? String(chosen.propertyId) : ""}
-                onChange={(e) => setPickedProperty(e.target.value)}
+                onChange={(e) => {
+                  setPickedProperty(e.target.value);
+                  setAgreedPrice("");
+                }}
                 aria-label="Căn khách muốn đặt cọc"
                 className="max-w-full rounded-md border border-slate-300 bg-white min-h-11 px-2 py-1.5 text-base sm:min-h-0 sm:text-sm"
               >
@@ -244,6 +252,16 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
             {attendedProperties.length === 1 && chosen && (
               <span className="px-1 text-sm text-slate-700">Căn: <b>{chosen.propertyName ?? `#${chosen.propertyId}`}</b></span>
             )}
+            <span className="w-full px-1 text-sm text-slate-600">Giá niêm yết: <b>{formatVnd(chosenPrice)}</b></span>
+            <input
+              type="number"
+              min={1}
+              value={agreedPrice}
+              onChange={(e) => setAgreedPrice(e.target.value)}
+              placeholder="Giá thoả thuận (tuỳ chọn)"
+              aria-label="Giá thoả thuận (VND), tuỳ chọn"
+              className="w-full rounded-md border border-slate-300 min-h-11 px-2 py-1.5 text-base sm:w-72 sm:min-h-0 sm:text-sm"
+            />
             <input
               type="number"
               min={1}
@@ -260,8 +278,18 @@ export default function LeadActions({ lead, onChanged }: { lead: LeadDetail; onC
                 run("contract", async () => {
                   const amount = deposit === "" ? defaultDeposit : Number(deposit);
                   if (!Number.isInteger(amount) || amount < 1) throw new Error("Tiền đặt cọc phải là số nguyên dương.");
+                  if (agreedValue !== null && (!Number.isInteger(agreedValue) || agreedValue < 1)) {
+                    throw new Error("Giá thoả thuận phải là số nguyên dương, hoặc để trống để theo giá niêm yết.");
+                  }
+                  if (amount > effectivePrice) {
+                    throw new Error(
+                      agreedValue !== null
+                        ? "Tiền đặt cọc không được lớn hơn giá thoả thuận."
+                        : "Tiền đặt cọc không được lớn hơn giá căn nhà.",
+                    );
+                  }
                   if (chosenUnavailable) throw new Error("Căn này không còn mở bán, chọn căn khác hoặc nhờ quản lý kiểm tra.");
-                  const c = await createContract(lead.id, amount, chosen?.propertyId);
+                  const c = await createContract(lead.id, amount, chosen?.propertyId, agreedValue ?? undefined);
                   router.push(`/admin/hop-dong/${c.id}`);
                 })
               }

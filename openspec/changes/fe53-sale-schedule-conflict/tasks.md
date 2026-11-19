@@ -33,10 +33,12 @@ Nhánh `feature/FE-53-trung-lich-theo-sale` tạo từ `origin/dev`. Không ph�
 ## 6. Web (kiểm chứng, không thêm màn hình)
 
 - [ ] 6.1 Chạy web và backend local, tạo tình huống sale bận, rồi thử: duyệt ở `/duyet/<mã>`, duyệt và đổi giờ ở Lịch xem, chuyển sale ở trang Khách hàng. Verify: mỗi nơi hiện đúng thông báo 409; chụp màn hình ở 375 px, không cuộn ngang. Nơi nào nuốt `message` thì sửa nhỏ trong cùng PR.
+  - Ghi chú (20/11): đã thử bằng API trên backend và PostgreSQL cục bộ (bản `dev` sau khi gộp #90): duyệt qua link `/duyet`, duyệt ở trang quản trị, đổi giờ và chuyển sale đều trả 409 đúng câu thông báo có tên sale, căn, giờ; đổi giờ cách đủ 90 phút thì qua. Chưa tick vì chưa mở giao diện và chụp 375 px: trình duyệt trong app không mở được localhost.
 
 ## 7. Tích hợp
 
-- [ ] 7.1 `cd backend && npm test` và `FE33_TEST_DATABASE_URL=... npm test` (có test tích hợp) cùng xanh; `cd web && npm run lint && npm run build` xanh. Verify: dán kết quả vào mô tả PR.
+- [x] 7.1 `cd backend && npm test` và `FE33_TEST_DATABASE_URL=... npm test` (có test tích hợp) cùng xanh; `cd web && npm run lint && npm run build` xanh. Verify: dán kết quả vào mô tả PR.
+  - Ghi chú (20/11): trên commit `b5a015f` (Node 24.22.2): `npm test` không DB 124 test qua, 121 bỏ qua; có `FE33_TEST_DATABASE_URL` 20/20 suite, 245/245 test qua; backend và web `lint`, `build` qua. Kết quả đã dán vào mô tả PR #90.
 - [x] 7.2 Chuẩn bị bước tay trên VPS cho `docs/trien-khai.md`: câu SELECT chỉ đọc liệt kê lead `NEW` mà sale đang bận (sẽ bị chặn lúc duyệt) để quản lý xử lý trước. Verify: chạy câu SELECT trên DB local có dữ liệu mẫu và ra đúng cặp bận đã dựng.
 
 ## Workflow follow-up

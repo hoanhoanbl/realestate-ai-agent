@@ -105,3 +105,13 @@ Các thao tác làm đổi tập buổi xem của một sale (tạo buổi xem, 
 - **GIVEN** An rảnh lúc 09:00 và 09:30
 - **WHEN** hai thao tác hẹn xem tiếp cho hai lead của An lúc 09:00 và 09:30 chạy đồng thời
 - **THEN** đúng một thao tác thành công và thao tác còn lại trả 409
+
+#### Scenario: Không chuyển lead khi sale cũ đang dẫn buổi xem đã điểm danh
+- **GIVEN** An vừa điểm danh "Khách đã đến" cho buổi xem lúc 09:00, bây giờ là 09:05
+- **WHEN** quản lý chuyển lead đó sang Bình
+- **THEN** hệ thống trả 409 "Sale An đang dẫn buổi xem căn … lúc 09:00. Chuyển người phụ trách sau 10:30."; người phụ trách vẫn là An và lịch bận lúc 09:00 vẫn thuộc An
+
+#### Scenario: Quá 90 phút kể từ giờ hẹn thì chuyển được
+- **GIVEN** buổi đã điểm danh có giờ hẹn cách bây giờ hơn 90 phút
+- **WHEN** quản lý chuyển lead sang Bình
+- **THEN** chuyển thành công

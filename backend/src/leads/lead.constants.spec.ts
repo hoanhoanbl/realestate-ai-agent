@@ -3,6 +3,7 @@ import {
   LEAD_EVENT_TYPES,
   LOST_REASONS,
   MANUAL_LOST_REASONS,
+  LEGACY_LOST_REASONS,
   buildViewingConfirmationNote,
   parseViewingConfirmationNote,
 } from './lead.constants';
@@ -17,10 +18,15 @@ describe('FE-43: hằng số nền của hành trình khách', () => {
         expect(MANUAL_LOST_REASONS).not.toContain(system);
       }
     });
-    it('lý do chi tiết mới chọn tay được', () => {
-      for (const reason of ['PRICE_TOO_HIGH', 'CHOSE_OTHER_PROPERTY', 'BOUGHT_ELSEWHERE', 'UNREACHABLE', 'NO_LONGER_NEEDED', 'NOT_INTERESTED', 'OTHER']) {
-        expect(MANUAL_LOST_REASONS).toContain(reason);
-      }
+    it('lý do chọn tay đúng sáu nhóm của spec, không hơn không kém', () => {
+      expect([...MANUAL_LOST_REASONS].sort()).toEqual(
+        ['BOUGHT_ELSEWHERE', 'CHOSE_OTHER_PROPERTY', 'NO_LONGER_NEEDED', 'OTHER', 'PRICE_TOO_HIGH', 'UNREACHABLE'],
+      );
+    });
+    it('mã cũ NOT_INTERESTED không chọn tay được nhưng vẫn đọc được dữ liệu cũ', () => {
+      expect(MANUAL_LOST_REASONS).not.toContain('NOT_INTERESTED');
+      expect(LEGACY_LOST_REASONS).toContain('NOT_INTERESTED');
+      expect(LOST_REASONS).toContain('NOT_INTERESTED');
     });
     it('lý do chọn tay là tập con của mọi lý do và giữ nguyên các giá trị cũ', () => {
       for (const reason of MANUAL_LOST_REASONS) expect(LOST_REASONS).toContain(reason);

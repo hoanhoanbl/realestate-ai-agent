@@ -68,7 +68,10 @@
           "id": "postgres_account_id",
           "name": "Postgres account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -91,7 +94,10 @@
           "id": "postgres_account_id",
           "name": "Postgres account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -125,7 +131,10 @@
           "id": "postgres_account_id",
           "name": "Postgres account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {},
@@ -221,7 +230,10 @@
           "id": "postgres_account_id",
           "name": "Postgres account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -243,7 +255,10 @@
           "id": "postgres_account_id",
           "name": "Postgres account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {

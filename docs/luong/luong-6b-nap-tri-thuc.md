@@ -63,10 +63,12 @@ Luồng 6b không gọi API backend, chỉ đọc ghi thẳng database bằng cr
 
 ## 5. Khi lỗi thì sao
 
+**Thử lại (FE-50, LH-53).** Năm node gọi Postgres hoặc pgvector (`Đọc căn nhà`, `Đọc tài liệu`, `Lưu vào pgvector`, `Xoá bản cũ`, `Thống kê`) tự thử lại tối đa 3 lần, cách 5 giây, nên lỗi mạng hay database chập chờn không làm hỏng cả đêm nạp. Node `Gom tài liệu` (Code) và các node con của pgvector (embedding, nạp tài liệu, cắt đoạn) không có cấu hình thử lại riêng; lần thử lại của `Lưu vào pgvector` đã bao chúng. Lưu ý: nếu `Lưu vào pgvector` ghi dở rồi lỗi thì lần thử lại có thể ghi trùng đoạn của cùng lần chạy; `Xoá bản cũ` chỉ xoá bản của các lần chạy trước, nên trùng này tồn tại tới lần chạy kế tiếp (đêm sau). Kiểm bằng lệnh đếm đoạn ở mục 6.
+
 | Lỗi | Điều xảy ra |
 |---|---|
 | Không có dữ liệu để nạp | `Gom tài liệu` báo lỗi, luồng dừng, [Error workflow](error-workflow.md) báo quản lý |
-| Gemini hoặc database lỗi giữa chừng | Lần chạy thất bại; do bước xoá bản cũ nằm cuối nên `rag_chunks` vẫn giữ dữ liệu lần trước. Có thể còn sót một phần đoạn của lần lỗi (có `batch` mới), và lần chạy kế sẽ xoá |
+| Gemini hoặc database lỗi giữa chừng (sau 3 lần thử) | Lần chạy thất bại; do bước xoá bản cũ nằm cuối nên `rag_chunks` vẫn giữ dữ liệu lần trước. Có thể còn sót một phần đoạn của lần lỗi (có `batch` mới), và lần chạy kế sẽ xoá |
 | Bảng `kb_documents` chưa có | `Đọc tài liệu` lỗi. Chạy `rag-kb.sql` trước (mục 6) |
 
 Cách chạy lại: mở workflow trong n8n và bấm **Execute workflow**.

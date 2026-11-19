@@ -79,7 +79,7 @@ Hợp đồng dữ liệu, cách nối node và nghiệm thu: [L4 sale/căn nhà
 | Thời gian từ lúc giao đến lúc **đã liên hệ được**, **theo phiên giao** | Sự kiện: mỗi phiên bắt đầu ở `LEAD_ASSIGNED`, `LEAD_REASSIGNED` hoặc `LEAD_REOPENED` (mở lại lead giao lại cho sale cũ mà không ghi sự kiện giao), kết thúc ở sự kiện `CONTACTED` đầu tiên sau đó (xem ghi chú dưới bảng) | **[Sắp làm FE-47]**, sau FE-44 |
 | Số lead chưa liên hệ được sau bậc 7 ngày | Sự kiện của luồng 9 | **[Sắp làm FE-47]** |
 | Mất khách **theo nhóm lý do** (giá cao, chọn căn khác, mua nơi khác, không liên lạc được, hết nhu cầu, lead nguội, quá hạn...) | `leads.lost_reason` | **[Sắp làm FE-47]** |
-| Thời gian thư tự động tới khách | Sự kiện `VIEWING_CONFIRMATION_SENT` của luồng 1 và 1b (ghi sau khi gửi thư thành công) | **[Sắp làm FE-50]** |
+| Thời gian thư tự động tới khách | Sự kiện `AI_SCORED` của luồng 1 (ghi sau khi thư "đã nhận yêu cầu" gửi thành công), so với lúc lead được tạo | Có dữ liệu; số liệu trong báo cáo thuộc FE-47 |
 
 **Vì sao "thời gian liên hệ" tính theo phiên giao, không lấy hai cột của lead:** `leads.contacted_at` chỉ lưu lần liên hệ được **đầu tiên** và không đổi khi chuyển sale, còn `leads.assigned_at` đổi theo lần giao mới nhất. Lấy `contacted_at - assigned_at` thì lead đã liên hệ được rồi mới chuyển sale sẽ ra **số âm**. Vì vậy chỉ số này không thêm cột mà tính từ nhật ký: mỗi lần giao hay chuyển sale mở một phiên; thời gian của phiên là từ lúc giao tới sự kiện `CONTACTED` đầu tiên sau đó. Phiên chưa có `CONTACTED` thì đếm vào "chưa liên hệ được", không tính vào trung bình. Báo cáo ghi rõ "theo phiên giao". Lead tạo trước FE-43 không có sự kiện `CONTACTED` (dữ liệu cũ chỉ được ghi cột), nên không vào chỉ số này.
 

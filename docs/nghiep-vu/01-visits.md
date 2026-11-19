@@ -208,11 +208,11 @@ Lead "Đã chốt lịch" có giờ xem trong 24 giờ tới và khách có emai
 | Sale đổi giờ lúc 16:00 sang 10:00 sáng mai | Nhắc lúc 17:00, một giờ sau thư báo giờ mới | Không nhắc: thư báo giờ mới đã là lời nhắc |
 | Chốt lịch thứ Hai, thứ Ba sale đổi sang 09:00 thứ Sáu | Nhắc 09:00 thứ Năm theo giờ mới | Như cũ |
 
-Quy tắc: **không nhắc** khi luồng 1 hoặc 1b đã gửi thư chốt lịch hay thư báo giờ mới cho **đúng buổi xem và đúng giờ hẹn đó**, vào lúc giờ hẹn còn dưới 24 giờ. Thư đó tự nó đã là lời nhắc. Các trường hợp khác nhắc đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
+Quy tắc: **không nhắc** khi luồng 1b đã gửi thư chốt lịch hay thư báo giờ mới cho **đúng buổi xem và đúng giờ hẹn đó**, vào lúc giờ hẹn còn dưới 24 giờ. Thư đó tự nó đã là lời nhắc. Các trường hợp khác nhắc đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
 
 | Câu hỏi | Trả lời |
 |---|---|
-| Biết thư đã gửi bằng gì | Sự kiện `VIEWING_CONFIRMATION_SENT` ("Đã gửi thư xác nhận lịch"). Luồng 1 và 1b ghi sự kiện này **sau khi gửi thư thành công** (FE-50), ghi chú dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>` |
+| Biết thư đã gửi bằng gì | Sự kiện `VIEWING_CONFIRMATION_SENT` ("Đã gửi thư xác nhận lịch"). Luồng 1b ghi sự kiện này **sau khi gửi thư chốt lịch hoặc thư báo giờ mới thành công** (FE-50 **[Đang chạy]**; luồng 1 không ghi vì thư "đã nhận yêu cầu" chưa chốt lịch, nên khách đặt sát giờ vẫn nhận lời nhắc sau khi sale duyệt), ghi chú dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>` |
 | Vì sao không dựa vào "Nhân viên duyệt lịch" hay "Đổi giờ xem nhà" | Hai sự kiện này ghi **trước** khi gọi n8n: thư có thể chưa đi hoặc gửi lỗi, khách sẽ không nhận được cả thư chốt lẫn lời nhắc |
 | Thư chốt gửi lỗi | Không có sự kiện, nên khách vẫn nhận lời nhắc như hiện tại |
 | Đổi giờ sau khi đã có sự kiện | Sự kiện cũ ghi giờ cũ nên không còn khớp. Giờ mới được xét lại theo thư báo giờ mới |

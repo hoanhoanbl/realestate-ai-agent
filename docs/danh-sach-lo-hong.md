@@ -67,6 +67,6 @@ Kiểm lại trong code ngày 18/11 (CH-11).
 |---|---|---|---|---|
 | LH-50 | AI | Cả 6 luồng có AI (1, 2, 3, 4, 5, 6) dùng chung một model Gemini, không có model dự phòng. Hết quota thì mọi luồng AI cùng ngừng. Đã kiểm: không workflow nào có model thứ hai | Trung bình | Kế hoạch FE-55, làm nếu còn sức |
 | LH-51 | Bảo mật | Link riêng `/lich/<mã>` bị gửi sang Mautic qua script theo dõi | Trung bình | Đã merge (BF-07, PR #56); test `check-mautic-privacy.cjs` đạt. Chưa kiểm trên server |
-| LH-52 | Giám sát | Error workflow chỉ gửi email, không báo Telegram. Đã kiểm: `error-workflow.json` không có nhánh Telegram | Nhỏ | Kế hoạch FE-50 |
-| LH-53 | Giám sát | Luồng 6b (nạp tri thức) không bật thử lại khi lỗi. Đã kiểm: không node nào bật `retryOnFail` | Nhỏ | Kế hoạch FE-50 |
+| LH-52 | Giám sát | Error workflow chỉ gửi email, không báo Telegram. Đã kiểm: `error-workflow.json` không có nhánh Telegram | Nhỏ | Đã xử lý (FE-50): thêm nhánh Telegram song song với email. Chưa kiểm trên server |
+| LH-53 | Giám sát | Luồng 6b (nạp tri thức) không bật thử lại khi lỗi. Đã kiểm: không node nào bật `retryOnFail` | Nhỏ | Đã xử lý (FE-50): 5 node bật thử lại 3 lần. Chưa kiểm trên server |
 | LH-54 | Quy trình 1 | Luồng 1: node `Lưu kết quả AI` lỗi thì nhánh lỗi chỉ tới `Callback failed`, không báo `FAILED`. Lead giữ `automationStatus = PENDING`, backend từ chối duyệt ("AI chưa chấm điểm xong", `leads.service.ts`), tới giờ hẹn luồng 2 đóng lead `EXPIRED`. Đã kiểm | Nghiêm trọng | Kế hoạch BF-09 |

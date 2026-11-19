@@ -17,7 +17,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Sale, quản lý làm | Nhập khách hotline, văn phòng; quản lý chuyển sale | Sale gọi, duyệt lịch, ghi chú. Quản lý nhận báo khi sale quá hạn | Sale bổ sung ngân sách, nhu cầu |
 | Hệ thống tự động | Chuẩn hoá số, nhận ra khách cũ, chia sale lần lượt, gắn chat bot vào lead | Thư cho khách, báo sale phụ trách, đếm hạn 2 giờ làm việc, báo quản lý khi quá hạn | AI chấm điểm 0–100 |
 | Luồng n8n | L1, L6, Thông báo nhân viên | L1, L2 (nhánh hạn phản hồi), Thông báo nhân viên | L1 |
-| Tình trạng | **[Đang chạy]** | **[Đang chạy]**; mốc thư tới khách là `AI_SCORED` | **[Đang chạy]** |
+| Tình trạng | **[Đang chạy]** | **[Đang chạy]**; chưa có mốc gửi thư tiếp nhận chính xác | **[Đang chạy]** |
 
 ```
  Web form ----+
@@ -190,9 +190,9 @@ Lead vào 23:00   -> hạn 10:00 sáng mai
 
 Khách đã đặt lịch thì "duyệt lịch" thường chính là thao tác đầu tiên, nên không có hạn duyệt riêng.
 
-### 7.3. Mốc thư tự động tới khách **[Đang chạy]**
+### 7.3. Mốc thư tự động tới khách
 
-Hiện có mốc sale thao tác lần đầu (`first_response_at`). Mốc lúc thư "đã nhận yêu cầu" tới khách là sự kiện `AI_SCORED` của luồng 1: luồng chỉ ghi nó sau khi thư khách đã gửi thành công, nên báo cáo tính được "khách được hệ thống phản hồi sau bao lâu" mà không cần sự kiện mới. `VIEWING_CONFIRMATION_SENT` (FE-50) là của thư chốt lịch ở luồng 1b, không phải mốc này.
+Hiện có mốc sale thao tác lần đầu (`first_response_at`). Hệ thống **chưa có mốc gửi chính xác** cho thư "đã nhận yêu cầu". Sự kiện `AI_SCORED` của luồng 1 chỉ là **mốc hoàn tất xử lý**: luồng ghi nó sau khi thư khách, báo sale và lưu kết quả AI đã xong, nên nó thiếu khi một bước sau thư lỗi, và `emailSent` trong kết quả AI là boolean không có giờ. Báo cáo dùng `AI_SCORED` phải gọi đúng tên là "thời gian hệ thống hoàn tất xử lý yêu cầu" (FE-47). Muốn có mốc gửi thư chính xác thì định nghĩa riêng, ngoài phạm vi FE-50. `VIEWING_CONFIRMATION_SENT` (FE-50) là của thư chốt lịch ở luồng 1b, không phải mốc này.
 
 ### 7.4. Sau chạm đầu tiên
 

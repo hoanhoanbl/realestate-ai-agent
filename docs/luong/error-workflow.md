@@ -60,7 +60,8 @@ Workflow này phải ở trạng thái **bật (published)**. Nếu tắt, các 
 Hiện trạng:
 
 - **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi đã bật (5/11).
-- **Chưa kiểm trên server:** chưa có ghi nhận thử gửi email `[LỖI]` trên server sau lần import mới nhất; nhánh Telegram (FE-50) mới sửa JSON, chưa import vào n8n. Đã kiểm cấu trúc bằng `node scripts/check-workflow-monitoring.cjs`. Cách thử ở mục 7.
+- **Đã chạy thử trên n8n cô lập (20/11, Telegram giả ở `api.telegram.org`, SMTP giả):** gây lỗi bằng webhook luồng 1b với `event` sai. (a) Có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID`: một thư `[LỖI]` và một tin Telegram có tên luồng, node lỗi, thông báo và link lần chạy. (b) Bỏ hai biến: chỉ có thư, Error workflow không lỗi. (c) Token sai (Telegram trả 401): thư vẫn đi, tin Telegram thử lại 3 lần. Link trong tin dùng `WEBHOOK_URL` của n8n.
+- **Chưa kiểm trên server:** chưa có ghi nhận thử gửi email `[LỖI]` và tin Telegram thật trên server sau khi import bản mới. Đã kiểm cấu trúc bằng `node scripts/check-workflow-monitoring.cjs`.
 
 ## 7. Cách chạy thử
 

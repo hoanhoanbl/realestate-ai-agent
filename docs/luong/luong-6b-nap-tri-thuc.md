@@ -93,6 +93,7 @@ Hiện trạng:
   ```
 
   Mong đợi có hai dòng: `kb` và `property`.
+- **Đã kiểm retry (20/11, n8n cô lập):** trỏ credential Postgres vào một cổng giả chỉ đếm kết nối rồi chạy tay luồng; node `Đọc căn nhà` thử đúng 3 lần rồi dừng và gọi Error workflow. `node scripts/check-workflow-monitoring.cjs` đếm đúng 5 node có `retryOnFail`. Chưa chạy trọn một lượt với Gemini thật để so kết quả trước và sau khi bật retry.
 - **Chưa kiểm trên server:** chất lượng truy xuất khi tri thức dài hơn 10 tài liệu hiện tại; chưa có số đo.
 
 ## 7. Cách chạy thử

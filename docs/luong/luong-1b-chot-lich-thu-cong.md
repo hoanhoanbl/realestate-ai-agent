@@ -112,7 +112,7 @@ Hiện trạng:
 - **Server:** [trien-khai.md mục 4](../trien-khai.md) ghi luồng 1b đã bật (5/11), là bản trước FE-35. Bản mô tả ở đây (có `viewingId` và `reschedule_requested`) **chưa lên server**.
 - **Phát hành:** cùng `v0.4.0`. Import **trước luồng 1**, vì luồng 1 phát link gọi sang các sự kiện mới. Thứ tự: `thong-bao-nhan-vien.json`, `luong-1b-chot-lich-thu-cong.json`, `luong-1-dat-lich.json`. Xem [trien-khai.md mục 9d](../trien-khai.md#9d-thông-báo-theo-sale-và-duyệt-lịch-qua-link-fe-35).
 - **Đã kiểm:** `node scripts/check-confirmation-note.cjs` (FE-50: sự kiện nằm sau thư, ghi chú đúng định dạng, luồng 1 không ghi) và `node scripts/check-approval-links-workflow.cjs` (cấu trúc luồng 1 và 1b) và import vào n8n cô lập thành công.
-- **Chưa kiểm trên n8n:** hai node `Ghi log VIEWING_CONFIRMATION_SENT` mới thêm bằng cách sửa JSON, chưa import vào n8n và chưa chạy thử với SMTP và backend thật (xem bước 7 mục 7). Cần import lại luồng này trên VPS ([trien-khai.md mục 9g](../trien-khai.md)).
+- **Đã chạy thử trên n8n cô lập (20/11, bản n8n `latest`, backend và PostgreSQL cục bộ, SMTP giả):** import cả ba file không lỗi; webhook `viewing-admin-action` chạy đủ bốn tình huống. (a) Duyệt: một thư "Xác nhận lịch xem nhà", đúng một sự kiện `VIEWING_CONFIRMATION_SENT` có ghi chú `viewing=1;time=2026-11-24T03:00:00.000Z`, nằm trước `STATUS_CHANGED` sang `CONFIRMED` và `APPROVED`. (b) Đổi giờ sang 07:00 UTC: thêm một thư và một sự kiện giờ mới, sự kiện cũ còn nguyên. (c) SMTP tắt: không có thư, không có sự kiện, lead vẫn `NEW`, lần chạy lỗi như cũ. (d) Backend từ chối ghi sự kiện (400): thư vẫn đi, lead vẫn thành `CONFIRMED`.
 - **Chưa kiểm trên server:** gửi thư chốt lịch thật tới hộp thư khách sau khi duyệt bằng link.
 
 ## 7. Cách chạy thử

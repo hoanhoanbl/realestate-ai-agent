@@ -23,7 +23,7 @@
 ### D1. Chỉ luồng 1b ghi sự kiện, luồng 1 không ghi
 Sổ task (`danh-sach-task.md`, FE-50) và design D10 nói "luồng 1 và 1b". Nhưng thư ở luồng 1 (`Email khách HOT/WARM/COLD`) là thư **đã nhận yêu cầu**, nói rõ chưa chốt lịch (`docs/nghiep-vu/01-visits.md` mục 1.4). Quy tắc FE-54 là "thư chốt lịch hoặc thư báo giờ mới đã là lời nhắc". Nếu luồng 1 cũng ghi sự kiện, khách đặt lịch trong vòng 24 giờ trước giờ hẹn sẽ **không** nhận nhắc lịch sau khi sale duyệt, dù chưa từng nhận thư xác nhận nào ngoài thư "đã nhận". Vì vậy chỉ luồng 1b ghi. Điểm này lệch chữ trong sổ task; ghi vào mô tả PR và nhắn Hậu xác nhận khi duyệt.
 
-Mốc "thư tự động đầu tiên tới khách" cho báo cáo (nhắc ở sổ task) không cần sự kiện mới: `PUT /leads/:id/ai-result` đã lưu `emailSent` và `AI_SCORED` ghi giờ chấm điểm.
+Mốc "thư tự động đầu tiên tới khách" cho báo cáo (nhắc ở sổ task) **không có mốc gửi chính xác** và change này không thêm: `AI_SCORED` (luồng 1 ghi sau khi thư khách, báo sale và lưu kết quả AI đã xong; chỉ ghi khi các bước đó chạy hết) chỉ là **mốc hoàn tất xử lý** của luồng 1, và `emailSent` trong kết quả AI là boolean không có giờ. Vì vậy `AI_SCORED` không được gọi là "mốc gửi thư"; nó thiếu khi một bước sau thư (lấy link, báo sale, lưu AI) lỗi. Báo cáo dùng nó phải ghi tên đúng là "thời gian hệ thống hoàn tất xử lý yêu cầu". Nếu sau này cần mốc gửi thư tiếp nhận chính xác thì định nghĩa riêng (ví dụ sự kiện ghi ngay sau node email khách của luồng 1), ngoài phạm vi FE-50.
 
 ### D2. Node ghi sự kiện đặt ngay sau thư, không chặn luồng
 Thêm node HTTP `Ghi log VIEWING_CONFIRMATION_SENT` (bản sao `Ghi log APPROVED`: cùng credential, `retryOnFail` 3 lần cách 5 giây) với `onError: continueRegularOutput`. Đặt ở hai chỗ:

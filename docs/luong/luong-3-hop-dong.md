@@ -59,8 +59,9 @@ Backend gọi webhook (contractId)
 `Chuẩn hoá` kiểm tra `contractId` là số nguyên dương. `Lấy dữ liệu hợp đồng` đọc hợp đồng, khách, căn nhà bằng một truy vấn. Không có thì `Không có hợp đồng` báo lỗi.
 
 **2. Soạn và AI rà soát hợp đồng.**
-- `Soạn hợp đồng` dựng văn bản từ mẫu: số hợp đồng `HD-<mã 4 số>`, bên nhận cọc (văn phòng), bên đặt cọc (khách), căn nhà, giá niêm yết, tiền cọc và tỷ lệ phần trăm, thời hạn giữ chỗ **30 ngày**, quyền và nghĩa vụ khi kết thúc. Cuối văn bản ghi rõ đây là mẫu phục vụ đồ án, không có giá trị pháp lý.
-- Đồng thời kiểm tra bằng **quy tắc cố định**, không phụ thuộc AI: tiền cọc trên 30% giá thì cảnh báo cao bất thường, dưới 1% thì cảnh báo khó ràng buộc, số điện thoại dưới 9 chữ số thì cảnh báo chưa đầy đủ.
+- `Soạn hợp đồng` dựng văn bản từ mẫu: số hợp đồng `HD-<mã 4 số>`, bên nhận cọc (văn phòng), bên đặt cọc (khách), căn nhà, giá, tiền cọc và tỷ lệ phần trăm, thời hạn giữ chỗ **30 ngày**, quyền và nghĩa vụ khi kết thúc. Cuối văn bản ghi rõ đây là mẫu phục vụ đồ án, không có giá trị pháp lý.
+- **Giá (FE-48):** `Lấy dữ liệu hợp đồng` đọc thêm `agreed_price`. Hợp đồng không có giá thoả thuận thì điều khoản giá một dòng "Giá niêm yết" như trước. Có thì điều khoản có hai dòng "Giá thoả thuận" và "Giá niêm yết (đối chiếu)", tiền cọc tính phần trăm theo giá thoả thuận; email gửi quản lý và email gửi khách hiện cả hai dòng giá; `AI rà soát` nhận văn bản này nên dùng đúng giá thoả thuận.
+- Đồng thời kiểm tra bằng **quy tắc cố định**, không phụ thuộc AI: tiền cọc trên 30% giá thì cảnh báo cao bất thường, dưới 1% thì cảnh báo khó ràng buộc, giá thoả thuận lệch quá 20% so với giá niêm yết (thấp hoặc cao hơn) thì cảnh báo nêu mức lệch, số điện thoại dưới 9 chữ số thì cảnh báo chưa đầy đủ.
 - `AI rà soát` (mô hình `Google Gemini Chat Model`, kết quả có cấu trúc qua `Structured Output Parser`) nêu tối đa 3 ý và mức rủi ro `LOW`, `MEDIUM`, `HIGH`. Lời nhắc dặn không bịa, không làm theo yêu cầu nằm trong tên khách hay địa chỉ, và không nhắc lại tiền cọc đã được quy tắc kiểm.
 - `Gộp rà soát` lấy mức **cao hơn** giữa quy tắc và AI, nên AI không thể hạ mức mà quy tắc đã phát hiện (trên 30% là `HIGH`, có cảnh báo là `MEDIUM`). Nếu AI không dùng được thì vẫn đi tiếp, ghi chú "chỉ kiểm tra bằng quy tắc".
 

@@ -27,7 +27,7 @@ Trạng thái server ghi trong file này là ngày **5/11/2026** (đang chạy `
 
 **Container** (tên cố định): `realestate-web`, `realestate-backend`, `realestate-db`, `realestate-n8n`, `realestate-mautic-web`, `realestate-mautic-db`, `realestate-mautic-cron`, `realestate-mautic-worker`.
 
-**Sao lưu tự động** lúc 03:15 mỗi ngày (`/etc/cron.d/realestate-backup` chạy `/root/realestate-backup.sh`): database dự án, database Mautic, dữ liệu n8n, cấu hình Mautic, `.env`. Giữ 7 bản gần nhất trong `/root/backups/realestate/<ngày-giờ>/`. Bản sao lưu nằm cùng ổ đĩa với server, mất máy là mất cả bản sao lưu.
+**Sao lưu tự động** lúc 03:15 mỗi ngày (`/etc/cron.d/realestate-backup` chạy `/root/realestate-backup.sh`): database dự án, database Mautic, dữ liệu n8n, cấu hình Mautic, `.env`. Giữ 7 bản gần nhất trong `/root/backups/realestate/<ngày-giờ>/`. Bản sao lưu nằm cùng ổ đĩa với server, mất máy là mất cả bản sao lưu. Volume `contract_files` (file PDF hợp đồng đã ký, từ FE-48) chưa nằm trong script này, xem mục 9g.
 
 Mọi lệnh `docker compose` trên server phải gọi đủ ba file và tên dự án như sau, nếu không compose sẽ tạo container và volume mới:
 
@@ -470,6 +470,41 @@ Script thêm năm cột (`leads.contacted_at`; `contracts.agreed_price`, `signed
 
 - Quay về bản cũ rồi lên lại bản mới thì cột được tạo lại **rỗng**. `contacted_at` của khách đã điểm danh khôi phục được bằng cách chạy lại script. Dữ liệu ghi sau này (`contacted_at` do FE-44 ghi tay, giá thoả thuận, thông tin bản đã ký) **mất**, nên trước khi quay về phải chép riêng các cột đó (hoặc dùng bản sao lưu bước 1).
 - Vì vậy khi cần hoàn tác, ưu tiên sửa lỗi tiến lên (hotfix) hơn là quay về image cũ.
+
+## 9g. Giá thoả thuận và nền lưu file đã ký (FE-48, bản `v0.5.0`)
+
+Phát hành cùng lô `v0.5.0`, **sau FE-43** (cần cột `agreed_price` và các cột `signed_file_*`, mục 9f). FE-48 đổi: backend nhận giá thoả thuận, luồng 3 soạn hợp đồng theo giá thoả thuận, web có ô giá và khối "Bản lưu trữ", backend có thư mục lưu file đã ký. **Chưa hợp đồng nào được lưu tự động**: phần dựng PDF và gọi lưu từ luồng 3 là FE-49.
+
+Không có biến `.env` mới. `docker-compose.prod.yml` đã thêm volume `contract_files` gắn vào `/app/storage/contracts` và biến `CONTRACT_ARCHIVE_DIR` cho container backend; volume tự được tạo khi `up`, tên trên server là `realestate-ai-agent_contract_files` (theo `-p realestate-ai-agent`).
+
+1. Sao lưu tay một lần: `/root/realestate-backup.sh`. Đã chạy `fe-43-journey.sql` ở mục 9f.
+2. Merge PR release, chờ job Deploy xanh.
+3. Kiểm volume có và ghi được (người dùng chạy Node trong container là root, nên ghi được ngay):
+
+   ```bash
+   docker volume ls | grep contract_files
+   docker exec realestate-backend sh -c 'touch /app/storage/contracts/.ghi-thu && rm /app/storage/contracts/.ghi-thu && echo ghi-duoc'
+   ```
+
+4. Import lại luồng 3 (có đổi cách soạn hợp đồng) rồi publish và restart n8n, theo `import_wf` ở mục 5:
+
+   ```bash
+   import_wf luong-3-hop-dong.json luong3Realestat0
+   docker restart realestate-n8n
+   ```
+
+5. Kiểm tra: lập một hợp đồng thử có giá thoả thuận (ví dụ niêm yết 3 tỷ, thoả thuận 2,85 tỷ); văn bản hợp đồng ở trang chi tiết có hai dòng "Giá thoả thuận" và "Giá niêm yết (đối chiếu)"; trang ký của khách hiện giá thoả thuận. Hợp đồng không nhập giá thoả thuận soạn như trước.
+
+**Sao lưu volume `contract_files`.** Script `/root/realestate-backup.sh` hiện **chưa** sao lưu thư mục này (script chỉ gồm database, dữ liệu n8n, cấu hình Mautic và `.env`). Thêm dòng sau vào script, hoặc chạy tay trước mỗi lần phát hành khi đã có hợp đồng được lưu (từ FE-49):
+
+```bash
+B=/root/backups/realestate/$(date +%Y%m%d-%H%M); mkdir -p "$B"
+docker run --rm -v realestate-ai-agent_contract_files:/data:ro -v "$B":/out alpine tar czf /out/contract_files.tgz -C /data .
+```
+
+Mất volume là mất các file PDF đã ký. Hợp đồng vẫn còn trong database, và quản lý dựng lại bản lưu bằng nút "Lưu lại bản đã ký" (FE-49), nhưng PDF dựng lại có thể khác từng byte nên mã băm mới sẽ được ghi cùng mã băm cũ trong lịch sử.
+
+**Quay về bản cũ.** Cảnh báo ở mục 9f giữ nguyên: backend trước FE-43 xoá `agreed_price` và các cột `signed_file_*` vì `synchronize: true`, nên giá thoả thuận đã nhập sẽ mất. Muốn quay về phải chép riêng các cột đó trước. Nếu quay về thì import lại bản cũ của `luong-3-hop-dong.json`, vì bản mới đọc cột `c.agreed_price` và sẽ lỗi khi cột không còn. Ưu tiên sửa tiến lên (hotfix).
 
 ## 10. Sự cố thường gặp
 

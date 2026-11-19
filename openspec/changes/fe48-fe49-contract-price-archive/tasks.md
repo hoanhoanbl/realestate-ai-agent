@@ -26,8 +26,8 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
 
 ## 5. FE-48: tài liệu và đóng PR
 
-- [ ] 5.1 `docs/nghiep-vu/02-document-signing.md` mục 1: đổi "Sắp làm FE-48" thành "Đang chạy", bỏ chữ "đề xuất" của hai dòng cọc và báo cáo (báo cáo giữ "làm sau"), sửa "mỗi lần ghi hoặc đổi" thành "mỗi lần lập hợp đồng có giá" (design D1). `docs/api-contract.md`: route mới, trường `agreedPrice`, `archive`. `docs/luong/luong-3-hop-dong.md`: điều khoản giá. Verify: mỗi route ghi trong `api-contract.md` có trong controller; `grep -n "FE-48" docs/nghiep-vu/02-document-signing.md` không còn "Sắp làm".
-- [ ] 5.2 `docs/trien-khai.md`: bước tay thêm volume và biến, và dòng sao lưu `contract_files`. Verify: các lệnh chạy được như viết trên môi trường local.
+- [x] 5.1 `docs/nghiep-vu/02-document-signing.md` mục 1: đổi "Sắp làm FE-48" thành "Đang chạy", bỏ chữ "đề xuất" của hai dòng cọc và báo cáo (báo cáo giữ "làm sau"), sửa "mỗi lần ghi hoặc đổi" thành "mỗi lần lập hợp đồng có giá" (design D1). `docs/api-contract.md`: route mới, trường `agreedPrice`, `archive`. `docs/luong/luong-3-hop-dong.md`: điều khoản giá. Verify: mỗi route ghi trong `api-contract.md` có trong controller; `grep -n "FE-48" docs/nghiep-vu/02-document-signing.md` không còn "Sắp làm".
+- [x] 5.2 `docs/trien-khai.md`: bước tay thêm volume và biến, và dòng sao lưu `contract_files`. Verify: các lệnh chạy được như viết trên môi trường local.
 - [ ] 5.3 Mở PR nháp `[FE-48]` base là nhánh FE-43; ghi rõ điểm sửa `api.ts` ngoài PR nền. Verify: CI xanh.
 
 ## 6. FE-49: dựng PDF

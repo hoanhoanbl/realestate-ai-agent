@@ -115,7 +115,12 @@ export class ContractsService {
     }
     const property = await this.propertyRepository.findOne({ where: { id: viewing.propertyId } });
     if (!property) throw new BadRequestException('Khách chưa có căn nhà để lập hợp đồng');
-    if (dto.depositAmount > Number(property.price)) {
+    // Cọc so với giá hiệu lực: giá thoả thuận nếu có, không thì giá niêm yết. null và undefined đều là "bỏ trống".
+    const agreedPrice = dto.agreedPrice ?? null;
+    if (agreedPrice !== null && dto.depositAmount > agreedPrice) {
+      throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá thoả thuận');
+    }
+    if (agreedPrice === null && dto.depositAmount > Number(property.price)) {
       throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá căn nhà');
     }
 
@@ -141,6 +146,7 @@ export class ContractsService {
             propertyId: property.id,
             depositAmount: dto.depositAmount,
             propertyPrice: Number(property.price),
+            agreedPrice,
             status: 'DRAFTING',
             createdBy: user.name,
           }),
@@ -157,6 +163,13 @@ export class ContractsService {
 
     await this.leadsService.updateStatus(lead.id, { status: 'DEPOSIT', note: `Tạo hợp đồng #${contract.id} (bởi ${user.name})` });
     await this.leadsService.addEvent(lead.id, { type: 'CONTRACT_CREATED', note: `Hợp đồng #${contract.id}, cọc ${dto.depositAmount.toLocaleString('vi-VN')} đ (bởi ${user.name})` });
+    if (agreedPrice !== null) {
+      const vnd = (n: number) => `${Number(n).toLocaleString('vi-VN')} đ`;
+      await this.leadsService.addEvent(lead.id, {
+        type: 'CONTRACT_PRICE_AGREED',
+        note: `Hợp đồng #${contract.id}: giá thoả thuận ${vnd(agreedPrice)}, giá niêm yết ${vnd(Number(property.price))} (bởi ${user.name})`,
+      });
+    }
     await this.leadsService.addEvent(lead.id, { type: 'PROPERTY_RESERVED', note: `Căn "${property.name}" chuyển sang đang giữ cọc` });
 
     this.n8nService
@@ -388,6 +401,7 @@ export class ContractsService {
       propertyName: property?.name ?? null,
       propertyAddress: property?.address ?? null,
       propertyPrice: contract.propertyPrice,
+      agreedPrice: contract.agreedPrice,
       depositAmount: contract.depositAmount,
       status: expired ? 'EXPIRED' : contract.status,
       expiresAt: contract.expiresAt,

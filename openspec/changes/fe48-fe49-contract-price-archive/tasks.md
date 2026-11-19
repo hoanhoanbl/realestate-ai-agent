@@ -4,8 +4,8 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
 
 ## 1. FE-48: giá thoả thuận ở backend
 
-- [ ] 1.1 `CreateContractDto` thêm `agreedPrice?` (số nguyên từ 1); `ContractsService.create` kiểm cọc so với giá hiệu lực, lưu `agreed_price`, ghi sự kiện `CONTRACT_PRICE_AGREED` sau khi tạo thành công (design D1). Verify: `contracts.service.spec.ts` có test cho từng scenario của spec `contract-agreed-price` (có giá, bỏ trống, giá 0 hoặc âm, cọc lớn hơn giá thoả thuận, cọc lớn hơn giá niêm yết khi không có giá thoả thuận, sự kiện chỉ ghi khi có giá); `cd backend && npm test` xanh.
-- [ ] 1.2 `findDetail` và `getPublic` trả `agreedPrice`; `findAll` không đổi. Verify: test đơn vị cho `getPublic` có và không có giá thoả thuận.
+- [x] 1.1 `CreateContractDto` thêm `agreedPrice?` (số nguyên từ 1); `ContractsService.create` kiểm cọc so với giá hiệu lực, lưu `agreed_price`, ghi sự kiện `CONTRACT_PRICE_AGREED` sau khi tạo thành công (design D1). Verify: `contracts.service.spec.ts` có test cho từng scenario của spec `contract-agreed-price` (có giá, bỏ trống, giá 0 hoặc âm, cọc lớn hơn giá thoả thuận, cọc lớn hơn giá niêm yết khi không có giá thoả thuận, sự kiện chỉ ghi khi có giá); `cd backend && npm test` xanh.
+- [x] 1.2 `findDetail` và `getPublic` trả `agreedPrice`; `findAll` không đổi. Verify: test đơn vị cho `getPublic` có và không có giá thoả thuận.
 
 ## 2. FE-48: luồng 3 dùng giá thoả thuận
 

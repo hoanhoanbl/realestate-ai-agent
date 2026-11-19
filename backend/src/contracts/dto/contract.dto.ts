@@ -13,6 +13,13 @@ export class CreateContractDto {
   @Min(1)
   depositAmount: number;
 
+  // Giá đã thoả thuận với khách (VND). Bỏ trống thì hợp đồng theo giá niêm yết của căn.
+  // Không có API sửa giá sau khi lập: muốn đổi thì huỷ hợp đồng đang soạn rồi lập lại.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  agreedPrice?: number;
+
   // Căn khách muốn cọc. Bỏ trống thì lấy căn của buổi xem đã đến gần nhất.
   // Có giá trị thì khách phải có buổi xem đã đến của đúng căn đó.
   @IsOptional()

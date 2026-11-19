@@ -191,6 +191,8 @@ function LadderLinkContent() {
   const tooLong = text.length > LADDER_EMAIL_MAX_LENGTH;
   const invalid = trimmed.length === 0 || tooLong;
   const { suggestion } = info;
+  // WAIT nghĩa là chưa cần liên hệ: không có lựa chọn gửi thư dù API báo canSend (luồng 9 task 6.2)
+  const canSend = info.canSend && suggestion.action !== "WAIT";
 
   return (
     <Shell>
@@ -237,7 +239,7 @@ function LadderLinkContent() {
 
           {info.refusal && <Alert tone="warning">{REFUSAL_TEXT[info.refusal]}</Alert>}
 
-          {info.canSend && (
+          {canSend && (
             <Field
               id="ladder-email"
               label="Nội dung thư gửi khách"
@@ -263,7 +265,7 @@ function LadderLinkContent() {
           {error && <Alert>{error}</Alert>}
 
           <div className="space-y-2">
-            {info.canSend && (
+            {canSend && (
               <Button onClick={() => decide("SEND")} disabled={busy !== null || invalid} size="lg" className="w-full">
                 {busy === "SEND" ? "Đang gửi…" : "Gửi cho khách"}
               </Button>
@@ -272,7 +274,7 @@ function LadderLinkContent() {
               variant="secondary"
               onClick={() => decide("SKIP")}
               disabled={busy !== null}
-              size={info.canSend ? "md" : "lg"}
+              size={canSend ? "md" : "lg"}
               className="w-full"
             >
               {busy === "SKIP" ? "Đang xử lý…" : "Bỏ qua"}

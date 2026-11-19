@@ -29,6 +29,19 @@ Lệnh chạy đo SHALL, với mỗi lead, đặt lịch xem qua API đặt lị
 - **WHEN** một lead không có điểm sau thời gian chờ tối đa hoặc có trạng thái xử lý `FAILED`
 - **THEN** lead đó được tính là "lỗi" trong báo cáo, không tính vào độ chính xác, và các lead còn lại vẫn được đo
 
+### Requirement: Mỗi lượt đo dùng một khung giờ xem riêng
+Lệnh chạy đo SHALL lấy các khung giờ còn đặt được của căn từ API khung giờ của backend và gán cho mỗi lượt đo (số lead nhân số lần lặp) một khung riêng, không dùng lại khung cho hai lead đang chờ. Nếu số khung còn đặt được ít hơn số lượt đo, lệnh SHALL dừng trước khi tạo bất kỳ lead nào và nêu số khung thiếu.
+
+#### Scenario: Chạy lặp ba lần
+- **GIVEN** căn mẫu còn đủ khung trống trong 14 ngày tới
+- **WHEN** chạy lệnh đo với `--repeat 3` (20 lead, 60 lượt)
+- **THEN** 60 buổi xem được đặt vào 60 khung khác nhau và không buổi nào bị từ chối vì trùng lịch
+
+#### Scenario: Không đủ khung trống
+- **GIVEN** căn mẫu chỉ còn 30 khung trống trong 14 ngày tới
+- **WHEN** chạy lệnh đo với `--repeat 3`
+- **THEN** lệnh dừng với mã lỗi, không tạo lead nào, và nêu còn thiếu 30 khung
+
 ### Requirement: Chỉ chạy trên môi trường local
 Lệnh chạy đo SHALL từ chối chạy nếu địa chỉ backend không phải `localhost`, `127.0.0.1` hoặc `[::1]`, để không tạo lead mẫu hay gửi thư trên hệ thống thật.
 

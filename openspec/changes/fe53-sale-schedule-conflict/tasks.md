@@ -32,8 +32,9 @@ Nhánh `feature/FE-53-trung-lich-theo-sale` tạo từ `origin/dev`. Không ph�
 
 ## 6. Web (kiểm chứng, không thêm màn hình)
 
-- [ ] 6.1 Chạy web và backend local, tạo tình huống sale bận, rồi thử: duyệt ở `/duyet/<mã>`, duyệt và đổi giờ ở Lịch xem, chuyển sale ở trang Khách hàng. Verify: mỗi nơi hiện đúng thông báo 409; chụp màn hình ở 375 px, không cuộn ngang. Nơi nào nuốt `message` thì sửa nhỏ trong cùng PR.
-  - Ghi chú (20/11): đã thử bằng API trên backend và PostgreSQL cục bộ (bản `dev` sau khi gộp #90): duyệt qua link `/duyet`, duyệt ở trang quản trị, đổi giờ và chuyển sale đều trả 409 đúng câu thông báo có tên sale, căn, giờ; đổi giờ cách đủ 90 phút thì qua. Chưa tick vì chưa mở giao diện và chụp 375 px: trình duyệt trong app không mở được localhost.
+- [x] 6.1 Chạy web và backend local, tạo tình huống sale bận, rồi thử: duyệt ở `/duyet/<mã>`, duyệt và đổi giờ ở Lịch xem, chuyển sale ở trang Khách hàng. Verify: mỗi nơi hiện đúng thông báo 409; chụp màn hình ở 375 px, không cuộn ngang. Nơi nào nuốt `message` thì sửa nhỏ trong cùng PR.
+  - Ghi chú (20/11): đã thử bằng API trên backend và PostgreSQL cục bộ (bản `dev` sau khi gộp #90): duyệt qua link `/duyet`, duyệt ở trang quản trị, đổi giờ và chuyển sale đều trả 409 đúng câu thông báo có tên sale, căn, giờ; đổi giờ cách đủ 90 phút thì qua.
+  - Ghi chú (20/11, giao diện): thử ở khung 375 px trên web `next dev` + backend + PostgreSQL tạm (code của `dev` sau #90), trình duyệt trong app. Đạt cả bốn nơi, `scrollWidth` = 375 (không cuộn ngang) ở cả ba trang: (1) `/duyet/<mã>` bấm "Duyệt lịch" hiện khung lỗi đỏ với đúng câu 409; (2) trang lead, nút "Duyệt lịch xem", cùng câu; (3) "Lịch xem": đổi giờ cách 30 phút hiện câu 409 ngay dưới ô giờ, đổi cách đúng 90 phút lưu được; (4) trang lead, "Chuyển người phụ trách" sang sale bận hiện câu 409 (đuôi "chọn sale khác hoặc đổi giờ trước."), lead giữ sale cũ. Không nơi nào nuốt `message`, không phải sửa web. Tình huống dựng bằng cách đặt 3 lịch hợp lệ rồi dời giờ bằng SQL (giả lập dữ liệu trước FE-53).
 
 ## 7. Tích hợp
 

@@ -17,7 +17,7 @@ Cập nhật lần cuối: 20/11/2026 (FE-48: giá thoả thuận đang chạy, 
 | Sale, quản lý làm | Sale thương lượng | Sale chọn căn, nhập tiền cọc. Quản lý duyệt hoặc từ chối | | Quản lý xác nhận "đã nhận tiền cọc", đánh dấu "đã bán" |
 | Hệ thống tự động | | Giữ căn, AI soạn từ mẫu và rà nội dung, chờ quản lý, hết hạn tự trả căn | Gửi link ký, nhắc ký sau 48 giờ, hết hạn tự trả căn; tạo PDF, hash, lưu file | |
 | Luồng n8n | | L3 | L3 | |
-| Tình trạng | Ô giá thoả thuận **[Đang chạy]** | **[Đang chạy]** | Ký **[Đang chạy]**; lưu trữ **[Sắp làm FE-49]** (nền lưu file, mã băm, tải về đã có từ FE-48) | **[Đang chạy]**; đường lui sau ký **[Làm sau]** |
+| Tình trạng | Ô giá thoả thuận **[Đang chạy]** | **[Đang chạy]** | Ký **[Đang chạy]**; lưu trữ **[Đang chạy]** (nền lưu file, mã băm, tải về từ FE-48; dựng PDF, luồng 3 tự lưu và nút "Lưu lại bản đã ký" từ FE-49) | **[Đang chạy]**; đường lui sau ký **[Làm sau]** |
 
 ```
  Lead VIEWED --sale Lập hợp đồng (chọn căn, tiền cọc)--> HĐ DRAFTING, căn RESERVED, lead DEPOSIT
@@ -35,7 +35,7 @@ Cập nhật lần cuối: 20/11/2026 (FE-48: giá thoả thuận đang chạy, 
                      v
                HĐ SIGNED, lead SIGNED
                      |
-          [FE-49] PDF + SHA-256 + lưu file + nhật ký
+          PDF + SHA-256 + lưu file + nhật ký (FE-49, trước khi gửi thư sau ký)
                      v
           Quản lý: "Đã nhận tiền cọc" -> căn SOLD
 ```
@@ -123,21 +123,22 @@ Nếu n8n tắt hoặc lỗi lúc lập, hợp đồng nằm ở "Đang soạn" 
 - Link đã ký: "Hợp đồng này đã được ký rồi". Link quá hạn: "Liên kết ký đã hết hạn".
 - Ký xong: hợp đồng "Đã ký", lead "Đã ký hợp đồng cọc". Khách nhận email xác nhận kèm link `/hop-dong/<mã>` để xem lại, in hoặc lưu PDF từ trình duyệt; sale nhận email báo.
 
-## 5. Lưu trữ bản đã ký **[Sắp làm FE-49]**
+## 5. Lưu trữ bản đã ký **[Đang chạy]**
 
-**Nền đã có từ FE-48 [Đang chạy]:** dịch vụ lưu file của backend ghi PDF ra thư mục lưu trữ (volume Docker `contract_files`, biến `CONTRACT_ARCHIVE_DIR`), tính SHA-256, ghi `signed_file_path`, `signed_file_sha256`, `signed_file_stored_at` và sự kiện `CONTRACT_ARCHIVED`. Nhân viên đăng nhập tải được file (`GET /api/contracts/{id}/signed-file`); trang chi tiết hợp đồng hiện mã băm, giờ lưu và kết quả kiểm ("Khớp" hoặc cảnh báo "Bản lưu đã bị thay đổi hoặc mất"). Lưu lần hai khi file còn nguyên vẹn không đổi gì; file mất hoặc lệch thì lưu tự động bị `409` và chỉ quản lý phục hồi, file lệch được giữ lại làm chứng cứ. **Chưa có** phần dựng PDF, gọi lưu từ luồng 3 và nút "Lưu lại bản đã ký": đó là FE-49, nên hiện chưa hợp đồng nào được lưu tự động.
-
-Hiện hệ thống lưu chữ ký và thông tin người ký trong database, khách tự in PDF từ trình duyệt; **chưa có file lưu trữ chính thức**. Đây là phần "compliant archiving" của đề bài còn hở.
+**Nền đã có từ FE-48 [Đang chạy]:** dịch vụ lưu file của backend ghi PDF ra thư mục lưu trữ (volume Docker `contract_files`, biến `CONTRACT_ARCHIVE_DIR`), tính SHA-256, ghi `signed_file_path`, `signed_file_sha256`, `signed_file_stored_at` và sự kiện `CONTRACT_ARCHIVED`. Nhân viên đăng nhập tải được file (`GET /api/contracts/{id}/signed-file`); trang chi tiết hợp đồng hiện mã băm, giờ lưu và kết quả kiểm ("Khớp" hoặc cảnh báo "Bản lưu đã bị thay đổi hoặc mất"). Lưu lần hai khi file còn nguyên vẹn không đổi gì; file mất hoặc lệch thì lưu tự động bị `409` và chỉ quản lý phục hồi, file lệch được giữ lại làm chứng cứ. **Từ FE-49:** backend dựng PDF (`pdfkit`, phông Noto Sans để đủ dấu tiếng Việt) từ dữ liệu hợp đồng đã ký, và luồng 3 gọi lưu ngay sau khi khách ký. Khách vẫn xem lại hợp đồng ở `/hop-dong/<mã>`; file lưu trữ chỉ nhân viên tải được.
 
 | Bước (luồng 3, sau khi khách ký) | Nội dung |
 |---|---|
-| Tạo PDF | Từ bản hợp đồng đã ký, gồm chữ ký, họ tên, giờ ký, IP |
-| Lưu file | Gọi endpoint lưu file đã ký của backend (FE-48); đường dẫn ghi vào `contracts.signed_file_path` |
+| Tạo PDF | `POST /api/contracts/{id}/archive` (webhook secret) dựng PDF từ bản hợp đồng đã ký: tiêu đề, nội dung, giá thoả thuận khi có, chữ ký, họ tên, giờ ký (giờ Việt Nam), IP. Ngày tạo trong file lấy theo giờ ký nên cùng dữ liệu cho cùng file |
+| Lưu file | Ghi `HD-<mã 4 chữ số>.pdf` vào thư mục lưu trữ; tên do hệ thống đặt, đường dẫn ghi vào `contracts.signed_file_path` |
 | Chống sửa | Tính SHA-256 của file, lưu `contracts.signed_file_sha256` và giờ lưu `signed_file_stored_at`. Mở lại file mà hash khác thì là file đã bị sửa |
-| Nhật ký | Sự kiện `CONTRACT_ARCHIVED` kèm đường dẫn |
-| Lỗi (đề xuất) | Retry; vẫn lỗi thì đẩy sang Error workflow báo quản lý. Hợp đồng vẫn "Đã ký", không bị trả về |
+| Nhật ký | Sự kiện `CONTRACT_ARCHIVED` kèm tên file và mã băm |
+| Thứ tự | Lưu **trước** khi gửi hai thư sau ký, để lỗi SMTP không chặn việc lưu |
+| Lỗi | Node lưu thử 3 lần (cách 5 giây). Vẫn lỗi thì luồng **vẫn gửi thư** cho khách và sale, rồi dừng ở trạng thái lỗi để Error workflow báo quản lý. Hợp đồng vẫn "Đã ký", không bị trả về. Quản lý lưu lại bằng nút "Lưu lại bản đã ký" |
 
-Bốn bước đầu theo kế hoạch đã chốt ngày 13/11. Dòng "đề xuất" và chi tiết (cách tạo PDF, chỗ lưu file) chốt ở change OpenSpec riêng của FE-49.
+**Giới hạn của mã băm.** SHA-256 chỉ phát hiện file bị sửa sau khi lưu; nó không chứng minh ai ký và không chống được người có quyền sửa cả file lẫn database. Đây không phải chữ ký số hay dấu thời gian của bên thứ ba, và văn bản hợp đồng đã ghi rõ không có giá trị pháp lý (đồ án môn học).
+
+**Bản lưu hỏng.** Luồng 3 gọi lưu lại khi bản lưu đã có: file còn và khớp thì không ghi gì (an toàn khi n8n thử lại). File mất hoặc lệch thì lưu tự động bị `409` và không đổi gì, vì một file đã bị sửa không bao giờ được âm thầm coi là bản đúng. Chỉ quản lý phục hồi được bằng nút "Lưu lại bản đã ký" (`POST /api/contracts/{id}/archive-retry`): file lệch được giữ lại cạnh file mới với tên `HD-<mã>.pdf.hong-<giờ UTC>` làm chứng cứ, và lịch sử khách ghi tên người phục hồi, lý do (mất hay lệch), mã băm cũ và mới. Nút này cũng dùng để lưu lần đầu cho hợp đồng đã ký trước khi có FE-49 hoặc khi luồng 3 lưu lỗi.
 
 ## 6. Sau khi ký **[Đang chạy]**
 

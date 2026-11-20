@@ -584,6 +584,21 @@ export function markDepositReceived(id: number): Promise<ContractDetail> {
   return request<ContractDetail>(`/contracts/${id}/deposit-received`, { method: "POST" });
 }
 
+// Quản lý lưu lại bản đã ký (FE-49): lần đầu cho hợp đồng chưa lưu, hoặc phục hồi khi file mất hay bị sửa.
+// written=false khi bản lưu cũ còn nguyên vẹn nên backend không ghi gì.
+export interface ArchiveRetryResult {
+  ok: true;
+  written: boolean;
+  restoredBecause: "MISSING" | "MODIFIED" | null;
+  fileName: string;
+  sha256: string;
+  storedAt: string;
+}
+
+export function retryContractArchive(id: number): Promise<ArchiveRetryResult> {
+  return request<ArchiveRetryResult>(`/contracts/${id}/archive-retry`, { method: "POST" });
+}
+
 export function approveContract(id: number): Promise<{ ok: true }> {
   return request(`/contracts/${id}/approve`, { method: "POST" });
 }

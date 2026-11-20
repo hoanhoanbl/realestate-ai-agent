@@ -329,11 +329,13 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-do
 | GET | `/api/contracts/{id}/signed-file` | JWT | Tải bản đã ký (PDF), `Content-Type: application/pdf`, header `X-Archive-Verified: true/false` (kết quả kiểm mã băm lúc tải; file lệch vẫn tải được với `false`). Hợp đồng chưa lưu: `404`; file đã mất: `404` "Bản lưu đã bị thay đổi hoặc mất" |
 | POST | `/api/contracts/{id}/redraft` | JWT | Hợp đồng kẹt ở `DRAFTING` (n8n lỗi): gọi lại webhook `contract-requested`. Chưa đủ 60 giây từ lúc tạo hoặc lần soạn lại trước: `409`. Không gọi được n8n: `502`. Trạng thái khác `DRAFTING`: `400` |
 | POST | `/api/contracts/{id}/cancel` | JWT | Huỷ hợp đồng còn ở `DRAFTING`: chuyển `REJECTED`, khách về `VIEWED`, căn về `AVAILABLE`. Đã có bản nháp: `400` hoặc `409` (khi n8n lưu bản nháp đúng lúc đó) |
+| POST | `/api/contracts/{id}/archive-retry` | Quản lý | Nút "Lưu lại bản đã ký" (FE-49): lưu lần đầu hoặc phục hồi bản lưu mất/lệch. Cùng kết quả như `/archive`, `restoredBecause` là `MISSING` hoặc `MODIFIED` khi đây là phục hồi. File lệch được giữ lại làm `HD-<mã>.pdf.hong-<giờ UTC>`, sự kiện `CONTRACT_ARCHIVED` nêu tên quản lý, lý do và hai mã băm. Sale: `403`. Chưa ký: `409` |
 | POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
 | POST | `/api/contracts/{id}/reject` | Quản lý | `{reason}`: từ chối |
 | POST | `/api/contracts/{id}/deposit-received` | Quản lý | Xác nhận đã nhận tiền cọc; chỉ khi hợp đồng đã ký, và chỉ một lần |
 | PUT | `/api/contracts/{id}/draft` | Secret | Luồng 3 lưu bản nháp: `{title, content, aiReview, resumeUrl}`. Đã có bản nháp: `400` |
 | POST | `/api/contracts/{id}/issue-token` | Secret | Luồng 3 phát link ký sau khi duyệt |
+| POST | `/api/contracts/{id}/archive` | Secret | Luồng 3 lưu bản đã ký (FE-49): dựng PDF từ dữ liệu hợp đồng và lưu. Trả `{ok, written, restoredBecause, fileName, sha256, storedAt}`. Bản lưu còn nguyên vẹn thì `written=false`, không ghi gì. Hợp đồng chưa ký: `409`. Bản lưu đã có nhưng file mất hoặc lệch: `409` "Bản lưu đã bị thay đổi hoặc mất, cần quản lý phục hồi", không đổi file, mã băm hay sự kiện. Không có hợp đồng: `404` |
 | PUT | `/api/contracts/{id}/rejected` | Secret | Luồng 3 đánh dấu từ chối: `{reason}` |
 | PUT | `/api/contracts/{id}/expired` | Secret | Luồng 3 đánh dấu hết hạn: `{reason?}` |
 | GET | `/api/sign/{token}` | Công khai | Khách xem hợp đồng để ký. Có `propertyPrice` (niêm yết) và `agreedPrice` (`null` nếu không có giá thoả thuận) |
@@ -545,4 +547,5 @@ Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn 
 | 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |
 | 13/11/2026 | Hoàng | Hợp đồng: `POST /api/contracts` nhận `propertyId?` (sale chọn căn, LH-22); `POST /api/contracts/{id}/redraft` và `/cancel` cho hợp đồng kẹt ở `DRAFTING`; sự kiện `CONTRACT_REDRAFT_REQUESTED`; `GET /api/leads/{id}` thêm `propertyPrice`, `propertyStatus` vào từng buổi xem |
 | 18/11/2026 | Hoàng (Hậu duyệt) | DC-16: thêm mục 3.10, hình dạng API link duyệt thư của luồng 9 (chưa có code, FE-45 làm backend, FE-56 làm trang) |
+| 20/11/2026 | Hoàng | FE-49: thêm `POST /api/contracts/{id}/archive` (luồng 3, secret) và `POST /api/contracts/{id}/archive-retry` (quản lý) |
 | 20/11/2026 | Hoàng | FE-48: `POST /api/contracts` nhận `agreedPrice?`; `GET /api/contracts/{id}` thêm `agreedPrice`, khối `archive` và bỏ đường dẫn file; `GET /api/sign/{token}` thêm `agreedPrice`; thêm `GET /api/contracts/{id}/signed-file`; `Content-Disposition` và `X-Archive-Verified` được expose cho CORS |

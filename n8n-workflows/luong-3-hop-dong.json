@@ -711,6 +711,33 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/contracts/{{ $('Soạn hợp đồng').first().json.contractId }}/archive",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        4400,
+        100
+      ],
+      "id": "18ace6e7-b557-5ddf-8a7a-a24a0f9d4f24",
+      "name": "Lưu bản đã ký",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
         "fromEmail": "nhadn2457@gmail.com",
         "toEmail": "={{ $('Soạn hợp đồng').first().json.email }}",
         "subject": "Đã nhận hợp đồng đặt cọc anh/chị ký",
@@ -722,7 +749,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        4400,
+        4620,
         100
       ],
       "id": "f133f607-fbcf-4826-9bbe-dacea76dbf71",
@@ -751,7 +778,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        4600,
+        4820,
         100
       ],
       "id": "8efcd507-8af8-45ce-8a6e-c9e0e6077d2a",
@@ -765,6 +792,52 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "k-ar",
+              "leftValue": "={{ $('Lưu bản đã ký').first().json.ok !== true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5020,
+        100
+      ],
+      "id": "d0268413-c02c-593c-b282-18cd9e0a2feb",
+      "name": "Báo lỗi lưu trữ?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Hợp đồng #{{ $('Soạn hợp đồng').first().json.contractId }} đã ký và thư sau ký đã gửi, nhưng KHÔNG lưu được bản PDF: {{ $('Lưu bản đã ký').first().json.error?.message || 'không rõ lý do' }}. Quản lý bấm \"Lưu lại bản đã ký\" ở trang chi tiết hợp đồng."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        5220,
+        100
+      ],
+      "id": "6c16668b-14db-5079-8529-da8283ed6848",
+      "name": "Dừng vì lưu lỗi"
     },
     {
       "parameters": {
@@ -1003,9 +1076,9 @@
     },
     {
       "parameters": {
-        "content": "## 7. Xác nhận đã ký hoặc hết hạn",
+        "content": "## 7. Lưu bản đã ký, xác nhận, hết hạn\nLưu PDF **trước** khi gửi thư: lỗi SMTP không chặn việc lưu. Lưu lỗi 3 lần thì thư vẫn đi, cuối nhánh dừng ở trạng thái lỗi để báo quản lý",
         "height": 1020,
-        "width": 380,
+        "width": 1100,
         "color": 1
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -1014,7 +1087,7 @@
         4360,
         -30
       ],
-      "name": "Nhóm 7. Xác nhận đã ký hoặc hết hạn",
+      "name": "Nhóm 7. Lưu bản đã ký, xác nhận, hết hạn",
       "id": "24d83806-336d-57c1-a0f5-34ddaaaadcab"
     },
     {
@@ -1304,7 +1377,7 @@
       "main": [
         [
           {
-            "node": "Email xác nhận đã ký",
+            "node": "Lưu bản đã ký",
             "type": "main",
             "index": 0
           }
@@ -1344,7 +1417,7 @@
       "main": [
         [
           {
-            "node": "Email xác nhận đã ký",
+            "node": "Lưu bản đã ký",
             "type": "main",
             "index": 0
           }
@@ -1407,6 +1480,39 @@
         [
           {
             "node": "Email báo quá hạn duyệt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu bản đã ký": {
+      "main": [
+        [
+          {
+            "node": "Email xác nhận đã ký",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email báo đã ký": {
+      "main": [
+        [
+          {
+            "node": "Báo lỗi lưu trữ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Báo lỗi lưu trữ?": {
+      "main": [
+        [
+          {
+            "node": "Dừng vì lưu lỗi",
             "type": "main",
             "index": 0
           }

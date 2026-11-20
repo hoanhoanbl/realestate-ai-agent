@@ -17,6 +17,7 @@ import {
   markDepositReceived,
   redraftContract,
   rejectContract,
+  retryContractArchive,
   type ContractDetail,
 } from "@/lib/api";
 import { useSession } from "@/lib/auth";
@@ -66,6 +67,9 @@ function ContractDetailContent() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadWarning, setDownloadWarning] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveMessage, setArchiveMessage] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -138,6 +142,36 @@ function ContractDetailContent() {
       setDownloadError(e instanceof Error ? e.message : "Không tải được bản lưu.");
     } finally {
       setDownloading(false);
+    }
+  }
+
+  // Quản lý lưu lại bản đã ký: lần đầu, hoặc phục hồi khi bản lưu mất / bị sửa (file lệch được giữ lại làm chứng cứ)
+  async function saveArchiveAgain() {
+    if (!contract) return;
+    const broken = !!contract.archive && !contract.archive.verified;
+    const question = !contract.archive
+      ? "Lưu bản đã ký của hợp đồng này thành file PDF?"
+      : contract.archive.problem === "MODIFIED"
+        ? "Bản lưu hiện có đã bị thay đổi. Phục hồi sẽ dựng lại PDF từ dữ liệu hợp đồng. File bị lệch được GIỮ LẠI làm chứng cứ (đổi tên), và lịch sử khách ghi tên bạn cùng hai mã băm. Tiếp tục?"
+        : "Bản lưu đã mất. Phục hồi sẽ dựng lại PDF từ dữ liệu hợp đồng, và lịch sử khách ghi tên bạn cùng lý do. Tiếp tục?";
+    if (!window.confirm(question)) return;
+    setArchiving(true);
+    setArchiveError(null);
+    setArchiveMessage(null);
+    try {
+      const result = await retryContractArchive(contract.id);
+      setArchiveMessage(
+        !result.written
+          ? "Bản lưu vẫn nguyên vẹn, không cần lưu lại."
+          : broken
+            ? "Đã phục hồi bản lưu. File cũ bị lệch (nếu còn) đã được giữ lại làm chứng cứ."
+            : "Đã lưu bản đã ký.",
+      );
+      reload();
+    } catch (e: unknown) {
+      setArchiveError(e instanceof Error ? e.message : "Không lưu được bản đã ký.");
+    } finally {
+      setArchiving(false);
     }
   }
 
@@ -355,7 +389,21 @@ function ContractDetailContent() {
           <div className="mt-4 border-t border-emerald-200 pt-3" aria-labelledby="archive-title">
             <h3 id="archive-title" className="text-sm font-semibold text-slate-700">Bản lưu trữ</h3>
             {!contract.archive ? (
-              <p className="mt-1 text-slate-600">Chưa lưu.</p>
+              <div className="mt-1 space-y-2">
+                <p className="text-slate-600">Chưa lưu.</p>
+                {isManager ? (
+                  <button
+                    type="button"
+                    disabled={archiving}
+                    onClick={saveArchiveAgain}
+                    className="min-h-11 rounded-lg bg-white px-4 py-2 text-sm font-medium text-blue-700 ring-1 ring-blue-300 hover:bg-blue-50 disabled:opacity-60 sm:min-h-0"
+                  >
+                    {archiving ? "Đang lưu..." : "Lưu lại bản đã ký"}
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-500">Quản lý lưu lại được bản đã ký khi luồng tự động lưu lỗi.</p>
+                )}
+              </div>
             ) : (
               <div className="mt-1 space-y-2">
                 {contract.archive.verified ? (
@@ -389,6 +437,16 @@ function ContractDetailContent() {
                     {downloading ? "Đang tải..." : "Tải bản đã ký (PDF)"}
                   </button>
                 )}
+                {!contract.archive.verified && isManager && (
+                  <button
+                    type="button"
+                    disabled={archiving}
+                    onClick={saveArchiveAgain}
+                    className="ml-2 min-h-11 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60 sm:min-h-0"
+                  >
+                    {archiving ? "Đang phục hồi..." : "Lưu lại bản đã ký"}
+                  </button>
+                )}
                 {downloadWarning && (
                   <p role="alert" className="rounded-lg bg-rose-50 p-3 font-medium text-rose-800 ring-1 ring-rose-200">{downloadWarning}</p>
                 )}
@@ -396,6 +454,10 @@ function ContractDetailContent() {
                   <p role="alert" className="rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{downloadError}</p>
                 )}
               </div>
+            )}
+            {archiveMessage && <p className="mt-2 text-emerald-700">{archiveMessage}</p>}
+            {archiveError && (
+              <p role="alert" className="mt-2 rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{archiveError}</p>
             )}
           </div>
         </div>

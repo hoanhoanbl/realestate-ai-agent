@@ -1,6 +1,6 @@
 # Luồng 3: Hợp đồng đặt cọc
 
-File: `n8n-workflows/luong-3-hop-dong.json` (34 node, không tính ghi chú; id `luong3Realestat0`).
+File: `n8n-workflows/luong-3-hop-dong.json` (37 node, không tính ghi chú; id `luong3Realestat0`).
 Kích hoạt: `POST /webhook/contract-requested`, có header `X-Webhook-Secret` (credential Header Auth). Body chỉ có `{ "contractId": <số> }`.
 
 Khung chung của các tài liệu luồng: [README.md](README.md).
@@ -52,7 +52,9 @@ Backend gọi webhook (contractId)
       |                                          |                       |
       |                                        đã ký              Đã ký lần 2? -- chưa --> Đánh dấu hết hạn ký
       v                                          v                       |                  -> Email báo hết hạn ký
-[7 Xác nhận] Email xác nhận đã ký -> Email báo đã ký <-- đã ký ---------+
+[7 Lưu và xác nhận] Lưu bản đã ký -> Email xác nhận đã ký -> Email báo đã ký
+      ^ (đã ký lần 1 hoặc lần 2)                   |
+      +----------------------------------   Báo lỗi lưu trữ? -- lỗi --> Dừng vì lưu lỗi
 ```
 
 **1. Tiếp nhận yêu cầu hợp đồng.**
@@ -79,8 +81,10 @@ Backend gọi webhook (contractId)
 **6. Chờ khách ký (human-in-the-loop).**
 `Chờ khách ký` chờ 48 giờ. Chưa ký thì `Email nhắc ký`, rồi `Chờ khách ký lần 2` chờ thêm 5 ngày. Vẫn chưa ký thì `Đánh dấu hết hạn ký` (`PUT .../expired`) và `Email báo hết hạn ký` cho nhân viên.
 
-**7. Xác nhận đã ký hoặc hết hạn.**
-Khách ký trong lúc chờ (lần 1 hoặc lần 2) thì `Email xác nhận đã ký` gửi khách và `Email báo đã ký` gửi nhân viên, kèm số tiền cọc.
+**7. Lưu bản đã ký, xác nhận, hết hạn.**
+Khách ký trong lúc chờ (lần 1 hoặc lần 2) thì `Lưu bản đã ký` (`POST /api/contracts/:id/archive`) chạy **trước**, rồi `Email xác nhận đã ký` gửi khách và `Email báo đã ký` gửi nhân viên, kèm số tiền cọc. Lưu trước để lỗi SMTP không làm hợp đồng đã ký không bao giờ được lưu.
+
+`Lưu bản đã ký` thử 3 lần cách 5 giây và đặt `onError: continueRegularOutput`: lưu lỗi cả 3 lần thì luồng vẫn đi tiếp để khách và nhân viên nhận thư. Cuối nhánh, `Báo lỗi lưu trữ?` kiểm kết quả lưu; lỗi thì `Dừng vì lưu lỗi` kết thúc lần chạy ở trạng thái lỗi để Error workflow báo quản lý. Hợp đồng vẫn "Đã ký"; quản lý bấm "Lưu lại bản đã ký" ở trang chi tiết hợp đồng. Hai email sau ký không bật tiếp tục khi lỗi, nên lỗi SMTP vẫn làm lần chạy thất bại (file đã lưu từ trước). Kiểm thứ tự bằng `node scripts/check-contract-archive-order.cjs`.
 
 ## 4. Nối với hệ thống
 
@@ -90,6 +94,7 @@ Khách ký trong lúc chờ (lần 1 hoặc lần 2) thì `Email xác nhận đ�
 | Luồng 3 → database | Đọc `contracts`, `leads`, `properties` | `Lấy dữ liệu hợp đồng` |
 | Luồng 3 → backend | `PUT /api/contracts/:id/draft` | Lưu bản nháp và `resumeUrl` |
 | Luồng 3 → backend | `POST /api/contracts/:id/issue-token` | Phát link ký sau khi duyệt |
+| Luồng 3 → backend | `POST /api/contracts/:id/archive` | Lưu bản đã ký thành PDF, ngay sau khi khách ký (FE-49) |
 | Luồng 3 → backend | `PUT /api/contracts/:id/rejected` | Quản lý từ chối |
 | Luồng 3 → backend | `PUT /api/contracts/:id/expired` | Quá hạn duyệt hoặc hết hạn ký |
 | Backend → luồng 3 | Gọi `resumeUrl` kèm `action` | Quản lý duyệt hoặc từ chối trên web admin (`approve`, `reject`); khách ký xong (`signed`) |
@@ -105,6 +110,7 @@ Link trong email quản lý cũng gọi thẳng `resumeUrl` của n8n. Luồng 3
 | `contractId` sai | `Chuẩn hoá` ném lỗi, Error workflow chạy |
 | Không có hợp đồng | `Không có hợp đồng`, Error workflow chạy |
 | AI lỗi | Tiếp tục với kết quả quy tắc cố định (`AI rà soát` không dừng luồng) |
+| Lưu bản đã ký lỗi (thư mục lưu không ghi được, hợp đồng có bản lưu hỏng) | Thử 3 lần; vẫn lỗi thì thư sau ký vẫn gửi, lần chạy kết thúc lỗi ở `Dừng vì lưu lỗi` và Error workflow báo quản lý. Quản lý bấm "Lưu lại bản đã ký" |
 | Email, lưu nháp, phát link, đánh dấu trạng thái lỗi | Mỗi node thử lại, rồi lần chạy thất bại và Error workflow chạy. Hợp đồng có thể kẹt ở trạng thái giữa chừng; xem lịch sử hợp đồng trên web admin |
 | Backend không đánh thức được n8n (`resumeUrl` hết hạn, lần chạy đã bị xoá) | Backend báo lỗi ở thao tác duyệt/ký; xem [nghiep-vu](../nghiep-vu/02-document-signing.md) mục 3 và 4 |
 

@@ -28,6 +28,9 @@ const databaseUrl = process.env.FE33_TEST_DATABASE_URL;
   let archive: ContractArchiveService;
   let app: Awaited<ReturnType<typeof NestFactory.create>>;
   let token: string;
+  let managerToken: string;
+  const SECRET = 'fe49-local-test-secret';
+  const previousSecret = process.env.WEBHOOK_SECRET;
   let dir: string;
   const previousDir = process.env.CONTRACT_ARCHIVE_DIR;
   const pdf = (text: string) => Buffer.from(`%PDF-1.4\n${text}\n%%EOF\n`);
@@ -62,10 +65,14 @@ const databaseUrl = process.env.FE33_TEST_DATABASE_URL;
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     token = await jwt.signAsync({ sub: 1, role: 'SALE', name: 'Sale', email: 's@example.test' });
+    managerToken = await jwt.signAsync({ sub: 2, role: 'MANAGER', name: 'Trần Quản Lý', email: 'm@example.test' });
+    process.env.WEBHOOK_SECRET = SECRET;
   });
   afterAll(async () => {
     if (previousDir === undefined) delete process.env.CONTRACT_ARCHIVE_DIR;
     else process.env.CONTRACT_ARCHIVE_DIR = previousDir;
+    if (previousSecret === undefined) delete process.env.WEBHOOK_SECRET;
+    else process.env.WEBHOOK_SECRET = previousSecret;
     await app?.close();
     if (db?.isInitialized) await db.destroy();
   });
@@ -433,6 +440,110 @@ const databaseUrl = process.env.FE33_TEST_DATABASE_URL;
       await fs.writeFile(path.join(dir, 'HD-0001.pdf'), pdf('đã sửa'));
       const bad = await auth(`/api/contracts/${id}`).expect(200);
       expect(bad.body.archive).toMatchObject({ verified: false, problem: 'MODIFIED' });
+    });
+  });
+  // FE-49 nhóm 7.1: hai route lưu bản đã ký. PDF do buildContractPdf dựng từ dữ liệu hợp đồng trong DB.
+  describe('HTTP lưu bản đã ký (FE-49)', () => {
+    const post = (p: string) => request(app.getHttpServer()).post(p);
+    const webhook = (id: number) => post(`/api/contracts/${id}/archive`).set('X-Webhook-Secret', SECRET);
+    const asManager = (id: number) => post(`/api/contracts/${id}/archive-retry`).auth(managerToken, { type: 'bearer' });
+    const target = () => path.join(dir, 'HD-0001.pdf');
+    const tamper = async () => {
+      await fs.chmod(target(), 0o640);
+      await fs.writeFile(target(), pdf('bị sửa'));
+    };
+
+    it('webhook thiếu hoặc sai secret: 401, không tạo file', async () => {
+      const id = await seed();
+      await post(`/api/contracts/${id}/archive`).expect(401);
+      await post(`/api/contracts/${id}/archive`).set('X-Webhook-Secret', 'sai').expect(401);
+      expect(await files()).toEqual([]);
+    });
+
+    it('webhook gọi hai lần ra một file PDF thật và một sự kiện, lần hai written=false', async () => {
+      const id = await seed();
+      const first = await webhook(id).expect(201);
+      expect(first.body).toMatchObject({ ok: true, written: true, restoredBecause: null, fileName: 'HD-0001.pdf' });
+      const second = await webhook(id).expect(201);
+      expect(second.body).toMatchObject({ written: false, sha256: first.body.sha256 });
+      expect(await files()).toEqual(['HD-0001.pdf']);
+      const bytes = await fs.readFile(target());
+      expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(first.body.sha256).toBe(sha256sum(target()));
+      expect(await events()).toHaveLength(1);
+    });
+
+    it('webhook gọi sau khi file bị sửa hoặc xoá: 409, không ghi đè, mã băm và sự kiện giữ nguyên', async () => {
+      const id = await seed();
+      await webhook(id).expect(201);
+      const before = await row(id);
+      await tamper();
+      const res = await webhook(id).expect(409);
+      expect(res.body.message).toContain('thay đổi hoặc mất');
+      expect(await fs.readFile(target())).toEqual(pdf('bị sửa'));
+      await fs.rm(target());
+      await webhook(id).expect(409);
+      expect(await files()).toEqual([]);
+      expect(await row(id)).toEqual(before);
+      expect(await events()).toHaveLength(1);
+    });
+
+    it('quản lý gọi archive-retry sau khi file bị sửa: phục hồi, giữ file lệch, sự kiện nêu tên quản lý', async () => {
+      const id = await seed();
+      const first = await webhook(id).expect(201);
+      await tamper();
+      const res = await asManager(id).expect(201);
+      expect(res.body).toMatchObject({ written: true, restoredBecause: 'MODIFIED' });
+      // PDF dựng từ cùng dữ liệu (ngày tạo lấy theo giờ ký) cho đúng cùng byte, nên phục hồi tái tạo bản gốc
+      expect(res.body.sha256).toBe(first.body.sha256);
+      expect((await files()).filter((n) => n.includes('.hong-'))).toHaveLength(1);
+      expect((await archive.read(id))?.verified).toBe(true);
+      const ev = await events();
+      expect(ev).toHaveLength(2);
+      expect(ev[1].note).toContain('Trần Quản Lý');
+      expect(ev[1].note).toContain('lệch');
+    });
+
+    it('quản lý gọi archive-retry sau khi file bị xoá: dựng lại, sự kiện lý do "mất"; lần đầu cho hợp đồng chưa từng lưu', async () => {
+      const id = await seed();
+      // hợp đồng ký trước khi có FE-49: chưa từng lưu, quản lý lưu lần đầu
+      const firstTime = await asManager(id).expect(201);
+      expect(firstTime.body).toMatchObject({ written: true, restoredBecause: null });
+      await fs.rm(target());
+      const res = await asManager(id).expect(201);
+      expect(res.body).toMatchObject({ written: true, restoredBecause: 'MISSING' });
+      expect((await events())[1].note).toContain('mất');
+      expect((await archive.read(id))?.verified).toBe(true);
+    });
+
+    it('sale gọi archive-retry: 403; chưa đăng nhập: 401; không tạo file', async () => {
+      const id = await seed();
+      await post(`/api/contracts/${id}/archive-retry`).auth(token, { type: 'bearer' }).expect(403);
+      await post(`/api/contracts/${id}/archive-retry`).expect(401);
+      expect(await files()).toEqual([]);
+    });
+
+    it('hợp đồng chưa ký: 409 ở cả hai route, không tạo file; hợp đồng không tồn tại: 404', async () => {
+      const id = await seed('SENT');
+      await webhook(id).expect(409);
+      await asManager(id).expect(409);
+      expect(await files()).toEqual([]);
+      await webhook(9999).expect(404);
+      await asManager(9999).expect(404);
+    });
+
+    it('chữ ký PNG thật nằm trong PDF: dựng được với hợp đồng đủ nội dung, chữ ký, giá thoả thuận', async () => {
+      const id = await seed();
+      const png =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC';
+      await db.query(
+        `UPDATE contracts SET content = $2, signature = $3, signed_ip = '203.0.113.9', agreed_price = 2800000000 WHERE id = $1`,
+        [id, 'ĐIỀU 1. Nguyễn Thị Lan đặt cọc căn nhà.\nĐIỀU 2. Ăn ở đủ dấu: ắằẳẵặ ếềểễệ.', png],
+      );
+      await webhook(id).expect(201);
+      const bytes = await fs.readFile(target());
+      expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(bytes.length).toBeGreaterThan(5000); // có phông nhúng và ảnh chữ ký
     });
   });
 });

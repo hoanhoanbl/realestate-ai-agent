@@ -21,7 +21,8 @@ import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
 import { lockProperty } from '../viewings/booking-rules';
 import { N8nService } from '../n8n/n8n.service';
-import { ContractArchiveService } from './archive/contract-archive.service';
+import { ArchiveMode, ContractArchiveService } from './archive/contract-archive.service';
+import { buildContractPdf } from './archive/contract-pdf';
 import type { AuthUser } from '../auth/auth.types';
 
 const SIGN_VALID_DAYS = 7;
@@ -252,6 +253,26 @@ export class ContractsService {
   }
 
   // Quản lý xác nhận đã nhận tiền cọc (sau khi khách ký)
+  // Lưu bản đã ký thành PDF (FE-49). 'auto' cho luồng 3 (webhook): bản lưu hỏng thì 409; 'restore' cho nút
+  // "Lưu lại bản đã ký" của quản lý: phục hồi có dấu vết. Chưa ký thì 409 trước khi tốn công dựng PDF.
+  async archiveSigned(id: number, mode: ArchiveMode, actor?: AuthUser) {
+    const contract = await this.findWithSecrets({ id });
+    if (!contract) throw new NotFoundException(`Contract with id ${id} not found`);
+    if (contract.status !== 'SIGNED') throw new ConflictException('Hợp đồng chưa ký, không lưu trữ được');
+    const lead = await this.leadRepository.findOne({ where: { id: contract.leadId } });
+    const property = await this.propertyRepository.findOne({ where: { id: contract.propertyId } });
+    const pdf = await buildContractPdf(contract, lead, property);
+    const result = await this.archiveService.store(id, pdf, mode, actor?.name);
+    return {
+      ok: true as const,
+      written: result.written,
+      restoredBecause: result.restoredBecause,
+      fileName: result.fileName,
+      sha256: result.sha256,
+      storedAt: result.storedAt,
+    };
+  }
+
   async markDepositReceived(id: number, user: AuthUser) {
     const contract = await this.findOneOrFail(id);
     if (contract.status !== 'SIGNED') {

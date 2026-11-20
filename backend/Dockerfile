@@ -14,5 +14,7 @@ ENV TZ=Asia/Ho_Chi_Minh
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+# Phông Noto Sans cho PDF bản hợp đồng đã ký (FE-49); buildContractPdf đọc ./assets/fonts
+COPY --from=builder /app/assets ./assets
 EXPOSE 8081
 CMD ["node", "dist/main"]

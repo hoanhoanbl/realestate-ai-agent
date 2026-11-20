@@ -108,7 +108,23 @@ export class ContractsController {
     return this.contractsService.markDepositReceived(id, req.user);
   }
 
+  // Lưu lại bản đã ký: lần đầu (hợp đồng ký trước khi có FE-49, hoặc luồng 3 lưu lỗi) hoặc phục hồi
+  // bản lưu mất/bị sửa. File lệch được giữ lại làm chứng cứ, lịch sử ghi tên người phục hồi.
+  @Post(':id/archive-retry')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MANAGER')
+  archiveRetry(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.contractsService.archiveSigned(id, 'restore', req.user);
+  }
+
   // --- Cho n8n (X-Webhook-Secret) ---
+
+  // Luồng 3 gọi ngay sau khi khách ký. Gọi lại khi bản lưu nguyên vẹn thì không ghi gì; bản lưu hỏng thì 409.
+  @Post(':id/archive')
+  @UseGuards(WebhookSecretGuard)
+  archive(@Param('id', ParseIntPipe) id: number) {
+    return this.contractsService.archiveSigned(id, 'auto');
+  }
 
   @Put(':id/draft')
   @UseGuards(WebhookSecretGuard)

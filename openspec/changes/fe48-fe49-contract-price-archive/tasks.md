@@ -28,7 +28,7 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
 
 - [x] 5.1 `docs/nghiep-vu/02-document-signing.md` mục 1: đổi "Sắp làm FE-48" thành "Đang chạy", bỏ chữ "đề xuất" của hai dòng cọc và báo cáo (báo cáo giữ "làm sau"), sửa "mỗi lần ghi hoặc đổi" thành "mỗi lần lập hợp đồng có giá" (design D1). `docs/api-contract.md`: route mới, trường `agreedPrice`, `archive`. `docs/luong/luong-3-hop-dong.md`: điều khoản giá. Verify: mỗi route ghi trong `api-contract.md` có trong controller; `grep -n "FE-48" docs/nghiep-vu/02-document-signing.md` không còn "Sắp làm".
 - [x] 5.2 `docs/trien-khai.md`: bước tay thêm volume và biến, và dòng sao lưu `contract_files`. Verify: các lệnh chạy được như viết trên môi trường local.
-- [ ] 5.3 Mở PR nháp `[FE-48]` base là nhánh FE-43; ghi rõ điểm sửa `api.ts` ngoài PR nền. Verify: CI xanh.
+- [x] 5.3 Mở PR nháp `[FE-48]` base là nhánh FE-43; ghi rõ điểm sửa `api.ts` ngoài PR nền. Verify: CI xanh.
 
 ## 6. FE-49: dựng PDF
 
@@ -43,12 +43,14 @@ Hai PR từ một change. **FE-48** (nhóm 1 đến 5) tạo từ `feature/FE-43
   - Trọn một hợp đồng có giá thoả thuận từ lập đến ký: có `HD-0001.pdf`, SHA-256 khớp `sha256sum`, trang chi tiết (API) `verified: true`, một sự kiện `CONTRACT_ARCHIVED`, khách và sale nhận đủ hai thư, execution `success`.
   - (a) Chặn thư mục lưu (chmod 555) rồi ký: khách và sale vẫn nhận thư, execution kết thúc `error` ở node `Dừng vì lưu lỗi`, Error workflow gửi email `[LỖI] luong-3-hop-dong` nêu "KHÔNG lưu được bản PDF" kèm lý do, hợp đồng vẫn `SIGNED`. Trả quyền, sale gọi `archive-retry` bị 403, quản lý gọi thì file được tạo và `verified: true`.
   - (b) Tắt SMTP rồi ký: file và mã băm đã có trước khi bước thư lỗi, hợp đồng `SIGNED`, execution `error` ở bước thư. Giới hạn: lúc đó email của Error workflow cũng không gửi được (cùng SMTP), nên báo quản lý khi SMTP chết phải dựa vào Telegram của FE-50.
-- [ ] 7.3 Web: nút "Lưu lại bản đã ký" (chỉ quản lý, chỉ khi `SIGNED` và chưa lưu hoặc không khớp; hộp xác nhận nói rõ file cũ sẽ được giữ lại làm chứng cứ khi phục hồi) trên `/admin/hop-dong/[id]`. Verify: `npm run lint && npm run build`; thử bằng tài khoản quản lý và sale.
+- [x] 7.3 Web: nút "Lưu lại bản đã ký" (chỉ quản lý, chỉ khi `SIGNED` và chưa lưu hoặc không khớp; hộp xác nhận nói rõ file cũ sẽ được giữ lại làm chứng cứ khi phục hồi) trên `/admin/hop-dong/[id]`. Verify: `npm run lint && npm run build`; thử bằng tài khoản quản lý và sale.
+  - Ghi chú (20/11): `npm run lint` và `npm run build` đạt. Thử trên web cục bộ nối backend cô lập, tài khoản quản lý: hợp đồng chưa lưu hiện "Chưa lưu" kèm nút, bấm thì thành "Khớp"; file bị sửa một byte và file bị xoá đều hiện cảnh báo và nút, phục hồi xong về "Khớp" kèm thông báo giữ file lệch làm chứng cứ. Hộp xác nhận nói rõ file lệch được giữ lại. Ở 375 px không cuộn ngang, nút cao 44 px. Sale không thấy nút (chỉ thấy dòng nhắc quản lý lưu lại); route `archive-retry` trả 403 cho sale (test HTTP).
 
 ## 8. FE-49: tài liệu và tích hợp
 
-- [ ] 8.1 `docs/nghiep-vu/02-document-signing.md` mục 5: "Sắp làm FE-49" thành "Đang chạy", ghi rõ giới hạn của mã băm (design Non-Goals); `docs/luong/luong-3-hop-dong.md` thêm bước lưu và số node mới; `docs/danh-sach-lo-hong.md` đóng LH-28; `docs/api-contract.md` ba route. Verify: số node trong tài liệu luồng 3 bằng số node trong JSON; LH-28 ghi FE-49.
-- [ ] 8.2 Chạy một hành trình hoàn chỉnh trên local: lập hợp đồng có giá thoả thuận, quản lý duyệt, khách ký, kiểm file và mã băm, sửa file kiểm cảnh báo. Verify: ghi kết quả (ảnh chụp trang chi tiết ba trạng thái) vào mô tả PR.
+- [x] 8.1 `docs/nghiep-vu/02-document-signing.md` mục 5: "Sắp làm FE-49" thành "Đang chạy", ghi rõ giới hạn của mã băm (design Non-Goals); `docs/luong/luong-3-hop-dong.md` thêm bước lưu và số node mới; `docs/danh-sach-lo-hong.md` đóng LH-28; `docs/api-contract.md` ba route. Verify: số node trong tài liệu luồng 3 bằng số node trong JSON; LH-28 ghi FE-49.
+- [x] 8.2 Chạy một hành trình hoàn chỉnh trên local: lập hợp đồng có giá thoả thuận, quản lý duyệt, khách ký, kiểm file và mã băm, sửa file kiểm cảnh báo. Verify: ghi kết quả (ảnh chụp trang chi tiết ba trạng thái) vào mô tả PR.
+  - Ghi chú (20/11): hành trình đủ vòng đã chạy ở việc 7.2 (lập có giá thoả thuận, duyệt, ký, file và mã băm khớp `sha256sum`, trang chi tiết "Khớp") và ba trạng thái ở việc 7.3 (Khớp, lệch, mất) cộng "Chưa lưu"; sửa file xong trang hiện cảnh báo, phục hồi về "Khớp". PDF thật do luồng sinh ra đã mở bằng `pdftoppm` kiểm bằng mắt: đủ dấu tiếng Việt, hai dòng giá, khối chữ ký sang trang hai khi hết chỗ. Ảnh chụp để ở mô tả PR không có, vì môi trường không đính kèm ảnh; kết quả ghi bằng chữ.
 - [ ] 8.3 Mở PR nháp `[FE-49]` base là nhánh FE-48. Verify: CI xanh.
 
 ## Workflow follow-up

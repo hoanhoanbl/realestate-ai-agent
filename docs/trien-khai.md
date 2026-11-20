@@ -515,7 +515,7 @@ Chỉ đổi ba file JSON của n8n, không có SQL, không có biến `.env` m�
 
 ## 9h. Giá thoả thuận và nền lưu file đã ký (FE-48, bản `v0.5.0`)
 
-Phát hành cùng lô `v0.5.0`, **sau FE-43** (cần cột `agreed_price` và các cột `signed_file_*`, mục 9f). FE-48 đổi: backend nhận giá thoả thuận, luồng 3 soạn hợp đồng theo giá thoả thuận, web có ô giá và khối "Bản lưu trữ", backend có thư mục lưu file đã ký. **Chưa hợp đồng nào được lưu tự động**: phần dựng PDF và gọi lưu từ luồng 3 là FE-49.
+Phát hành cùng lô `v0.5.0`, **sau FE-43** (cần cột `agreed_price` và các cột `signed_file_*`, mục 9f). FE-48 đổi: backend nhận giá thoả thuận, luồng 3 soạn hợp đồng theo giá thoả thuận, web có ô giá và khối "Bản lưu trữ", backend có thư mục lưu file đã ký. Việc dựng PDF và gọi lưu từ luồng 3 là FE-49 (mục 9i).
 
 Không có biến `.env` mới. `docker-compose.prod.yml` đã thêm volume `contract_files` gắn vào `/app/storage/contracts` và biến `CONTRACT_ARCHIVE_DIR` cho container backend; volume tự được tạo khi `up`, tên trên server là `realestate-ai-agent_contract_files` (theo `-p realestate-ai-agent`).
 
@@ -544,9 +544,27 @@ B=/root/backups/realestate/$(date +%Y%m%d-%H%M); mkdir -p "$B"
 docker run --rm -v realestate-ai-agent_contract_files:/data:ro -v "$B":/out alpine tar czf /out/contract_files.tgz -C /data .
 ```
 
-Mất volume là mất các file PDF đã ký. Hợp đồng vẫn còn trong database, và quản lý dựng lại bản lưu bằng nút "Lưu lại bản đã ký" (FE-49), nhưng PDF dựng lại có thể khác từng byte nên mã băm mới sẽ được ghi cùng mã băm cũ trong lịch sử.
+Mất volume là mất các file PDF đã ký. Hợp đồng vẫn còn trong database, và quản lý dựng lại bản lưu bằng nút "Lưu lại bản đã ký" (FE-49), nhưng không phải lúc nào PDF dựng lại cũng trùng từng byte với bản gốc (cùng dữ liệu và cùng phiên bản backend thì trùng; đổi phiên bản `pdfkit` hay phông thì mã băm mới khác). Mã băm mới luôn được ghi cùng mã băm cũ trong lịch sử.
 
 **Quay về bản cũ.** Cảnh báo ở mục 9f giữ nguyên: backend trước FE-43 xoá `agreed_price` và các cột `signed_file_*` vì `synchronize: true`, nên giá thoả thuận đã nhập sẽ mất. Muốn quay về phải chép riêng các cột đó trước. Nếu quay về thì import lại bản cũ của `luong-3-hop-dong.json`, vì bản mới đọc cột `c.agreed_price` và sẽ lỗi khi cột không còn. Ưu tiên sửa tiến lên (hotfix).
+
+## 9i. Tự lưu bản đã ký thành PDF (FE-49, bản `v0.5.0`)
+
+Phát hành cùng FE-48 (cần volume và biến ở mục 9h). Ảnh backend mới có thêm thư mục `assets/fonts` (phông Noto Sans) và thư viện `pdfkit`; không có biến `.env` hay SQL mới. Luồng 3 có thêm ba node (37 node): lưu bản đã ký **trước** hai thư sau ký.
+
+1. Sau khi Deploy xanh và mục 9h xong, import lại luồng 3 (nếu chưa làm ở bước 4 của 9h với bản có FE-49):
+
+   ```bash
+   import_wf luong-3-hop-dong.json luong3Realestat0
+   docker restart realestate-n8n
+   ```
+
+   Hợp đồng đang chờ khách ký lúc import vẫn chạy theo bản cũ của luồng (n8n giữ định nghĩa lúc bắt đầu), nên ký xong sẽ **không** được tự lưu: quản lý bấm "Lưu lại bản đã ký" cho hợp đồng đó.
+2. Kiểm tra bằng một hợp đồng thử: lập, duyệt, mở link ký và ký. Trang chi tiết hợp đồng hiện khối "Bản lưu trữ" với mã băm và "Khớp"; nút "Tải bản đã ký (PDF)" mở được file, có đủ dấu tiếng Việt và chữ ký. Trên server: `docker exec realestate-backend ls -l /app/storage/contracts` thấy `HD-<mã>.pdf`, và `sha256sum` của file khớp mã băm trên trang.
+3. Hợp đồng đã ký từ trước FE-49: vào trang chi tiết, bấm "Lưu lại bản đã ký" (chỉ quản lý). Làm từng hợp đồng.
+4. Kiểm đường lỗi (tuỳ chọn, trên bản sao): tạm đổi quyền thư mục lưu thành chỉ đọc rồi ký một hợp đồng thử: khách và nhân viên vẫn nhận thư, lần chạy luồng 3 kết thúc lỗi ở `Dừng vì lưu lỗi` và quản lý nhận email `[LỖI] luong-3-hop-dong`. Trả quyền rồi bấm "Lưu lại bản đã ký". Khi SMTP hỏng thì email của Error workflow cũng không gửi được (cùng SMTP), báo lỗi lúc đó dựa vào Telegram của FE-50.
+
+Hoàn tác: import lại bản trước của `luong-3-hop-dong.json` (mất bước lưu tự động, các bản đã lưu vẫn còn). Các node mới nằm trong luồng 3, nên không có thay đổi cơ sở dữ liệu cần hoàn tác.
 
 ## 10. Sự cố thường gặp
 

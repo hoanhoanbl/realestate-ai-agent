@@ -57,7 +57,7 @@ Rà từ [ke-hoach-hanh-trinh-va-luong-n8n.md](ke-hoach-hanh-trinh-va-luong-n8n.
 | LH-25 | Lý do "Không mua" quá thô (`LOST_REASONS` chỉ có `NO_SHOW`, `NOT_INTERESTED`, `CUSTOMER_CANCELLED`, `EXPIRED`, `OTHER`, đã kiểm). Báo cáo không trả lời được "mất khách vì giá, vì chọn căn khác hay vì mua nơi khác" | Trung bình | Sale chọn được lý do chi tiết khi đóng lead; báo cáo tuần chia theo nhóm lý do | Kế hoạch FE-44 (nhập), FE-47 (báo cáo) |
 | LH-26 | Không ghi nhận được "đã liên hệ được": hệ thống chỉ biết sale đã thao tác lần đầu (`first_response_at`), không biết sale đã nói chuyện được với khách chưa. Nhắc việc và báo cáo không phân biệt hai trường hợp | Trung bình | Sale đánh dấu "đã liên hệ được" hoặc ghi lần gọi không được; mốc này dừng chuỗi nhắc | Kế hoạch FE-44 |
 | LH-27 | Khách không đến buổi xem không nhận lời mời hẹn lại; lead chỉ chờ sale gọi | Trung bình | Khách không đến nhận một thư mời hẹn lại, không gửi trùng | Kế hoạch FE-46; không gửi khi lead đang cọc hoặc căn không còn mở bán (chốt review 18/11) |
-| LH-28 | Hợp đồng đã ký không được lưu thành file có dấu vết chống sửa (không có PDF, đường dẫn hay mã băm trong luồng 3). Đề bài của thầy ghi "compliant archiving" | Trung bình | Sau khi khách ký có file PDF lưu lại, mã băm và đường dẫn ghi vào nhật ký | Kế hoạch FE-48, FE-49 |
+| LH-28 | Hợp đồng đã ký không được lưu thành file có dấu vết chống sửa (không có PDF, đường dẫn hay mã băm trong luồng 3). Đề bài của thầy ghi "compliant archiving" | Trung bình | Sau khi khách ký có file PDF lưu lại, mã băm và đường dẫn ghi vào nhật ký | Đã xử lý ở FE-49 (PDF, mã băm, nhật ký, nút lưu lại; nền ở FE-48) |
 
 ## Phần xuyên suốt
 

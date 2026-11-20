@@ -107,6 +107,7 @@ if (require.main === module) {
   console.log(`PASS bộ lead hợp lệ: ${cases.length} lead (${LEVELS.map((l) => `${l} ${cases.filter((c) => c.label === l).length}`).join(', ')}), kiểm lỗi giả định đều bị bắt`);
 
   runMetricsTests();
+  runRunnerTests().catch((e) => { console.error('FAIL runner:', e); process.exit(1); });
 }
 
 // FE-24 mục 2: phần tính số liệu, đúng các ví dụ số của spec và các trường hợp biên.
@@ -217,3 +218,128 @@ function runMetricsTests() {
   console.log('PASS số liệu: ví dụ spec (15/18, 17/18, 1 lỗi nghiêm trọng), trung vị/p95, độ nhất quán, các trường hợp biên');
 }
 
+
+// FE-24 mục 3: runner chạy thật trên stub backend có áp luật đặt lịch (không cần n8n, backend, Gemini hay mạng ngoài).
+async function runRunnerTests() {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const { run } = require('./eval-lead-scoring.cjs');
+  const { startBookingStub } = require('./lib/booking-stub.cjs');
+  const cases = loadCases(DEFAULT_CASES);
+  const labelOf = Object.fromEntries(cases.map((c) => [c.id, c.label]));
+  const SCORE = { HOT: 85, WARM: 55, COLD: 15 };
+  const NOW = new Date('2026-06-10T03:17:00Z'); // 10:17 giờ Việt Nam, cố định để kiểm lặp lại được
+  const PRICE = 3000000000;
+  const capture = () => {
+    const out = { log: [], error: [] };
+    out.io = { log: (m) => out.log.push(String(m)), error: (m) => out.error.push(String(m)) };
+    return out;
+  };
+  const caseIdOf = (lead) => /\[EVAL\] (\S+) #/.exec(lead.name)?.[1];
+  const exactScorer = (lead) => ({ level: labelOf[caseIdOf(lead)], score: SCORE[labelOf[caseIdOf(lead)]], reason: 'stub' });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fe24-check-'));
+  const realFetch = globalThis.fetch;
+
+  try {
+    // 3.2 Chế độ mô phỏng: không gọi mạng, 20 lead đúng 100%
+    let fetchCalls = 0;
+    globalThis.fetch = () => { fetchCalls += 1; throw new Error('fetch bị chặn trong test'); };
+    const dry = capture();
+    assert.equal(await run(['--dry-run'], {}, dry.io), 0);
+    assert.ok(dry.log.join('\n').includes('20/20 (100,0%)') && dry.log.join('\n').includes('Số lượt đo: 20'));
+    assert.equal(fetchCalls, 0, '--dry-run không được gọi fetch');
+    globalThis.fetch = realFetch;
+    assert.equal(spawnSync(process.execPath, [path.join(__dirname, 'eval-lead-scoring.cjs'), '--dry-run'], { encoding: 'utf8' }).status, 0, 'CLI --dry-run phải thoát mã 0');
+
+    // 3.3 --only và --repeat
+    const part = capture();
+    assert.equal(await run(['--dry-run', '--only', 'warm-01,cold-02', '--repeat', '3'], {}, part.io), 0);
+    const partText = part.log.join('\n');
+    assert.ok(partText.includes('Số lượt đo: 6') && partText.includes('Số lần lặp: 3') && partText.includes('Cùng mức ở mọi lần chạy | 2/2 (100,0%)'), 'chỉ hai lead ba lần, có độ nhất quán');
+    const unknown = capture();
+    assert.equal(await run(['--dry-run', '--only', 'khong-co'], {}, unknown.io), 2);
+    assert.ok(unknown.error.join('\n').includes('khong-co'));
+
+    // 3.1 Từ chối địa chỉ không phải local và thiếu biến môi trường: không có kết nối nào
+    for (const api of ['https://example.com', 'http://localhost.evil.com:8081', 'http://localhost@evil.com']) {
+      let calls = 0;
+      const refused = capture();
+      const code = await run(['--api', api], { EVAL_USER: 'u', EVAL_PASSWORD: 'p', WEBHOOK_SECRET: 's' }, { ...refused.io, fetch: () => { calls += 1; throw new Error('không được gọi'); } });
+      assert.equal(code, 2, `${api} phải bị từ chối`);
+      assert.equal(calls, 0, `${api}: không được gọi mạng`);
+    }
+    const noEnv = capture();
+    assert.equal(await run(['--api', 'http://localhost:8081'], { EVAL_PASSWORD: 'p', WEBHOOK_SECRET: 's' }, noEnv.io), 2);
+    assert.ok(noEnv.error.join('\n').includes('EVAL_USER') && !noEnv.error.join('\n').includes('EVAL_PASSWORD'), 'chỉ nêu biến thiếu');
+
+    // 3.4 Chạy thật trên stub, --repeat 3: 60 lượt, không 409, 60 khung khác nhau trong 14 ngày
+    const stub = await startBookingStub({ now: () => NOW, scorer: exactScorer, scoreDelayMs: 20, properties: [{ id: 7, name: 'Căn stub', address: 'x', area: 80, price: PRICE, status: 'AVAILABLE' }] });
+    try {
+      const env = { EVAL_USER: stub.user, EVAL_PASSWORD: stub.password, WEBHOOK_SECRET: stub.secret };
+      const outPrefix = path.join(tmp, 'full');
+      const full = capture();
+      const code = await run(['--api', stub.url, '--repeat', '3', '--concurrency', '5', '--poll-ms', '15', '--timeout-s', '10', '--out', outPrefix], env, full.io);
+      assert.equal(code, 0, `chạy trọn bộ phải thoát 0: ${full.error.join(' ')}`);
+      assert.equal(stub.created.length, 60, '60 lượt đều tạo được');
+      assert.deepEqual(stub.stats.rejected, { 400: 0, 409: 0, 429: 0 }, 'không lượt nào bị 400, 409 hay 429');
+      assert.equal(new Set(stub.created.map((l) => l.viewingTime)).size, 60, '60 khung giờ đôi một khác nhau');
+      const limit = NOW.getTime() + 14 * 24 * 3600000;
+      assert.ok(stub.created.every((l) => Date.parse(l.viewingTime) >= NOW.getTime() && Date.parse(l.viewingTime) <= limit), 'mọi khung nằm trong 14 ngày');
+      assert.ok(stub.created.every((l) => l.secretSent), 'mọi lượt gửi X-Webhook-Secret');
+      assert.ok(stub.created.every((l) => l.source === 'eval-fe24' && l.name.startsWith('[EVAL]') && l.email.endsWith('@eval.invalid')), 'lead mẫu mang source, tên, email quy ước');
+      assert.equal(new Set(stub.created.map((l) => l.phone)).size, 60, 'mỗi lượt một số điện thoại');
+      assert.ok(stub.created.every((l) => l.budget === Math.round(PRICE * cases.find((c) => c.id === caseIdOf(l)).ratio)), 'budget = round(giá × ratio)');
+      const saved = JSON.parse(fs.readFileSync(`${outPrefix}.json`, 'utf8'));
+      assert.equal(saved.results.length, 60);
+      assert.ok(saved.results.every((r) => r.status === 'SCORED' && r.level === r.label));
+      const md = fs.readFileSync(`${outPrefix}.md`, 'utf8');
+      assert.ok(md.includes('60/60 (100,0%)') && md.includes('Cùng mức ở mọi lần chạy | 20/20 (100,0%)'));
+      assert.ok(full.log.join('\n').includes('DELETE FROM leads WHERE source'), 'in sẵn câu SQL dọn lead');
+    } finally { await stub.close(); }
+
+    // 3.4 Chỉ còn 30 khung trống: dừng trước khi tạo lead nào, nêu số khung thiếu
+    const tight = await startBookingStub({ now: () => NOW, freeSlots: 30, scorer: exactScorer });
+    try {
+      assert.equal(tight.freeSlotCount(), 30);
+      const short = capture();
+      const code = await run(['--api', tight.url, '--repeat', '3', '--poll-ms', '15'], { EVAL_USER: tight.user, EVAL_PASSWORD: tight.password, WEBHOOK_SECRET: tight.secret }, short.io);
+      assert.notEqual(code, 0);
+      assert.equal(tight.stats.postAttempts, 0, 'không được gọi POST /api/viewings lần nào');
+      assert.equal(tight.created.length, 0);
+      assert.ok(short.error.join('\n').includes('thiếu 30'), 'phải nêu thiếu 30 khung');
+      // giảm --repeat thì chạy được (30 lượt vừa 30 khung)
+      const fits = capture();
+      assert.equal(await run(['--api', tight.url, '--repeat', '1', '--only', cases.slice(0, 5).map((c) => c.id).join(','), '--poll-ms', '15', '--timeout-s', '5', '--out', path.join(tmp, 'tight')], { EVAL_USER: tight.user, EVAL_PASSWORD: tight.password, WEBHOOK_SECRET: tight.secret }, fits.io), 0);
+      assert.equal(tight.created.length, 5);
+    } finally { await tight.close(); }
+
+    // Lead lỗi và quá hạn chờ được báo riêng, lead còn lại vẫn đo
+    const mixed = await startBookingStub({
+      now: () => NOW, scoreDelayMs: 20,
+      scorer: (lead) => (caseIdOf(lead) === 'warm-01' ? { failed: true } : caseIdOf(lead) === 'cold-01' ? null : exactScorer(lead)),
+    });
+    try {
+      const out = capture();
+      const prefix = path.join(tmp, 'mixed');
+      const code = await run(['--api', mixed.url, '--only', 'hot-01,warm-01,cold-01', '--poll-ms', '15', '--timeout-s', '1', '--out', prefix], { EVAL_USER: mixed.user, EVAL_PASSWORD: mixed.password, WEBHOOK_SECRET: mixed.secret }, out.io);
+      assert.equal(code, 0);
+      const byId = Object.fromEntries(JSON.parse(fs.readFileSync(`${prefix}.json`, 'utf8')).results.map((r) => [r.caseId, r.status]));
+      assert.deepEqual(byId, { 'hot-01': 'SCORED', 'warm-01': 'FAILED', 'cold-01': 'TIMEOUT' });
+      const md = fs.readFileSync(`${prefix}.md`, 'utf8');
+      assert.ok(md.includes('## Lượt lỗi hoặc quá hạn chờ') && md.includes('--only warm-01,cold-01'));
+    } finally { await mixed.close(); }
+
+    // Sai mật khẩu: dừng trước khi tạo lead
+    const locked = await startBookingStub({ now: () => NOW });
+    try {
+      const bad = capture();
+      assert.equal(await run(['--api', locked.url], { EVAL_USER: locked.user, EVAL_PASSWORD: 'sai', WEBHOOK_SECRET: locked.secret }, bad.io), 1);
+      assert.equal(locked.stats.postAttempts, 0);
+    } finally { await locked.close(); }
+
+    console.log('PASS runner: --dry-run không gọi mạng, từ chối địa chỉ không local, 60 lượt trên stub (60 khung riêng, không 409), thiếu khung dừng trước khi tạo lead, lead lỗi báo riêng');
+  } finally {
+    globalThis.fetch = realFetch;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}

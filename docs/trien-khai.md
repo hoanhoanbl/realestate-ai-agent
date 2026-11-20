@@ -471,6 +471,19 @@ Script thêm năm cột (`leads.contacted_at`; `contracts.agreed_price`, `signed
 - Quay về bản cũ rồi lên lại bản mới thì cột được tạo lại **rỗng**. `contacted_at` của khách đã điểm danh khôi phục được bằng cách chạy lại script. Dữ liệu ghi sau này (`contacted_at` do FE-44 ghi tay, giá thoả thuận, thông tin bản đã ký) **mất**, nên trước khi quay về phải chép riêng các cột đó (hoặc dùng bản sao lưu bước 1).
 - Vì vậy khi cần hoàn tác, ưu tiên sửa lỗi tiến lên (hotfix) hơn là quay về image cũ.
 
+## 9g. Chăm khách theo bậc FE-45 (chưa phát hành)
+
+Code và JSON L9 mới chỉ nghiệm thu local. Chưa thực hiện bước nào dưới đây trên VPS.
+
+1. Sao lưu theo mục 6; nền FE-43 và bảng feedback_work phải có trước backend FE-45. Nhánh FE-45 hiện kế thừa FE-44, cần tích hợp đúng base trước release.
+2. Deploy backend có API ladder và kiểm tra `PUBLIC_WEB_URL`, `WEBHOOK_SECRET`. Không thêm SQL/schema mới cho FE-45.
+3. Import `luong-9-follow-up-bac.json` ở trạng thái **tắt**. Chọn lại Header Auth, Gemini, SMTP, sub-workflow `thongBaoNhanVien` và Error workflow `errorWfRealestat` nếu ID trên server khác repo.
+4. Import L2 với selector FE-45 (hoặc bản FE-46 đã tích hợp). Bản FE-45 giữ nguyên các node và connection khác, gồm lời gọi worker phản hồi; chỉ loại HOT_NUDGE/WARM_NUDGE/COLD_NURTURE và checkpoint L9 khỏi SQL chọn việc. Không bật L9 khi L2 cũ vẫn chọn lead im lặng.
+5. Kiểm thử bằng lead demo/hộp thư test: các bậc, QUIET, STALE, FE-56 chỉnh thư/hai tab, rút consent, SMTP hỏng, REVIEW/resolve và khôi phục ACTION_DONE. Sau đó mới publish L9. Lịch là 08h–20h giờ Việt Nam.
+6. Rollback luồng: tắt L9, khôi phục JSON L2 trước release. Không hạ backend về image trước FE-43 tùy tiện: cảnh báo mất cột ở mục 9f vẫn áp dụng. Tác vụ REVIEW phải đối chiếu lịch sử gửi trước resolve, không xóa checkpoint để gửi lại.
+
+Kết quả local: 344 test backend PASS; n8n 2.42.4 cô lập + DB thật + SMTP giả đã đạt các ca chính và lỗi SMTP/Error workflow. Gemini và sub-workflow thông báo dùng fixture; chưa nghiệm thu Gemini/Telegram thật, UI FE-56 tích hợp hoặc VPS. Chi tiết: [FE-45](fe-45-cham-khach-theo-bac.md), [luồng 9](luong/luong-9-follow-up-bac.md).
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

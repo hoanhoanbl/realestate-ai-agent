@@ -46,7 +46,7 @@ export const FOLLOWUP_SNAPSHOT_SQL = `SELECT s.*,
 
 const projection = `type,lead_id,name,email,phone,needs,level,property_id,viewing_time,mautic_contact_id,viewing_id,assigned_user_id,response_due_at`;
 export const FOLLOWUP_SELECTOR_SQL = `WITH snapshots AS MATERIALIZED (${FOLLOWUP_BASE_SQL}), due AS (
- SELECT s.*,k.type FROM snapshots s CROSS JOIN (VALUES ('REMINDER'),('FEEDBACK'),('WARM_NUDGE'),('HOT_NUDGE'),('COLD_NURTURE'),('EXPIRE_LEAD'),('ATTENDANCE_CHECK'),('ATTENDANCE_ESCALATE')) k(type)
+ SELECT s.*,k.type FROM snapshots s CROSS JOIN (VALUES ('REMINDER'),('FEEDBACK'),('EXPIRE_LEAD'),('ATTENDANCE_CHECK'),('ATTENDANCE_ESCALATE')) k(type)
  WHERE s.viewing_id>0 AND (k.type IN ('REMINDER','EXPIRE_LEAD','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE')
  OR s.viewing_id=(SELECT max(latest_v.id) FROM viewings latest_v WHERE latest_v.lead_id=s.lead_id)) AND CASE k.type
  WHEN 'REMINDER' THEN s.status='CONFIRMED' AND s.viewing_status='NEW' AND s.email IS NOT NULL AND s.viewing_time BETWEEN now() AND now()+interval '24 hours' AND NOT s.reminder_sent
@@ -67,7 +67,7 @@ export const FOLLOWUP_SELECTOR_SQL = `WITH snapshots AS MATERIALIZED (${FOLLOWUP
 ), recoverable AS (
  SELECT t.type,l.id AS lead_id,l.name,l.email,l.phone,l.needs,l.level,v.property_id,t.viewing_time,l.mautic_contact_id,t.viewing_id,l.assigned_user_id,l.response_due_at
  FROM followup_tasks t JOIN leads l ON l.id=t.lead_id LEFT JOIN viewings v ON v.id=t.viewing_id AND v.lead_id=l.id
- WHERE t.available_at<=now() AND t.lease_until<=now() AND (t.state='ACTION_DONE' OR (
+ WHERE t.type NOT IN ('LADDER_REACH','LADDER_QUIET','LADDER_STALE','LADDER_EMAIL') AND t.available_at<=now() AND t.lease_until<=now() AND (t.state='ACTION_DONE' OR (
  t.type='EXPIRE_LEAD' AND t.state IN ('CLAIMED','FAILED','ACTION_STARTED') AND l.status='LOST' AND l.lost_reason='EXPIRED' AND v.status='CANCELLED'
  AND date_trunc('milliseconds',t.viewing_time)=date_trunc('milliseconds',v.viewing_time)
  AND EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='LEAD_EXPIRED' AND e.note='L2 '||t.task_key)))

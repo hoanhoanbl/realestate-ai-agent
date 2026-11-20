@@ -38,6 +38,8 @@ Why: the claim / lease / retry / REVIEW machinery, its tests and the n8n calling
 
 ### D3. "Activity" is an allow-list of event types
 
+Migration safety (FE-45 local verification): include `leads.contacted_at` itself in the activity maximum too. FE-43 backfills this field from attended viewings without inserting a CONTACTED event; an old lead reached recently must not be closed using its creation date simply because its legacy event is missing.
+
 The quiet-period anchor is the latest of: `leads.created_at` and `lead_events` of the types `NOTE_ADDED`, `CONTACTED`, `CONTACT_ATTEMPTED`, `STATUS_CHANGED`, `LEAD_ASSIGNED`, `LEAD_REASSIGNED`, `LEAD_REOPENED`, `FEEDBACK_RECEIVED`, `APPROVED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `VIEWING_RESCHEDULED`, `CUSTOMER_RESCHEDULE_REQUESTED`, `FEEDBACK_WORK_UPDATED` (a sale recording a call result in PR #79's feedback follow-up), `LADDER_APPROVED`. An allow-list means a future automated event can never silently reset the clock. *Alternative:* "everything except automated types". Rejected for that reason.
 
 ### D4. Steps and thresholds are constants
@@ -68,6 +70,8 @@ The link follows FE-35: HMAC-signed token over `{taskId}` (one link, two buttons
 *Alternatives:* (a) send automatically to consenting customers and only notify the sale. Rejected: no human approval, and the course topic asks for one. (b) approve from the lead page with a button. Rejected for now: the sale would need to open the web app from Telegram anyway, and a link needs no login; the lead page can show the pending suggestion later.
 
 ### D6. Stale closing happens inside `claim()`
+
+Recovery safety (FE-45 local verification): expired ACTION_STARTED checkpoints must be selected even when a later note/contact/status change makes the original step no longer due. They become REVIEW rather than being silently abandoned; L9 reports this through Error workflow. This does not permit a duplicate send.
 
 `LADDER_STALE` follows `EXPIRE_LEAD`: `claim()` sets `LOST` with `lostReason = 'STALE'` and writes `LEAD_STALE_CLOSED` in one transaction, guarded by "no open viewing, no live contract, no open `feedback_work` row (status not `COMPLETED`)". The same open-`feedback_work` guard applies to `LADDER_QUIET`: a sale who recorded "needs more time" with a next call 21 days away is followed by PR #79's deadline, reminder and manager alert, so the ladder stays silent instead of reminding at day 7 and closing at day 14. Completing the task writes `FEEDBACK_WORK_UPDATED`, which is in the D3 allow-list, so the quiet period restarts from that moment. Flow 9 then alerts the manager through `action-done`. The manual status endpoints reject `STALE`, `NO_SHOW`, `EXPIRED` and `CUSTOMER_CANCELLED` (new `MANUAL_LOST_REASONS` constant); only code paths that own those reasons set them.
 

@@ -129,8 +129,8 @@ Thêm node mới thì đặt trong khung đúng nhóm; khung không đủ chỗ 
 ```
  KÊNH        Web khách · Web admin · Email · Telegram (bot khách, bot sale) · App Expo (giai đoạn 4)
                                      │
- n8n         12 workflow: L1 L1b L2 L3 L4 L5 L6 L6b L7 L8
-                          + sub-workflow "Thông báo nhân viên" + Error workflow
+ n8n         14 workflow: L1 L1b L2 L3 L4 L5 L6 L6b L7 L8 L9 (L9 mới ở local)
+                          + "Thông báo nhân viên" + "Theo dõi phản hồi" + Error workflow
                                      │
  DỊCH VỤ     Backend NestJS · Postgres (+ pgvector) · Gemini · Mautic + MySQL
              Langfuse Cloud (dự kiến, FE-25)
@@ -188,3 +188,5 @@ Nguyên tắc: **web làm trước, app làm sau**.
   - 10 sale demo để thử chia khách lần lượt: `nhadn2457+nhanvien01@gmail.com` đến `+nhanvien10` (Nguyễn Minh Khang, Trần Thu Hà, Lê Quốc Bảo, Phạm Ngọc Anh, Võ Hoàng Long, Đặng Thị Mai, Bùi Văn Phúc, Hồ Thanh Tâm, Dương Gia Huy, Ngô Bảo Châu)
 - Các tài khoản trên do backend tự tạo khi khởi động (`SEED_USERS` trong `backend/src/users/users.service.ts`), ở mọi môi trường có biến `SEED_USER_PASSWORD`, kể cả server. Mật khẩu chung là giá trị biến đó. Backend chỉ tạo email còn thiếu, không đổi mật khẩu hay thông tin tài khoản đã có. Sale mới tạo đều ở trạng thái "Đang nhận khách", nên khách mới được chia vòng cho mọi sale; quản lý tắt bớt ở trang Phân quyền nếu không muốn.
   - Khách test: `nhadn2457+khach1@gmail.com`, `+khach2`, ...
+
+FE-45 đã có luồng 9 local, chưa bật server: [tài liệu luồng 9](luong/luong-9-follow-up-bac.md). Bật L9 sau khi import L2 dùng selector FE-45, để hai luồng không cùng chăm khách im lặng.

@@ -392,7 +392,7 @@ Trạng thái căn (`properties.status`): `AVAILABLE` (mở bán), `RESERVED` (�
 - `SOLD` chỉ đặt được khi căn đang `RESERVED` và hợp đồng đã `SIGNED`; sai thì `400` `Chỉ đánh dấu "đã bán" được khi căn đang giữ cọc và hợp đồng đã ký`. Thành công thì ghi sự kiện `PROPERTY_SOLD` cho lead của hợp đồng.
 - Những lịch xem đã đặt trước khi căn thành `RESERVED` vẫn giữ nguyên; nhân viên gọi báo khách.
 
-### 3.10. Link duyệt thư của luồng 9 (FE-45, FE-56) **[Sắp làm]**
+### 3.10. Link duyệt thư của luồng 9 (FE-45, FE-56) **[Đã triển khai local, chưa phát hành]**
 
 Chốt ở DC-16 để trang `/duyet-thu/<mã>` (FE-56) làm song song với backend (FE-45, việc 4.4). Quy tắc nghiệp vụ: [lead follow-up mục 4.3](nghiep-vu/03-lead-follow-up.md); thiết kế: change `journey-followup-ladder`, design D5.
 
@@ -432,7 +432,7 @@ Token là `base64url({t: taskId}).HMAC-SHA256(WEBHOOK_SECRET)`, giống link c�
 | `kind`, `step` | `REACH` kèm `step` 1, 3 hoặc 7; `QUIET` thì `step` là `null` |
 | `propertyName` | Căn của buổi xem gần nhất, `null` nếu khách chưa đặt lịch |
 | `suggestion` | `action` là `CALL`, `SEND_EMAIL`, `OFFER_VIEWING` hoặc `WAIT`. `emailDraft` là `null` khi AI lỗi hoặc nháp bị guardrail bỏ |
-| `canSend` | `true` khi `state = OPEN` và `refusal = null`. `false` thì trang chỉ hiện gợi ý và nút "Bỏ qua" |
+| `canSend` | `true` khi `state = OPEN`, `refusal = null` và action khác `WAIT`. `false` thì trang chỉ hiện gợi ý và nút "Bỏ qua" |
 
 Không trả số điện thoại, email của khách hay token việc.
 
@@ -445,7 +445,24 @@ Không trả số điện thoại, email của khách hay token việc.
 | Bấm lại sau khi đã gửi hoặc đã bỏ qua, kể cả hai tab cùng lúc | `{ok: true, decision, already: true}`; không gửi thêm thư |
 | `text` rỗng sau khi bỏ khoảng trắng, hoặc dài quá 1500 ký tự (chỉ xét với `SEND`) | 400 |
 | Lead đã đóng, đã có việc nhắc mới hơn, khách chưa đồng ý nhận tin, khách không có email | 400 kèm lý do, cùng mã với `state`/`refusal` ở trên |
-| Gọi n8n lỗi | 502. Trang báo "Chưa gửi được, thử lại sau". Khoá `LADDER_EMAIL:{taskId}` bảo đảm bấm lại không gửi trùng; cách thử lại do FE-45 chốt |
+| Gọi n8n lỗi | 502. Trang báo "Chưa gửi được, thử lại sau". Preview còn OPEN để thử dispatch lại cùng LADDER_EMAIL, giữ nội dung đã duyệt lần đầu. Worker định kỳ khôi phục thư chưa bắt đầu; gửi ngoài không rõ thành công vào REVIEW, không tự gửi trùng |
+
+Link cũng hết hiệu lực khi đổi sale/phiên nhận khách hoặc lead sang DEPOSIT. SEND với action WAIT trả 400. SKIP không đòi consent hay email vì không gửi gì. Preview có `Cache-Control: no-store`.
+
+Sau lỗi dispatch, sale có thể SKIP nếu worker chưa nhận thư: email task được đóng với `result.cancelled=true`, không gửi hoặc ghi log gửi thư. SKIP và claim dùng cùng khóa lead; nếu worker đã nhận/gửi hoặc đang REVIEW thì trả quyết định SEND đã xử lý, không báo huỷ thành công. Preview kiểm cả checkpoint thư để tránh hiện OPEN khi phản hồi webhook bị mất. Email/điện thoại được ẩn cả trong reason/emailDraft của phản hồi public, kể cả thông tin cũ trong gợi ý; context secret của worker giữ recipient thật.
+
+Với LADDER_EMAIL, `POST /api/followups/{id}/start` trả `{allowed:true,delivery:{email,text}}` sau khi kiểm lại điều kiện và đọc recipient/nội dung dưới khóa lead. Worker chỉ dùng `delivery` này để dựng thư, không dùng email từ context đọc trước đó. Đây là mốc chốt dữ liệu trước bước gửi ngoài, không phải cam kết hủy được thư sau khi start đã cho phép. Suggestion phải là một object; array (kể cả array rỗng) bị từ chối 400 trước khi lưu.
+
+**API worker FE-45** (đều Header Secret, chưa phát hành):
+
+| Method | Route | Body/kết quả |
+|---|---|---|
+| GET | `/api/followups/ladder-due` | Tối đa 50 `{leadId,kind,step,anchor,assigneeId,taskId?}`; REACH/QUIET/STALE; có cả checkpoint cần hoàn tất/khôi phục |
+| GET | `/api/followups/ladder-email-due` | Tối đa 50 `{taskId,leadId,ladderTaskId,viewingTime}` để khôi phục thư được duyệt; start vẫn kiểm điều kiện |
+| POST | `/api/followups/{id}/ladder-context` | `{token}` của worker; ngữ cảnh lead, 12 sự kiện cuối, tên sale/căn; với LADDER_EMAIL trả text đã duyệt |
+| POST | `/api/followups/{id}/ladder-suggestion` | `{token,suggestion:{action,reason,emailDraft}}`; chỉ sửa trong lease CLAIMED/ACTION_STARTED; WAIT luôn lưu nháp null |
+
+Ladder dùng lifecycle claim/start/action-done/complete/fail/resolve hiện có. Claim: `viewingId=0`, `viewingTime=anchor`, `type=LADDER_REACH/QUIET/STALE`, `step=1/3/7` chỉ cho REACH. LADDER_EMAIL cần `ladderTaskId` (task cha); backend chỉ cho claim email đã được confirm tạo trước. action-done giữ suggestion. STALE đóng lead trong claim cùng transaction với sự kiện; ACTION_STARTED hết lease sang REVIEW để người vận hành đối chiếu trước resolve.
 
 `text` là chữ thường (không HTML); web và thư đều escape khi hiển thị.
 

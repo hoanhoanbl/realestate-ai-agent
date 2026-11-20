@@ -493,6 +493,26 @@ Script thêm năm cột (`leads.contacted_at`; `contracts.agreed_price`, `signed
 - Quay về bản cũ rồi lên lại bản mới thì cột được tạo lại **rỗng**. `contacted_at` của khách đã điểm danh khôi phục được bằng cách chạy lại script. Dữ liệu ghi sau này (`contacted_at` do FE-44 ghi tay, giá thoả thuận, thông tin bản đã ký) **mất**, nên trước khi quay về phải chép riêng các cột đó (hoặc dùng bản sao lưu bước 1).
 - Vì vậy khi cần hoàn tác, ưu tiên sửa lỗi tiến lên (hotfix) hơn là quay về image cũ.
 
+## 9g. Việc nhỏ ở n8n: thư chốt lịch, retry 6b, báo Telegram (FE-50)
+
+Chỉ đổi ba file JSON của n8n, không có SQL, không có biến `.env` mới, không đổi backend. **Phải triển khai sau FE-43** (backend bản mới mới nhận loại sự kiện `VIEWING_CONFIRMATION_SENT`; backend cũ trả 400 khi n8n ghi sự kiện này, luồng 1b vẫn chốt lịch nhưng không có sự kiện). Chi tiết: change `fe50-n8n-small-fixes`.
+
+1. Deploy backend bản có FE-43 trước.
+2. Import và publish `luong-1b-chot-lich-thu-cong.json`, `luong-6b-nap-tri-thuc.json`, `error-workflow.json` (dùng `import_wf` ở mục 5), restart n8n.
+3. Bảo đảm `.env` của VPS có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID` (đã dùng cho thông báo nhân viên) và `docker-compose` truyền hai biến này vào container n8n. Thiếu thì Error workflow chỉ gửi email.
+4. Kiểm tra:
+   - Duyệt một lịch thử bằng khách nội bộ, rồi:
+
+     ```bash
+     docker exec realestate-db psql -U realestate -d realestate -Atc \
+       "select type, note from lead_events where type='VIEWING_CONFIRMATION_SENT' order by id desc limit 3"
+     ```
+
+     Có một dòng, ghi chú `viewing=<mã>;time=<giờ UTC>` khớp giờ hẹn.
+   - Bấm chạy tay luồng 6b: mọi node xanh; Executions không báo lỗi.
+   - Gây lỗi một luồng (ví dụ tắt SMTP rồi duyệt lịch): quản lý nhận email `[LỖI]` và nhóm Telegram nhận tin cùng nội dung.
+5. Hoàn tác: import lại ba file bản trước từ git.
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

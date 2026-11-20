@@ -79,7 +79,8 @@
       },
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -100,8 +101,8 @@
     {
       "parameters": {
         "content": "## 2. Báo quản lý",
-        "height": 300,
-        "width": 180,
+        "height": 460,
+        "width": 500,
         "color": 1
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -128,6 +129,64 @@
       ],
       "name": "Chú thích màu",
       "id": "6f2d0840-6a90-51d6-93e1-d1115caae981"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5e319e52-a78c-517b-99cb-09868e47e31b",
+              "leftValue": "={{ !!$env.TELEGRAM_BOT_TOKEN && !!$env.TELEGRAM_SALE_CHAT_ID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        200
+      ],
+      "id": "9895c073-c252-5410-812d-854de6d805c9",
+      "name": "Có Telegram?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_SALE_CHAT_ID, text: '[LỖI] Luồng n8n bị lỗi\\nWorkflow: ' + $('Tóm tắt lỗi').first().json.workflow + '\\nNode lỗi: ' + $('Tóm tắt lỗi').first().json.node + '\\nThông báo: ' + String($('Tóm tắt lỗi').first().json.message).slice(0, 500) + '\\n' + $('Tóm tắt lỗi').first().json.url, disable_web_page_preview: true }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        200
+      ],
+      "id": "5a27820a-4d42-512b-8153-a772d3ed03d8",
+      "name": "Gửi Telegram",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {},
@@ -150,8 +209,25 @@
             "node": "Email báo lỗi",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Có Telegram?",
+            "type": "main",
+            "index": 0
           }
         ]
+      ]
+    },
+    "Có Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Gửi Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

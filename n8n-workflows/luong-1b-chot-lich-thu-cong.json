@@ -143,7 +143,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const q = $input.first().json;\nconst k = $('Chuẩn hoá').first().json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst timeText = DateTime.fromISO(new Date(q.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\");\nreturn [{ json: { leadId: k.leadId, event: k.event, by: k.by, email: q.email, nameHtml: esc(q.name), phoneHtml: esc(q.phone),\n  propertyNameHtml: esc(q.property_name), addressHtml: esc(q.property_address), timeText,\n  // lịch chỉ còn hiệu lực khi khách NEW/CONFIRMED và buổi xem chưa kết thúc / chưa huỷ\n  leadStatus: q.status, viewingStatus: q.viewing_status,\n  // buổi xem này phải là buổi mới nhất của khách, để link cũ không chốt nhầm buổi xem mới\n  viewingId: q.viewing_id, isLatest: Number(q.latest_viewing_id) === Number(q.viewing_id),\n  manageUrl: q.manage_token ? $('Cấu hình').first().json.publicWebUrl + '/lich/' + q.manage_token : '' } }];"
+        "jsCode": "const q = $input.first().json;\nconst k = $('Chuẩn hoá').first().json;\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst timeText = DateTime.fromISO(new Date(q.viewing_time).toISOString()).setZone('Asia/Ho_Chi_Minh').toFormat(\"HH:mm 'ngày' dd/MM/yyyy\");\nreturn [{ json: { leadId: k.leadId, event: k.event, by: k.by, email: q.email, nameHtml: esc(q.name), phoneHtml: esc(q.phone),\n  propertyNameHtml: esc(q.property_name), addressHtml: esc(q.property_address), timeText,\n  // lịch chỉ còn hiệu lực khi khách NEW/CONFIRMED và buổi xem chưa kết thúc / chưa huỷ\n  leadStatus: q.status, viewingStatus: q.viewing_status,\n  // buổi xem này phải là buổi mới nhất của khách, để link cũ không chốt nhầm buổi xem mới\n  viewingId: q.viewing_id, viewingTimeIso: new Date(q.viewing_time).toISOString(), isLatest: Number(q.latest_viewing_id) === Number(q.viewing_id),\n  manageUrl: q.manage_token ? $('Cấu hình').first().json.publicWebUrl + '/lich/' + q.manage_token : '' } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -229,7 +229,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2020,
+        2240,
         80
       ],
       "id": "32fd5357-3a76-479e-837f-20da21dc9aba",
@@ -258,7 +258,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2240,
+        2460,
         80
       ],
       "id": "7fb2ed31-8ede-4f03-9ac3-5731d045aed5",
@@ -402,7 +402,7 @@
       "parameters": {
         "content": "## 3. Chốt lịch, báo giờ mới hoặc báo khách hẹn lại giờ",
         "height": 860,
-        "width": 620,
+        "width": 860,
         "color": 1
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -590,6 +590,66 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị').first().json.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"VIEWING_CONFIRMATION_SENT\", \"note\": \"viewing=\" + $('Chuẩn bị').first().json.viewingId + \";time=\" + $('Chuẩn bị').first().json.viewingTimeIso } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2020,
+        80
+      ],
+      "id": "fc23e7ca-10bf-5075-b1cc-49b55e9aab09",
+      "name": "Ghi log VIEWING_CONFIRMATION_SENT",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Chuẩn bị').first().json.leadId }}/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"type\": \"VIEWING_CONFIRMATION_SENT\", \"note\": \"viewing=\" + $('Chuẩn bị').first().json.viewingId + \";time=\" + $('Chuẩn bị').first().json.viewingTimeIso } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2020,
+        320
+      ],
+      "id": "76cbcfc1-ba3a-565b-b8e3-ee15a41b723c",
+      "name": "Ghi log VIEWING_CONFIRMATION_SENT (đổi giờ)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYLrhsH8b8dDkZ0n",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {},
@@ -689,7 +749,7 @@
       "main": [
         [
           {
-            "node": "Cập nhật CONFIRMED",
+            "node": "Ghi log VIEWING_CONFIRMATION_SENT",
             "type": "main",
             "index": 0
           }
@@ -766,6 +826,28 @@
         [
           {
             "node": "Ghi log RESCHEDULE_REQUESTED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ghi log VIEWING_CONFIRMATION_SENT": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật CONFIRMED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email báo giờ mới": {
+      "main": [
+        [
+          {
+            "node": "Ghi log VIEWING_CONFIRMATION_SENT (đổi giờ)",
             "type": "main",
             "index": 0
           }

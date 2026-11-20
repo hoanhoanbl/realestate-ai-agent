@@ -22,6 +22,9 @@ for (const mail of ['Email khách HOT', 'Email khách WARM', 'Email khách COLD'
 assert.equal(edges(flow1, 'Lấy link duyệt')[0][0], 'Dữ liệu thông báo');
 assert.equal(edges(flow1, 'Thông báo nhân viên')[0][0], 'Lưu kết quả AI');
 assert.equal(edges(flow1, 'Ghi log AI_SCORED').flat().length, 0, 'Ghi log AI_SCORED là bước cuối');
+// BF-09 (LH-54): lưu kết quả AI lỗi phải báo FAILED, không để lead kẹt PENDING
+assert.deepEqual(edges(flow1, 'Lưu kết quả AI')[1], ['Report FAILED'], 'Lưu kết quả AI lỗi phải đi tới Report FAILED');
+assert(!get(flow1, 'Callback failed'), 'Không còn node Callback failed');
 const notify = get(flow1, 'Dữ liệu thông báo').parameters.jsCode;
 assert(/assigneeId/.test(notify) && !/staffEmail/.test(notify), 'Thông báo phải gửi theo assigneeId, không dùng email cứng');
 assert(/staff-links/.test(get(flow1, 'Lấy link duyệt').parameters.url));

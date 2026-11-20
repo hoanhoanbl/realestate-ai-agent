@@ -494,17 +494,6 @@
       "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        440,
-        910
-      ],
-      "id": "20748b55-d231-43ca-8be2-0ac8a6781c96",
-      "name": "Callback failed"
-    },
-    {
       "parameters": {
         "method": "POST",
         "url": "={{ $('Cấu hình').first().json.backendUrl }}/api/leads/{{ $('Webhook').first().json.body.leadId }}/events",
@@ -945,7 +934,7 @@
         ],
         [
           {
-            "node": "Callback failed",
+            "node": "Report FAILED",
             "type": "main",
             "index": 0
           }

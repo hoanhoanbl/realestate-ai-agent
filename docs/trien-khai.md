@@ -27,7 +27,7 @@ Trạng thái server ghi trong file này là ngày **5/11/2026** (đang chạy `
 
 **Container** (tên cố định): `realestate-web`, `realestate-backend`, `realestate-db`, `realestate-n8n`, `realestate-mautic-web`, `realestate-mautic-db`, `realestate-mautic-cron`, `realestate-mautic-worker`.
 
-**Sao lưu tự động** lúc 03:15 mỗi ngày (`/etc/cron.d/realestate-backup` chạy `/root/realestate-backup.sh`): database dự án, database Mautic, dữ liệu n8n, cấu hình Mautic, `.env`. Giữ 7 bản gần nhất trong `/root/backups/realestate/<ngày-giờ>/`. Bản sao lưu nằm cùng ổ đĩa với server, mất máy là mất cả bản sao lưu. Volume `contract_files` (file PDF hợp đồng đã ký, từ FE-48) chưa nằm trong script này, xem mục 9g.
+**Sao lưu tự động** lúc 03:15 mỗi ngày (`/etc/cron.d/realestate-backup` chạy `/root/realestate-backup.sh`): database dự án, database Mautic, dữ liệu n8n, cấu hình Mautic, `.env`. Giữ 7 bản gần nhất trong `/root/backups/realestate/<ngày-giờ>/`. Bản sao lưu nằm cùng ổ đĩa với server, mất máy là mất cả bản sao lưu. Volume `contract_files` (file PDF hợp đồng đã ký, từ FE-48) chưa nằm trong script này, xem mục 9h.
 
 Mọi lệnh `docker compose` trên server phải gọi đủ ba file và tên dự án như sau, nếu không compose sẽ tạo container và volume mới:
 
@@ -427,6 +427,28 @@ Chỉ phát hành cùng FE-38 (`v0.4.0`). Chi tiết: [FE-35](fe-35-thong-bao-ph
 4. Kiểm tra: đặt một lịch thử bằng khách nội bộ. Sale phụ trách nhận thông báo (email, và Telegram/push nếu đã cấu hình); Executions của luồng 1 là "success" và không có lần nào "waiting"; mở nút Duyệt thấy trang xác nhận, bấm thì khách nhận thư chốt lịch.
 5. Sale nào muốn nhận Telegram cá nhân: nhập chat id ở trang Tài khoản (FE-39). Chưa có thì chỉ nhận email.
 
+## 9d-2. Chống trùng lịch theo sale (FE-53)
+
+Chỉ đổi backend: không có SQL, không có biến `.env` mới, không phải import lại luồng n8n. Rollback là chạy lại image cũ.
+
+1. Trước khi deploy, chạy câu SELECT chỉ đọc dưới đây trên DB server để biết lead nào sẽ bị chặn ở lần duyệt kế tiếp (lead `NEW` mà sale phụ trách đang có buổi xem ở căn khác cách dưới 90 phút). Báo quản lý đổi giờ hoặc chuyển sale cho các cặp này.
+
+```sql
+SELECT v1.id AS viewing_a, l1.id AS lead_a, v2.id AS viewing_b, l2.id AS lead_b, u.name AS sale,
+       v1.viewing_time AS gio_a, v2.viewing_time AS gio_b
+  FROM viewings v1
+  JOIN leads l1 ON l1.id = v1.lead_id
+  JOIN viewings v2 ON v2.id <> v1.id AND v2.property_id <> v1.property_id
+  JOIN leads l2 ON l2.id = v2.lead_id AND l2.assigned_user_id = l1.assigned_user_id
+  JOIN users u ON u.id = l1.assigned_user_id
+ WHERE v1.status = 'NEW' AND l1.status = 'NEW'
+   AND (v2.status = 'ATTENDED' OR (v2.status = 'NEW' AND l2.status IN ('NEW', 'CONFIRMED')))
+   AND abs(extract(epoch FROM (v1.viewing_time - v2.viewing_time))) < 90 * 60
+ ORDER BY v1.viewing_time;
+```
+
+2. Kiểm tra sau deploy: duyệt một lead mà sale đang có buổi khác cách 60 phút ở căn khác thì báo `409` kèm tên sale, căn và giờ; đổi giờ ra ngoài 90 phút rồi duyệt được.
+
 ## 9e. Bot Telegram ghi nhận khách (FE-36)
 
 Chỉ phát hành cùng FE-38 (`v0.4.0`), sau FE-35. Chi tiết: [FE-36](fe-36-bot-ghi-nhan-khach.md). Không có SQL, không có biến `.env` mới.
@@ -471,7 +493,27 @@ Script thêm năm cột (`leads.contacted_at`; `contracts.agreed_price`, `signed
 - Quay về bản cũ rồi lên lại bản mới thì cột được tạo lại **rỗng**. `contacted_at` của khách đã điểm danh khôi phục được bằng cách chạy lại script. Dữ liệu ghi sau này (`contacted_at` do FE-44 ghi tay, giá thoả thuận, thông tin bản đã ký) **mất**, nên trước khi quay về phải chép riêng các cột đó (hoặc dùng bản sao lưu bước 1).
 - Vì vậy khi cần hoàn tác, ưu tiên sửa lỗi tiến lên (hotfix) hơn là quay về image cũ.
 
-## 9g. Giá thoả thuận và nền lưu file đã ký (FE-48, bản `v0.5.0`)
+## 9g. Việc nhỏ ở n8n: thư chốt lịch, retry 6b, báo Telegram (FE-50)
+
+Chỉ đổi ba file JSON của n8n, không có SQL, không có biến `.env` mới, không đổi backend. **Phải triển khai sau FE-43** (backend bản mới mới nhận loại sự kiện `VIEWING_CONFIRMATION_SENT`; backend cũ trả 400 khi n8n ghi sự kiện này, luồng 1b vẫn chốt lịch nhưng không có sự kiện). Chi tiết: change `fe50-n8n-small-fixes`.
+
+1. Deploy backend bản có FE-43 trước.
+2. Import và publish `luong-1b-chot-lich-thu-cong.json`, `luong-6b-nap-tri-thuc.json`, `error-workflow.json` (dùng `import_wf` ở mục 5), restart n8n.
+3. Bảo đảm `.env` của VPS có `TELEGRAM_BOT_TOKEN` và `TELEGRAM_SALE_CHAT_ID` (đã dùng cho thông báo nhân viên) và `docker-compose` truyền hai biến này vào container n8n. Thiếu thì Error workflow chỉ gửi email.
+4. Kiểm tra:
+   - Duyệt một lịch thử bằng khách nội bộ, rồi:
+
+     ```bash
+     docker exec realestate-db psql -U realestate -d realestate -Atc \
+       "select type, note from lead_events where type='VIEWING_CONFIRMATION_SENT' order by id desc limit 3"
+     ```
+
+     Có một dòng, ghi chú `viewing=<mã>;time=<giờ UTC>` khớp giờ hẹn.
+   - Bấm chạy tay luồng 6b: mọi node xanh; Executions không báo lỗi.
+   - Gây lỗi một luồng (ví dụ tắt SMTP rồi duyệt lịch): quản lý nhận email `[LỖI]` và nhóm Telegram nhận tin cùng nội dung.
+5. Hoàn tác: import lại ba file bản trước từ git.
+
+## 9h. Giá thoả thuận và nền lưu file đã ký (FE-48, bản `v0.5.0`)
 
 Phát hành cùng lô `v0.5.0`, **sau FE-43** (cần cột `agreed_price` và các cột `signed_file_*`, mục 9f). FE-48 đổi: backend nhận giá thoả thuận, luồng 3 soạn hợp đồng theo giá thoả thuận, web có ô giá và khối "Bản lưu trữ", backend có thư mục lưu file đã ký. **Chưa hợp đồng nào được lưu tự động**: phần dựng PDF và gọi lưu từ luồng 3 là FE-49.
 

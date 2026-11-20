@@ -89,17 +89,14 @@ export class ContractArchiveService {
     }
   }
 
-  // Giữ file lệch làm chứng cứ: HD-0007.pdf.hong-20261120T031500Z (thêm -2, -3 nếu trùng giờ)
-  private async keepEvidence(fileName: string): Promise<string> {
+  // Chọn tên cho file lệch giữ làm chứng cứ: HD-0007.pdf.hong-20261120T031500Z (thêm -2, -3 nếu trùng giờ).
+  // Chỉ chọn tên, chưa đổi tên file, để tên được ghi vào sự kiện trước khi đụng tới ổ đĩa.
+  private async pickEvidenceName(fileName: string): Promise<string> {
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-    const from = this.resolveFile(fileName);
     for (let n = 1; ; n++) {
       const name = `${path.basename(fileName)}.hong-${stamp}${n > 1 ? `-${n}` : ''}`;
-      const to = this.resolveFile(name);
-      const taken = await fs.access(to).then(() => true, () => false);
-      if (taken) continue;
-      await fs.rename(from, to);
-      return name;
+      const taken = await fs.access(this.resolveFile(name)).then(() => true, () => false);
+      if (!taken) return name;
     }
   }
 
@@ -108,55 +105,83 @@ export class ContractArchiveService {
   //  - Đã có mã băm, file còn và khớp: trả bản hiện có, không ghi gì (gọi lại an toàn).
   //  - Đã có mã băm, file mất hoặc lệch: 'auto' bị 409 và không đổi gì; 'restore' giữ file lệch
   //    làm chứng cứ, ghi file mới và ghi sự kiện nêu người phục hồi, lý do, mã băm cũ và mới.
+  // Thứ tự: ghi DB trước (cột và sự kiện), đụng ổ đĩa sau cùng. DB từ chối thì ổ đĩa chưa đổi gì.
+  // Ổ đĩa không nằm trong transaction nên mỗi bước đổi file đăng ký một bước hoàn lại; nếu việc đổi file
+  // hay chính lệnh COMMIT thất bại, các bước hoàn lại chạy ngược để file về đúng như trước và lần thử lại
+  // thấy đúng tình trạng cũ (vẫn ghi đủ sự kiện phục hồi), không gặp file đã "tự lành" mà không có dấu vết.
   async store(contractId: number, pdf: Buffer, mode: ArchiveMode, actorName?: string): Promise<ArchiveResult> {
     if (!Buffer.isBuffer(pdf) || pdf.length === 0) throw new BadRequestException('Nội dung PDF rỗng');
 
-    return this.contractRepository.manager.transaction(async (em) => {
-      const rows: { status: string; leadId: number; path: string | null; sha: string | null; storedAt: Date | null }[] =
-        await em.query(
-          `SELECT status, lead_id AS "leadId", signed_file_path AS "path", signed_file_sha256 AS "sha",
-                  signed_file_stored_at AS "storedAt"
-             FROM contracts WHERE id = $1 FOR UPDATE`,
-          [contractId],
-        );
-      if (rows.length === 0) throw new NotFoundException(`Contract with id ${contractId} not found`);
-      const c = rows[0];
-      if (c.status !== 'SIGNED') throw new ConflictException('Hợp đồng chưa ký, không lưu trữ được');
+    const undo: Array<() => Promise<void>> = [];
+    try {
+      return await this.contractRepository.manager.transaction(async (em) => {
+        const rows: { status: string; leadId: number; path: string | null; sha: string | null; storedAt: Date | null }[] =
+          await em.query(
+            `SELECT status, lead_id AS "leadId", signed_file_path AS "path", signed_file_sha256 AS "sha",
+                    signed_file_stored_at AS "storedAt"
+               FROM contracts WHERE id = $1 FOR UPDATE`,
+            [contractId],
+          );
+        if (rows.length === 0) throw new NotFoundException(`Contract with id ${contractId} not found`);
+        const c = rows[0];
+        if (c.status !== 'SIGNED') throw new ConflictException('Hợp đồng chưa ký, không lưu trữ được');
 
-      const fileName = ContractArchiveService.fileNameFor(contractId);
-      let problem: ArchiveProblem | null = null;
-      let evidenceName: string | null = null;
+        const fileName = ContractArchiveService.fileNameFor(contractId);
+        let problem: ArchiveProblem | null = null;
+        let evidenceName: string | null = null;
 
-      if (c.sha) {
-        const existing = c.path ? await this.tryRead(c.path) : null;
-        problem = this.check(existing, c.sha);
-        if (problem === null) {
-          return { fileName: c.path as string, sha256: c.sha, storedAt: c.storedAt as Date, written: false, restoredBecause: null };
+        if (c.sha) {
+          const existing = c.path ? await this.tryRead(c.path) : null;
+          problem = this.check(existing, c.sha);
+          if (problem === null) {
+            return { fileName: c.path as string, sha256: c.sha, storedAt: c.storedAt as Date, written: false, restoredBecause: null };
+          }
+          // Một file đã bị sửa không bao giờ được âm thầm coi là bản đúng
+          if (mode === 'auto') throw new ConflictException(ARCHIVE_BROKEN_MESSAGE);
+          if (problem === 'MODIFIED') evidenceName = await this.pickEvidenceName(c.path as string);
         }
-        // Một file đã bị sửa không bao giờ được âm thầm coi là bản đúng
-        if (mode === 'auto') throw new ConflictException(ARCHIVE_BROKEN_MESSAGE);
-        if (problem === 'MODIFIED') evidenceName = await this.keepEvidence(c.path as string);
+
+        const sha256 = sha256Of(pdf);
+        const storedAt = new Date();
+        const note =
+          problem === null
+            ? `Hợp đồng #${contractId} đã lưu bản đã ký: ${fileName}, SHA-256 ${sha256}`
+            : `Hợp đồng #${contractId} được phục hồi bản lưu bởi ${actorName ?? 'không rõ'}: bản cũ ${LABEL[problem]}, ` +
+              `mã băm cũ ${c.sha}, mã băm mới ${sha256}, file mới ${fileName}` +
+              (evidenceName ? `, file lệch giữ lại: ${evidenceName}` : '');
+
+        // 1) DB trước: nếu sự kiện bị từ chối thì chưa file nào bị đổi
+        await em.query(
+          `UPDATE contracts SET signed_file_path = $2, signed_file_sha256 = $3, signed_file_stored_at = $4, updated_at = now()
+            WHERE id = $1`,
+          [contractId, fileName, sha256, storedAt],
+        );
+        await em.getRepository(LeadEvent).save({ leadId: c.leadId, type: 'CONTRACT_ARCHIVED', note });
+
+        // 2) Ổ đĩa sau, mỗi bước đổi xong thì đăng ký cách hoàn lại
+        if (evidenceName) {
+          const original = c.path as string;
+          await fs.rename(this.resolveFile(original), this.resolveFile(evidenceName));
+          undo.push(() => fs.rename(this.resolveFile(evidenceName as string), this.resolveFile(original)));
+        }
+        const previous = await this.tryRead(fileName);
+        await this.writeAtomic(fileName, pdf);
+        undo.push(async () => {
+          if (previous === null) await fs.rm(this.resolveFile(fileName), { force: true });
+          else await this.writeAtomic(fileName, previous);
+        });
+
+        return { fileName, sha256, storedAt, written: true, restoredBecause: problem };
+      });
+    } catch (err) {
+      // Lỗi ở bất kỳ bước nào, kể cả COMMIT: đưa ổ đĩa về như trước khi gọi
+      for (const step of undo.reverse()) {
+        await step().catch((undoErr: any) =>
+          this.logger.error(`Không hoàn lại được thay đổi file của hợp đồng #${contractId}: ${undoErr?.message}`),
+        );
       }
-
-      const sha256 = sha256Of(pdf);
-      await this.writeAtomic(fileName, pdf);
-      const storedAt = new Date();
-      await em.query(
-        `UPDATE contracts SET signed_file_path = $2, signed_file_sha256 = $3, signed_file_stored_at = $4, updated_at = now()
-          WHERE id = $1`,
-        [contractId, fileName, sha256, storedAt],
-      );
-
-      const note =
-        problem === null
-          ? `Hợp đồng #${contractId} đã lưu bản đã ký: ${fileName}, SHA-256 ${sha256}`
-          : `Hợp đồng #${contractId} được phục hồi bản lưu bởi ${actorName ?? 'không rõ'}: bản cũ ${LABEL[problem]}, ` +
-            `mã băm cũ ${c.sha}, mã băm mới ${sha256}, file mới ${fileName}` +
-            (evidenceName ? `, file lệch giữ lại: ${evidenceName}` : '');
-      await em.getRepository(LeadEvent).save({ leadId: c.leadId, type: 'CONTRACT_ARCHIVED', note });
-
-      return { fileName, sha256, storedAt, written: true, restoredBecause: problem };
-    });
+      throw err;
+    }
   }
 
   // Tải file kèm kết quả kiểm. null khi hợp đồng chưa được lưu bản nào; buffer null khi file đã mất.

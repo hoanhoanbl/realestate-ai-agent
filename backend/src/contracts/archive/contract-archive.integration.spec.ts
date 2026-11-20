@@ -241,6 +241,100 @@ const databaseUrl = process.env.FE33_TEST_DATABASE_URL;
       expect((await archive.read(id))?.verified).toBe(true);
     });
 
+    // Hậu review PR #94: DB từ chối ghi sự kiện (ngay lúc ghi, hoặc lúc COMMIT) thì file phải về như cũ,
+    // để lần thử lại vẫn thấy bản lưu hỏng và ghi đủ sự kiện phục hồi.
+    describe('DB từ chối sự kiện phục hồi', () => {
+      const install = (deferred: boolean) =>
+        db.query(`
+          CREATE OR REPLACE FUNCTION fe48_reject_restore() RETURNS trigger AS $$
+          BEGIN
+            IF NEW.type = 'CONTRACT_ARCHIVED' AND NEW.note LIKE '%phục hồi%' THEN
+              RAISE EXCEPTION 'fe48 test: từ chối sự kiện phục hồi';
+            END IF;
+            RETURN NEW;
+          END $$ LANGUAGE plpgsql;
+          DROP TRIGGER IF EXISTS fe48_reject ON lead_events;
+          CREATE ${deferred ? 'CONSTRAINT' : ''} TRIGGER fe48_reject AFTER INSERT ON lead_events
+            ${deferred ? 'DEFERRABLE INITIALLY DEFERRED' : ''} FOR EACH ROW EXECUTE FUNCTION fe48_reject_restore();
+        `);
+      const uninstall = () => db.query(`DROP TRIGGER IF EXISTS fe48_reject ON lead_events`);
+      afterEach(uninstall);
+
+      for (const when of ['ngay lúc ghi sự kiện', 'lúc COMMIT'] as const) {
+        const deferred = when === 'lúc COMMIT';
+
+        it(`file lệch, PDF phục hồi trùng bản gốc, bị từ chối ${when}: file lệch còn nguyên, thử lại vẫn ghi sự kiện`, async () => {
+          const id = await seed();
+          const original = pdf('gốc');
+          const first = await archive.store(id, original, 'auto');
+          const target = path.join(dir, 'HD-0001.pdf');
+          await fs.chmod(target, 0o640);
+          await fs.writeFile(target, pdf('gốc bị sửa'));
+          const before = await row(id);
+
+          await install(deferred);
+          await expect(archive.store(id, original, 'restore', 'Quản lý')).rejects.toThrow();
+
+          expect(await fs.readFile(target)).toEqual(pdf('gốc bị sửa'));
+          expect(await files()).toEqual(['HD-0001.pdf']);
+          expect(await row(id)).toEqual(before);
+          expect(await events()).toHaveLength(1);
+          expect(await archive.read(id)).toMatchObject({ verified: false, problem: 'MODIFIED' });
+
+          await uninstall();
+          const retry = await archive.store(id, original, 'restore', 'Quản lý');
+          expect(retry).toMatchObject({ written: true, restoredBecause: 'MODIFIED', sha256: first.sha256 });
+          const ev = await events();
+          expect(ev).toHaveLength(2);
+          expect(ev[1].note).toContain('Quản lý');
+          expect(ev[1].note).toContain('lệch');
+          expect((await files()).filter((n) => n.includes('.hong-'))).toHaveLength(1);
+          expect((await archive.read(id))?.verified).toBe(true);
+        });
+
+        it(`file mất, PDF phục hồi trùng bản gốc, bị từ chối ${when}: không để lại file, thử lại vẫn ghi sự kiện`, async () => {
+          const id = await seed();
+          const original = pdf('gốc');
+          const first = await archive.store(id, original, 'auto');
+          await fs.rm(path.join(dir, 'HD-0001.pdf'));
+          const before = await row(id);
+
+          await install(deferred);
+          await expect(archive.store(id, original, 'restore', 'Quản lý')).rejects.toThrow();
+
+          expect(await files()).toEqual([]);
+          expect(await row(id)).toEqual(before);
+          expect(await events()).toHaveLength(1);
+          expect(await archive.read(id)).toMatchObject({ verified: false, problem: 'MISSING' });
+
+          await uninstall();
+          const retry = await archive.store(id, original, 'restore', 'Quản lý');
+          expect(retry).toMatchObject({ written: true, restoredBecause: 'MISSING', sha256: first.sha256 });
+          const ev = await events();
+          expect(ev).toHaveLength(2);
+          expect(ev[1].note).toContain('mất');
+          expect(await files()).toEqual(['HD-0001.pdf']);
+        });
+      }
+
+      it('lưu lần đầu bị từ chối lúc COMMIT: không để lại file mồ côi, lần sau lưu bình thường', async () => {
+        const id = await seed();
+        await db.query(`
+          CREATE OR REPLACE FUNCTION fe48_reject_restore() RETURNS trigger AS $$
+          BEGIN RAISE EXCEPTION 'fe48 test: từ chối'; END $$ LANGUAGE plpgsql;
+          DROP TRIGGER IF EXISTS fe48_reject ON lead_events;
+          CREATE CONSTRAINT TRIGGER fe48_reject AFTER INSERT ON lead_events
+            DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION fe48_reject_restore();
+        `);
+        await expect(archive.store(id, pdf('gốc'), 'auto')).rejects.toThrow();
+        expect(await files()).toEqual([]);
+        expect((await row(id)).sha).toBeNull();
+        await uninstall();
+        expect(await archive.store(id, pdf('gốc'), 'auto')).toMatchObject({ written: true });
+        expect(await events()).toHaveLength(1);
+      });
+    });
+
     it('cột đường dẫn bị sửa trong DB cũng không đọc hay đổi tên file ngoài thư mục lưu trữ', async () => {
       const id = await seed();
       await archive.store(id, pdf('gốc'), 'auto');

@@ -65,6 +65,7 @@ function ContractDetailContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadWarning, setDownloadWarning] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -115,8 +116,16 @@ function ContractDetailContent() {
   async function downloadArchive() {
     setDownloading(true);
     setDownloadError(null);
+    setDownloadWarning(null);
     try {
-      const { blob, fileName } = await downloadSignedFile(id);
+      const { blob, fileName, verified } = await downloadSignedFile(id);
+      if (!verified) {
+        // Kết quả kiểm hash nằm ngay trong phản hồi tải, mới hơn lần poll gần nhất của trang: tin phản hồi này.
+        const warning = "File vừa tải KHÔNG khớp mã băm lúc lưu: có thể đã bị sửa. Chỉ dùng để đối chiếu, không dùng làm bản đã ký.";
+        setDownloadWarning(warning);
+        reload();
+        if (!window.confirm(`${warning}\n\nVẫn tải về để đối chiếu?`)) return;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -379,6 +388,9 @@ function ContractDetailContent() {
                   >
                     {downloading ? "Đang tải..." : "Tải bản đã ký (PDF)"}
                   </button>
+                )}
+                {downloadWarning && (
+                  <p role="alert" className="rounded-lg bg-rose-50 p-3 font-medium text-rose-800 ring-1 ring-rose-200">{downloadWarning}</p>
                 )}
                 {downloadError && (
                   <p role="alert" className="rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{downloadError}</p>

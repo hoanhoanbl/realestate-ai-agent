@@ -21,6 +21,7 @@ import { Property } from '../properties/entities/property.entity';
 import { LeadsService } from '../leads/leads.service';
 import { lockProperty } from '../viewings/booking-rules';
 import { N8nService } from '../n8n/n8n.service';
+import { ContractArchiveService } from './archive/contract-archive.service';
 import type { AuthUser } from '../auth/auth.types';
 
 const SIGN_VALID_DAYS = 7;
@@ -42,6 +43,7 @@ export class ContractsService {
     private readonly propertyRepository: Repository<Property>,
     private readonly leadsService: LeadsService,
     private readonly n8nService: N8nService,
+    private readonly archiveService: ContractArchiveService,
   ) {}
 
   // ---- Lấy hợp đồng, kèm các cột bị ẩn mặc định ----
@@ -115,7 +117,12 @@ export class ContractsService {
     }
     const property = await this.propertyRepository.findOne({ where: { id: viewing.propertyId } });
     if (!property) throw new BadRequestException('Khách chưa có căn nhà để lập hợp đồng');
-    if (dto.depositAmount > Number(property.price)) {
+    // Cọc so với giá hiệu lực: giá thoả thuận nếu có, không thì giá niêm yết. null và undefined đều là "bỏ trống".
+    const agreedPrice = dto.agreedPrice ?? null;
+    if (agreedPrice !== null && dto.depositAmount > agreedPrice) {
+      throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá thoả thuận');
+    }
+    if (agreedPrice === null && dto.depositAmount > Number(property.price)) {
       throw new BadRequestException('Tiền đặt cọc không được lớn hơn giá căn nhà');
     }
 
@@ -141,6 +148,7 @@ export class ContractsService {
             propertyId: property.id,
             depositAmount: dto.depositAmount,
             propertyPrice: Number(property.price),
+            agreedPrice,
             status: 'DRAFTING',
             createdBy: user.name,
           }),
@@ -157,6 +165,13 @@ export class ContractsService {
 
     await this.leadsService.updateStatus(lead.id, { status: 'DEPOSIT', note: `Tạo hợp đồng #${contract.id} (bởi ${user.name})` });
     await this.leadsService.addEvent(lead.id, { type: 'CONTRACT_CREATED', note: `Hợp đồng #${contract.id}, cọc ${dto.depositAmount.toLocaleString('vi-VN')} đ (bởi ${user.name})` });
+    if (agreedPrice !== null) {
+      const vnd = (n: number) => `${Number(n).toLocaleString('vi-VN')} đ`;
+      await this.leadsService.addEvent(lead.id, {
+        type: 'CONTRACT_PRICE_AGREED',
+        note: `Hợp đồng #${contract.id}: giá thoả thuận ${vnd(agreedPrice)}, giá niêm yết ${vnd(Number(property.price))} (bởi ${user.name})`,
+      });
+    }
     await this.leadsService.addEvent(lead.id, { type: 'PROPERTY_RESERVED', note: `Căn "${property.name}" chuyển sang đang giữ cọc` });
 
     this.n8nService
@@ -192,12 +207,14 @@ export class ContractsService {
     if (!contract) throw new NotFoundException(`Contract with id ${id} not found`);
     const lead = await this.leadRepository.findOne({ where: { id: contract.leadId } });
     const property = await this.propertyRepository.findOne({ where: { id: contract.propertyId } });
-    const { resumeUrl: _hidden, signToken, ...rest } = contract;
+    // Không trả đường dẫn file lưu trữ: chỉ nhân viên cần mã băm, giờ lưu và kết quả kiểm
+    const { resumeUrl: _hidden, signToken, signedFilePath: _path, ...rest } = contract;
     const base = (process.env.PUBLIC_WEB_URL || 'http://localhost:3000').replace(/\/$/, '');
     return {
       ...rest,
       // Chỉ nhân viên đăng nhập mới thấy link ký (để hỗ trợ khách khi cần)
       signUrl: signToken && contract.status === 'SENT' ? `${base}/ky/${signToken}` : null,
+      archive: await this.archiveService.summary(contract),
       lead: lead ? { id: lead.id, name: lead.name, email: lead.email, phone: lead.phone } : null,
       property,
     };
@@ -388,6 +405,7 @@ export class ContractsService {
       propertyName: property?.name ?? null,
       propertyAddress: property?.address ?? null,
       propertyPrice: contract.propertyPrice,
+      agreedPrice: contract.agreedPrice,
       depositAmount: contract.depositAmount,
       status: expired ? 'EXPIRED' : contract.status,
       expiresAt: contract.expiresAt,

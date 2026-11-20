@@ -69,8 +69,12 @@ services:
       BOOKING_RATE_LIMIT: ${BOOKING_RATE_LIMIT:-5}
       BOOKING_RATE_TTL_MS: ${BOOKING_RATE_TTL_MS:-600000}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      # FE-48: thu muc luu ban hop dong da ky (PDF + ma bam). Nam tren volume contract_files, nho sao luu
+      CONTRACT_ARCHIVE_DIR: /app/storage/contracts
       PORT: 8081
       TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - contract_files:/app/storage/contracts
     depends_on:
       db:
         condition: service_healthy
@@ -94,3 +98,4 @@ services:
 volumes:
   db_data:
   n8n_data:
+  contract_files:

@@ -58,7 +58,7 @@ Khung 12 giai đoạn lấy theo các CRM bất động sản (Follow Up Boss, S
 | 5 | Hẹn xem | Kiểm tra khung giờ, thư chốt lịch, nhắc 24 giờ, đóng lịch quá hạn | Duyệt, đổi giờ, dẫn đi xem | L1, L1b, L2 | **Visits** | 01 | Đang chạy |
 | 6 | Sau buổi xem | Nhắc điểm danh; gửi link cảm nhận, AI phân tích, tạo việc có hạn; khách vắng thì mời hẹn lại | Điểm danh, gọi lại | L2, L5, L5b | **Visits**, **Lead follow-up** | 01, 03 | Đang chạy; mời hẹn lại sắp làm FE-46 |
 | 7 | Tìm tiếp | Bot tìm căn theo tiêu chí | Sale gợi ý căn khác | L6 | Lead follow-up | 03 | Gợi ý tự động: làm sau |
-| 8 | Thương lượng | Ghi giá thoả thuận và lịch sử đổi | Mặc cả giá, điều kiện | | Document signing | 02 | Sắp làm FE-48 |
+| 8 | Thương lượng | Ghi giá thoả thuận và lịch sử đổi | Mặc cả giá, điều kiện | | Document signing | 02 | Đang chạy |
 | 9 | Đặt cọc, ký | AI soạn và rà hợp đồng, chờ duyệt, link ký, nhắc ký, hết hạn tự trả căn; PDF, hash, lưu trữ | Quản lý duyệt, khách ký, quản lý xác nhận cọc | L3 | **Document signing** | 02 | Đang chạy; lưu trữ sắp làm FE-49 |
 | 10 | Công chứng, sang tên | | Thủ tục ở cơ quan nhà nước | | | | Ngoài hệ thống |
 | 11 | Sau bán | | | | | | Ngoài phạm vi |

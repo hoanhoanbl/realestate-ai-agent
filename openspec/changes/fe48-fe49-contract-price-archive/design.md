@@ -42,7 +42,7 @@ Không có API sửa giá: hợp đồng `DRAFTING` có sẵn thao tác huỷ (`
 - `read(contractId)`: đọc file, tính lại SHA-256, trả `{ stream hoặc buffer, verified }`; mất file hoặc lệch hash thì `verified = false`.
 - `summary(contract)`: `{ sha256, storedAt, verified }` cho trang chi tiết (không trả đường dẫn).
 
-Lưu file rồi mới cập nhật DB; nếu cập nhật DB lỗi thì file mồ côi bị ghi đè ở lần lưu sau (cùng tên), không để lại trạng thái "DB nói đã lưu mà không có file".
+Thứ tự trong `store`: **ghi DB trước** (ba cột và sự kiện `CONTRACT_ARCHIVED`), **đụng ổ đĩa sau cùng** (đổi tên file lệch, ghi file mới). DB từ chối sự kiện thì ổ đĩa chưa bị đổi gì. Ổ đĩa không nằm trong transaction, nên mỗi bước đổi file đăng ký một bước hoàn lại; nếu bước đổi file hay chính lệnh COMMIT lỗi thì các bước hoàn lại chạy ngược (xoá file mới hoặc trả file cũ về chỗ, đưa file lệch từ `.hong-...` về tên cũ). Nhờ vậy lần thử lại vẫn thấy đúng bản lưu hỏng và ghi đủ sự kiện phục hồi. Không để xảy ra: file đã "tự lành" (PDF phục hồi trùng mã băm cũ) nhưng lịch sử không có ai phục hồi, hay file chứng cứ `.hong-...` mà không có sự kiện nào nhắc tới. Nếu chính bước hoàn lại lỗi thì ghi log lỗi mức error để người vận hành xử lý tay.
 
 *Phương án khác:* lưu PDF vào cột `bytea` trong Postgres. Bị loại vì đề bài nói "lưu file" và vì sao lưu DB rồi thì file nằm cùng chỗ với dữ liệu có thể bị sửa; thư mục riêng cho phép đặt quyền chỉ đọc và sao lưu riêng.
 

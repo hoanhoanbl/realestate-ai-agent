@@ -323,9 +323,10 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-do
 
 | Method | Đường dẫn | Quyền | Nội dung |
 |---|---|---|---|
-| POST | `/api/contracts` | JWT | `{leadId, depositAmount, propertyId?}`: lập hợp đồng. Có `propertyId` thì khách phải có buổi xem đã đến của đúng căn đó (không thì `400`); bỏ trống thì lấy căn của buổi xem đã đến gần nhất. Sau khi lập, gọi webhook `contract-requested`, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
+| POST | `/api/contracts` | JWT | `{leadId, depositAmount, propertyId?, agreedPrice?}`: lập hợp đồng. `agreedPrice` (FE-48) là giá đã thoả thuận, số nguyên từ 1; `null` hoặc bỏ trống là theo giá niêm yết (sai thì `400`). Tiền cọc không được lớn hơn giá thoả thuận khi có, không thì không lớn hơn giá niêm yết (`400`). Có giá thoả thuận thì ghi thêm sự kiện `CONTRACT_PRICE_AGREED`. Có `propertyId` thì khách phải có buổi xem đã đến của đúng căn đó (không thì `400`); bỏ trống thì lấy căn của buổi xem đã đến gần nhất. Sau khi lập, gọi webhook `contract-requested`, gọi webhook `contract-requested`. Sai điều kiện: `400` hoặc `409` kèm lý do. Căn đã có hợp đồng còn hiệu lực (`DRAFTING`, `PENDING_APPROVAL`, `SENT`, `SIGNED`): `409` (cả khi hai người bấm cùng lúc). Căn không còn `AVAILABLE`: `400`. Tạo xong, căn chuyển sang `RESERVED` |
 | GET | `/api/contracts` | JWT | Danh sách hợp đồng |
-| GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl`) |
+| GET | `/api/contracts/{id}` | JWT | Chi tiết hợp đồng (không trả `resumeUrl` và đường dẫn file lưu trữ). Có `agreedPrice` (`null` nếu theo giá niêm yết) và `archive`: `null` khi chưa lưu, không thì `{sha256, storedAt, verified, problem}` với `problem` là `null`, `MISSING` (file mất) hoặc `MODIFIED` (mã băm tính lại khác mã đã lưu); mỗi lần gọi backend đọc file và tính lại SHA-256 |
+| GET | `/api/contracts/{id}/signed-file` | JWT | Tải bản đã ký (PDF), `Content-Type: application/pdf`, header `X-Archive-Verified: true/false` (kết quả kiểm mã băm lúc tải; file lệch vẫn tải được với `false`). Hợp đồng chưa lưu: `404`; file đã mất: `404` "Bản lưu đã bị thay đổi hoặc mất" |
 | POST | `/api/contracts/{id}/redraft` | JWT | Hợp đồng kẹt ở `DRAFTING` (n8n lỗi): gọi lại webhook `contract-requested`. Chưa đủ 60 giây từ lúc tạo hoặc lần soạn lại trước: `409`. Không gọi được n8n: `502`. Trạng thái khác `DRAFTING`: `400` |
 | POST | `/api/contracts/{id}/cancel` | JWT | Huỷ hợp đồng còn ở `DRAFTING`: chuyển `REJECTED`, khách về `VIEWED`, căn về `AVAILABLE`. Đã có bản nháp: `400` hoặc `409` (khi n8n lưu bản nháp đúng lúc đó) |
 | POST | `/api/contracts/{id}/approve` | Quản lý | Duyệt (đánh thức luồng 3) |
@@ -335,7 +336,7 @@ Quy tắc nghiệp vụ và điều kiện lập hợp đồng: [nghiep-vu/02-do
 | POST | `/api/contracts/{id}/issue-token` | Secret | Luồng 3 phát link ký sau khi duyệt |
 | PUT | `/api/contracts/{id}/rejected` | Secret | Luồng 3 đánh dấu từ chối: `{reason}` |
 | PUT | `/api/contracts/{id}/expired` | Secret | Luồng 3 đánh dấu hết hạn: `{reason?}` |
-| GET | `/api/sign/{token}` | Công khai | Khách xem hợp đồng để ký |
+| GET | `/api/sign/{token}` | Công khai | Khách xem hợp đồng để ký. Có `propertyPrice` (niêm yết) và `agreedPrice` (`null` nếu không có giá thoả thuận) |
 | POST | `/api/sign/{token}` | Công khai | `{signerName, signature, agree}`: khách ký; backend lưu thêm giờ ký và IP |
 
 ### 3.7. Cảm nhận sau buổi xem (luồng 5)
@@ -452,7 +453,7 @@ Không trả số điện thoại, email của khách hay token việc.
 | `properties` | id, name, address, price, area, type, status, imageUrl, description; chi tiết (FE-31): bedrooms, bathrooms, floors, landArea, floorArea, roadWidth, direction, legalStatus, furnishing, occupancy (mã trong `backend/src/properties/property-options.ts`); mảng: images (link), features, furniture, nearby (`{ category, name, distance }`), panoramas (`{ title, url }`). Mảng `null` = chưa nhập, `[]` = đã xoá hết |
 | `leads` | id, name, email, phone, budget, needs, score, level, reason, aiReply, emailSent, staffNotified, status, source, mautic_contact_id, mautic_points, automationStatus, automationError, eventId, createdAt, approvalUrl; FE-33: phone_normalized, assigned_user_id, assigned_at, response_due_at, first_response_at; lost_reason (lý do mất khách, `null` nếu chưa mất) |
 | `viewings` | id, propertyId, leadId, viewingTime, status, manage_token |
-| `contracts` | Ngoài các trường lập và ký hợp đồng: `deposit_received_at`, `deposit_received_by` (ai nhận cọc, lúc nào). Chỉ mục duy nhất một phần `uq_contracts_active_property` trên `property_id` khi trạng thái là `DRAFTING`, `PENDING_APPROVAL`, `SENT` hoặc `SIGNED`: mỗi căn tối đa một hợp đồng còn hiệu lực |
+| `contracts` | Ngoài các trường lập và ký hợp đồng: `deposit_received_at`, `deposit_received_by` (ai nhận cọc, lúc nào). `agreed_price` (giá thoả thuận, FE-48), `signed_file_path`, `signed_file_sha256`, `signed_file_stored_at` (bản lưu đã ký, FE-48 làm nền, FE-49 ghi tự động). Chỉ mục duy nhất một phần `uq_contracts_active_property` trên `property_id` khi trạng thái là `DRAFTING`, `PENDING_APPROVAL`, `SENT` hoặc `SIGNED`: mỗi căn tối đa một hợp đồng còn hiệu lực |
 | `lead_events` | id, leadId, type, note, createdAt |
 
 Các bảng khác do backend tự tạo khi khởi động (TypeORM `synchronize`): `users`, `contracts`, `feedbacks`, `followup_tasks` (mục 6), `chat_logs` (mục 7), `weekly_reports`. Hai bảng `kb_documents` và `rag_chunks` phục vụ luồng 6 và 6b (xem [luong-6b-nap-tri-thuc.md](luong/luong-6b-nap-tri-thuc.md)).
@@ -544,3 +545,4 @@ Thông báo NEW chỉ cho phiên bản đầu trước hạn; REMIND từ hạn 
 | 12/11/2026 | Hậu (local, chờ review) | L4 mở rộng: `POST /api/reports/breakdowns` có webhook secret; snapshot hiệu suất sale gọn và hiệu quả căn nhà tại `metrics.breakdowns`, hiển thị web/email; không đổi schema |
 | 13/11/2026 | Hoàng | Hợp đồng: `POST /api/contracts` nhận `propertyId?` (sale chọn căn, LH-22); `POST /api/contracts/{id}/redraft` và `/cancel` cho hợp đồng kẹt ở `DRAFTING`; sự kiện `CONTRACT_REDRAFT_REQUESTED`; `GET /api/leads/{id}` thêm `propertyPrice`, `propertyStatus` vào từng buổi xem |
 | 18/11/2026 | Hoàng (Hậu duyệt) | DC-16: thêm mục 3.10, hình dạng API link duyệt thư của luồng 9 (chưa có code, FE-45 làm backend, FE-56 làm trang) |
+| 20/11/2026 | Hoàng | FE-48: `POST /api/contracts` nhận `agreedPrice?`; `GET /api/contracts/{id}` thêm `agreedPrice`, khối `archive` và bỏ đường dẫn file; `GET /api/sign/{token}` thêm `agreedPrice`; thêm `GET /api/contracts/{id}/signed-file`; `Content-Disposition` và `X-Archive-Verified` được expose cho CORS |

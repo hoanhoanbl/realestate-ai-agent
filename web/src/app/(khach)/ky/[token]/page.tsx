@@ -113,7 +113,13 @@ function SignContent() {
     <section className={box}>
       <h1 className="text-2xl font-bold text-slate-900">{info.title ?? "Hợp đồng đặt cọc"}</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Chào <b>{info.customerName}</b>. Tiền đặt cọc <b>{formatVnd(info.depositAmount)}</b>
+        Chào <b>{info.customerName}</b>.{" "}
+        {info.agreedPrice != null && (
+          <>
+            Giá thoả thuận <b>{formatVnd(info.agreedPrice)}</b> (giá niêm yết {formatVnd(info.propertyPrice)}).{" "}
+          </>
+        )}
+        Tiền đặt cọc <b>{formatVnd(info.depositAmount)}</b>
         {info.expiresAt && <>, liên kết có hiệu lực đến {formatDateTime(info.expiresAt)}</>}.
       </p>
 

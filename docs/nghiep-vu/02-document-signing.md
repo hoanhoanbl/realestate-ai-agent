@@ -4,7 +4,7 @@ Vế **Document signing** của đề tài (đề bài ghi *signature workflows 
 
 Thuộc hành trình: **giai đoạn 8 (thương lượng, làm nhẹ)** và **9 (đặt cọc, ký)**. Giai đoạn 10 (công chứng, sang tên) nằm ngoài hệ thống. Bản đồ hành trình và cách đọc nhãn: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md) mục 1. Trạng thái hợp đồng và căn: cùng file, mục 5.3 và 5.4.
 
-Cập nhật lần cuối: 18/11/2026.
+Cập nhật lần cuối: 20/11/2026 (FE-48: giá thoả thuận đang chạy, nền lưu file đã ký).
 
 ## Tóm tắt các giai đoạn
 
@@ -17,7 +17,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Sale, quản lý làm | Sale thương lượng | Sale chọn căn, nhập tiền cọc. Quản lý duyệt hoặc từ chối | | Quản lý xác nhận "đã nhận tiền cọc", đánh dấu "đã bán" |
 | Hệ thống tự động | | Giữ căn, AI soạn từ mẫu và rà nội dung, chờ quản lý, hết hạn tự trả căn | Gửi link ký, nhắc ký sau 48 giờ, hết hạn tự trả căn; tạo PDF, hash, lưu file | |
 | Luồng n8n | | L3 | L3 | |
-| Tình trạng | Ô giá thoả thuận **[Sắp làm FE-48]** | **[Đang chạy]** | Ký **[Đang chạy]**; lưu trữ **[Sắp làm FE-49]** | **[Đang chạy]**; đường lui sau ký **[Làm sau]** |
+| Tình trạng | Ô giá thoả thuận **[Đang chạy]** | **[Đang chạy]** | Ký **[Đang chạy]**; lưu trữ **[Sắp làm FE-49]** (nền lưu file, mã băm, tải về đã có từ FE-48) | **[Đang chạy]**; đường lui sau ký **[Làm sau]** |
 
 ```
  Lead VIEWED --sale Lập hợp đồng (chọn căn, tiền cọc)--> HĐ DRAFTING, căn RESERVED, lead DEPOSIT
@@ -50,7 +50,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Hết hạn ký | Thêm 5 ngày sau lời nhắc | Luồng 3 |
 | Link ký hết hiệu lực | 7 ngày | `SIGN_VALID_DAYS` trong `contracts.service.ts` |
 
-## 1. Thương lượng **[Sắp làm FE-48]**
+## 1. Thương lượng **[Đang chạy]**
 
 Thương lượng giá, tiến độ thanh toán, nội thất, ngày bàn giao là việc của sale với khách, hệ thống không mô phỏng từng vòng mặc cả. Hệ thống chỉ ghi **kết quả**:
 
@@ -58,11 +58,13 @@ Thương lượng giá, tiến độ thanh toán, nội thất, ngày bàn giao 
 |---|---|
 | Ô "Giá thoả thuận" | Nhập khi lập hợp đồng. Không nhập thì hiểu là giá niêm yết của căn |
 | Lưu ở đâu | Cột `contracts.agreed_price`; giá niêm yết của căn giữ nguyên |
-| Nhật ký | Mỗi lần ghi hoặc đổi giá thoả thuận ghi sự kiện `CONTRACT_PRICE_AGREED` kèm người làm, để thấy lịch sử đổi |
-| Tiền cọc (đề xuất) | Không lớn hơn giá thoả thuận khi có, không thì không lớn hơn giá căn |
+| Nhật ký | Mỗi lần lập hợp đồng có giá thoả thuận ghi sự kiện `CONTRACT_PRICE_AGREED` nêu mã hợp đồng, hai mức giá và người lập. Không có API sửa giá: muốn đổi thì huỷ hợp đồng đang soạn rồi lập lại |
+| Tiền cọc | Không lớn hơn giá thoả thuận khi có, không thì không lớn hơn giá căn. Sai thì `400` "Tiền đặt cọc không được lớn hơn giá thoả thuận" (hoặc "giá căn nhà") |
 | Báo cáo (đề xuất) | Chênh lệch giá niêm yết và giá thoả thuận dùng cho phân tích ([04-sales-analytics.md](04-sales-analytics.md)) |
 
-Hai dòng "đề xuất" và chi tiết màn hình, API chốt ở change OpenSpec riêng của FE-48.
+Báo cáo chênh lệch giá **làm sau**, dựa vào sự kiện `CONTRACT_PRICE_AGREED`.
+
+Văn bản hợp đồng do luồng 3 soạn: điều khoản giá có hai dòng "Giá thoả thuận" và "Giá niêm yết (đối chiếu)", phần trăm cọc tính theo giá thoả thuận; rà soát bằng quy tắc cố định cảnh báo khi giá thoả thuận lệch quá 20% so với giá niêm yết. Trang ký của khách, trang chi tiết hợp đồng của nhân viên hiện giá thoả thuận kèm giá niêm yết; hợp đồng không có giá thoả thuận hiện và soạn như trước. Chi tiết kỹ thuật: change `fe48-fe49-contract-price-archive`.
 
 ## 2. Lập hợp đồng **[Đang chạy]**
 
@@ -122,6 +124,8 @@ Nếu n8n tắt hoặc lỗi lúc lập, hợp đồng nằm ở "Đang soạn" 
 - Ký xong: hợp đồng "Đã ký", lead "Đã ký hợp đồng cọc". Khách nhận email xác nhận kèm link `/hop-dong/<mã>` để xem lại, in hoặc lưu PDF từ trình duyệt; sale nhận email báo.
 
 ## 5. Lưu trữ bản đã ký **[Sắp làm FE-49]**
+
+**Nền đã có từ FE-48 [Đang chạy]:** dịch vụ lưu file của backend ghi PDF ra thư mục lưu trữ (volume Docker `contract_files`, biến `CONTRACT_ARCHIVE_DIR`), tính SHA-256, ghi `signed_file_path`, `signed_file_sha256`, `signed_file_stored_at` và sự kiện `CONTRACT_ARCHIVED`. Nhân viên đăng nhập tải được file (`GET /api/contracts/{id}/signed-file`); trang chi tiết hợp đồng hiện mã băm, giờ lưu và kết quả kiểm ("Khớp" hoặc cảnh báo "Bản lưu đã bị thay đổi hoặc mất"). Lưu lần hai khi file còn nguyên vẹn không đổi gì; file mất hoặc lệch thì lưu tự động bị `409` và chỉ quản lý phục hồi, file lệch được giữ lại làm chứng cứ. **Chưa có** phần dựng PDF, gọi lưu từ luồng 3 và nút "Lưu lại bản đã ký": đó là FE-49, nên hiện chưa hợp đồng nào được lưu tự động.
 
 Hiện hệ thống lưu chữ ký và thông tin người ký trong database, khách tự in PDF từ trình duyệt; **chưa có file lưu trữ chính thức**. Đây là phần "compliant archiving" của đề bài còn hở.
 

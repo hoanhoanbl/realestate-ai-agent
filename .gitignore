@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Cho phep file mau, van chan .env that
 !.env.example
+
+# FE-48: thu muc luu ban hop dong da ky khi chay backend local (CONTRACT_ARCHIVE_DIR mac dinh)
+backend/storage/

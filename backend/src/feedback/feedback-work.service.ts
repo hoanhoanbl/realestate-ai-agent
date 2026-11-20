@@ -14,7 +14,7 @@ import { Contract, ACTIVE_CONTRACT_STATUSES } from '../contracts/entities/contra
 import { User } from '../users/entities/user.entity';
 import { addWorkingHours } from '../leads/intake-rules';
 import { assertNotLosingDeposit, LeadsService } from '../leads/leads.service';
-import { assertNoBookingConflict, lockProperty } from '../viewings/booking-rules';
+import { assertNoBookingConflict, assertSaleFree, lockProperty, lockSale } from '../viewings/booking-rules';
 import { assertStaffTime } from '../viewings/viewing-time';
 import { N8nService } from '../n8n/n8n.service';
 import type { AuthUser } from '../auth/auth.types';
@@ -106,6 +106,11 @@ export class FeedbackWorkService {
         if (await m.getRepository(Viewing).existsBy({ leadId: lead.id, status: 'NEW' }))
           throw new ConflictException('Khách đã có lịch đang chờ, hãy xử lý lịch đó trước');
         await assertNoBookingConflict(m, property.id, time);
+        // FE-53: sale phụ trách không được có buổi xem ở căn khác cách dưới 90 phút; khoá sale lấy sau khoá lead
+        if (lead.assignedUserId) {
+          await lockSale(m, lead.assignedUserId);
+          await assertSaleFree(m, lead.assignedUserId, time, { propertyId: property.id });
+        }
         nextViewing = await m.getRepository(Viewing).save(m.create(Viewing, { leadId: lead.id, propertyId: property.id,
           viewingTime: time, status: 'NEW', manageToken: randomBytes(16).toString('hex') }));
         lead.status = 'NEW'; lead.approvalUrl = null; lead.automationStatus = 'PENDING'; lead.automationError = null;

@@ -107,7 +107,7 @@ Body backend gửi: `leadId`, `viewingId`, `name`, `email`, `phone`, `budget`, `
 |---|---|
 | Email sai, ngân sách âm hoặc thiếu căn nhà | `Lỗi dữ liệu` rồi `Report FAILED` |
 | Không lấy được thông tin nhà, AI lỗi (sau 3 lần thử), email khách lỗi (sau 3 lần), thông báo nhân viên lỗi | Đi tới `Report FAILED`: `PUT /api/leads/:id/automation-status` với `status = FAILED` và nội dung lỗi (tối đa 300 ký tự) |
-| `Lưu kết quả AI` lỗi | Nhánh lỗi chỉ đi tới `Callback failed` (không làm gì). Lead giữ `automationStatus` cũ và chưa có điểm, nên sale **không duyệt được** cho tới khi xử lý tay |
+| `Lưu kết quả AI` lỗi (sau 3 lần thử) | Đi tới `Report FAILED` như các node trên (BF-09, LH-54). Lead chuyển `PENDING` sang `FAILED`, hiện ở web admin và sale duyệt tay được; backend chỉ chặn duyệt khi lead còn `PENDING`. Điểm AI có thể chưa lưu được, sale xem nội dung khách điền để quyết định |
 | `Lấy link duyệt` lỗi | Không dừng. Thông báo không có nút Duyệt và Đổi giờ |
 
 `Report FAILED` là node cuối của nhánh lỗi, không nối tiếp node nào, và các node gọi ra ngoài (lấy thông tin nhà, AI, email, thông báo, lưu kết quả) đều bắt lỗi bằng `continueErrorOutput`. Vì vậy một lần chạy lỗi vẫn kết thúc "success" trong n8n và **không** kích hoạt Error workflow. Ghi chú trong workflow nói nhánh lỗi "dừng để Error workflow báo quản lý"; theo cách nối hiện tại thì điều đó không xảy ra (chưa kiểm trên n8n thật). Cách biết sự cố là lead có `automationStatus = FAILED` trên web admin. Error workflow xem [error-workflow.md](error-workflow.md).

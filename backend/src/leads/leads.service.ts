@@ -311,8 +311,8 @@ export class LeadsService {
     return this.saveContact(id, user, { kind: 'attempt', result });
   }
 
-  private saveContact(id: number, user: AuthUser, action: { kind: 'mark' } | { kind: 'attempt'; result: unknown }): Promise<Lead> {
-    return this.leadRepository.manager.transaction(async em => {
+  private async saveContact(id: number, user: AuthUser, action: { kind: 'mark' } | { kind: 'attempt'; result: unknown }): Promise<Lead> {
+    const result = await this.leadRepository.manager.transaction(async em => {
       const repo = em.getRepository(Lead);
       const lead = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!lead) throw new NotFoundException(`Lead with id ${id} not found`);
@@ -323,8 +323,11 @@ export class LeadsService {
         await repo.save(lead);
       }
       if (plan.event) await em.getRepository(LeadEvent).save({ leadId: id, ...plan.event });
-      return lead;
+      return { saved: lead, changed: Object.keys(plan.patch).length > 0 || plan.event !== null };
     });
+    // Notify only after commit; a rolled-back write must never trigger downstream work.
+    if (result.changed) this.fireLeadChanged(result.saved, action.kind === 'mark' ? 'contacted' : 'contact_attempted');
+    return result.saved;
   }
 
   // Nhân viên tự đặt VIEWED hoặc đóng LOST bằng một lý do thủ công.

@@ -402,7 +402,7 @@ Chốt ở DC-16 để trang `/duyet-thu/<mã>` (FE-56) làm song song với bac
 | GET | `/api/followups/ladder-links/{token}` | Công khai (token có chữ ký) | Tóm tắt, không đổi gì (bảng dưới). Token sai: 404 |
 | POST | `/api/followups/ladder-links/{token}/confirm` | Công khai (token có chữ ký) | Body `{decision: "SEND" \| "SKIP", text?}`. Trả `{ok, decision, already?}` |
 
-Token là `base64url({t: taskId}).HMAC-SHA256(WEBHOOK_SECRET)`, giống link của FE-35 (mục 3.2). Token không chứa hành động: một link, hai nút trên trang.
+Token là `base64url({t: taskId, p: "ladder-email-approval", exp: unixSeconds}).HMAC-SHA256(LADDER_LINK_SECRET)`. Khóa backend riêng ngẫu nhiên ít nhất 32 byte và phải khác WEBHOOK_SECRET; không fallback sang khóa webhook. Link có hạn 7 ngày từ lúc cấp; hết hạn/sai chữ ký/sai purpose trả 404, không cho xem hay confirm. Token không chứa hành động: một link, hai nút trên trang. Token cũ định dạng `{t}`/ký bằng WEBHOOK_SECRET bị vô hiệu; cấp lại qua endpoint secret nếu cần. FE-56 dùng token như chuỗi opaque nên không đổi helper web.
 
 **Tóm tắt trả về** (`GET`):
 
@@ -447,7 +447,7 @@ Không trả số điện thoại, email của khách hay token việc.
 | Lead đã đóng, đã có việc nhắc mới hơn, khách chưa đồng ý nhận tin, khách không có email | 400 kèm lý do, cùng mã với `state`/`refusal` ở trên |
 | Gọi n8n lỗi | 502. Trang báo "Chưa gửi được, thử lại sau". Preview còn OPEN để thử dispatch lại cùng LADDER_EMAIL, giữ nội dung đã duyệt lần đầu. Worker định kỳ khôi phục thư chưa bắt đầu; gửi ngoài không rõ thành công vào REVIEW, không tự gửi trùng |
 
-Link cũng hết hiệu lực khi đổi sale/phiên nhận khách hoặc lead sang DEPOSIT. SEND với action WAIT trả 400. SKIP không đòi consent hay email vì không gửi gì. Preview có `Cache-Control: no-store`.
+Link cũng hết hiệu lực khi đổi sale/phiên nhận khách hoặc lead sang DEPOSIT. SEND với action WAIT trả 400. SKIP không đòi consent hay email vì không gửi gì. Preview có `Cache-Control: no-store`, chỉ SELECT và không lấy khóa ghi; confirm/claim/start vẫn đọc lại có khóa trước thay đổi dữ liệu hoặc cho gửi.
 
 Sau lỗi dispatch, sale có thể SKIP nếu worker chưa nhận thư: email task được đóng với `result.cancelled=true`, không gửi hoặc ghi log gửi thư. SKIP và claim dùng cùng khóa lead; nếu worker đã nhận/gửi hoặc đang REVIEW thì trả quyết định SEND đã xử lý, không báo huỷ thành công. Preview kiểm cả checkpoint thư để tránh hiện OPEN khi phản hồi webhook bị mất. Email/điện thoại được ẩn cả trong reason/emailDraft của phản hồi public, kể cả thông tin cũ trong gợi ý; context secret của worker giữ recipient thật.
 

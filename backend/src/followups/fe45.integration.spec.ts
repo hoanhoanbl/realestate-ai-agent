@@ -18,12 +18,14 @@ import { LadderController, LadderLinksController } from './ladder.controller';
 import { FOLLOWUP_SELECTOR_SQL } from './followup-sql';
 import { ladderDecision } from './ladder-policy';
 import { LADDER_SNAPSHOT_SQL } from './ladder-sql';
+import { createHmac } from 'crypto';
 
 const url=process.env.FE33_TEST_DATABASE_URL;
 (url?describe:describe.skip)('FE-45 ladder HTTP and PostgreSQL',()=>{
   let db:DataSource,app:INestApplication,base:string,ladder:LadderService,worker:FollowupsService;
   let lead:Lead,property:Property,owner:User;
   const secret='fe45-disposable-only',previous=process.env.WEBHOOK_SECRET;
+  const linkSecret='fe45-link-only-'+ 'x'.repeat(48),previousLink=process.env.LADDER_LINK_SECRET;
   const n8n={callWebhook:jest.fn().mockResolvedValue(undefined)};
   const notify={notifyFollowupStatusChanged:jest.fn().mockResolvedValue(undefined)};
   const ago=(days:number)=>new Date(Date.now()-days*86_400_000);
@@ -33,10 +35,12 @@ const url=process.env.FE33_TEST_DATABASE_URL;
     db=new DataSource({type:'postgres',url,synchronize:true,entities:[Lead,LeadEvent,User,Property,Viewing,ChatLog,Contract,Feedback,FeedbackWork,FollowupTask]});await db.initialize();
     ladder=new LadderService(db,n8n as any,notify as any);worker=new FollowupsService(db,notify as any,ladder);
     process.env.WEBHOOK_SECRET=secret;
+    process.env.LADDER_LINK_SECRET=linkSecret;
     @Module({controllers:[FollowupsController,LadderController,LadderLinksController],providers:[{provide:FollowupsService,useValue:worker},{provide:LadderService,useValue:ladder}]})class TestModule{}
     app=await NestFactory.create(TestModule,{logger:false});app.setGlobalPrefix('api');app.useGlobalPipes(new ValidationPipe({transform:true,whitelist:true}));await app.listen(0,'127.0.0.1');base=await app.getUrl();
   });
-  afterAll(async()=>{await app?.close();if(db?.isInitialized)await db.destroy();if(previous===undefined)delete process.env.WEBHOOK_SECRET;else process.env.WEBHOOK_SECRET=previous;});
+  afterAll(async()=>{await app?.close();if(db?.isInitialized)await db.destroy();if(previous===undefined)delete process.env.WEBHOOK_SECRET;else process.env.WEBHOOK_SECRET=previous;
+    if(previousLink===undefined)delete process.env.LADDER_LINK_SECRET;else process.env.LADDER_LINK_SECRET=previousLink;});
   beforeEach(async()=>{
     n8n.callWebhook.mockReset().mockResolvedValue(undefined);notify.notifyFollowupStatusChanged.mockClear();
     await db.query('TRUNCATE followup_tasks,feedback_work,contracts,feedbacks,viewings,lead_events,leads,users,properties,chat_logs RESTART IDENTITY CASCADE');
@@ -295,5 +299,45 @@ const url=process.env.FE33_TEST_DATABASE_URL;
     const c=await claim();
     expect((await http(`/${c.taskId}/ladder-suggestion`,{token:c.token,suggestion})).status).toBe(400);
     const task=await db.getRepository(FollowupTask).findOneByOrFail({id:c.taskId});expect(task.result.suggestion).toBeUndefined();
+  });
+  it('Hoang review: link signing is independent of the machine webhook secret',async()=>{
+    const r=await reminder();const body=r.linkToken.split('.')[0];
+    const forged=body+'.'+createHmac('sha256',secret).update(body).digest('base64url');
+    await expect(ladder.preview(forged)).rejects.toMatchObject({status:404});
+    process.env.WEBHOOK_SECRET='different-machine-secret';
+    try{expect(await ladder.preview(r.linkToken)).toMatchObject({state:'OPEN'});}finally{process.env.WEBHOOK_SECRET=secret;}
+  });
+  it('Hoang review: link expires in seven days and refuses GET/confirm at expiry',async()=>{
+    const r=await reminder();const payload=JSON.parse(Buffer.from(r.linkToken.split('.')[0],'base64url').toString());
+    expect(payload.exp-Math.floor(Date.now()/1000)).toBeLessThanOrEqual(604800);
+    expect(payload.exp-Math.floor(Date.now()/1000)).toBeGreaterThan(604790);
+    const clock=jest.spyOn(Date,'now').mockReturnValue(payload.exp*1000-1000);
+    try{
+      expect(await ladder.preview(r.linkToken)).toMatchObject({state:'OPEN'});
+      clock.mockReturnValue(payload.exp*1000);
+      await expect(ladder.preview(r.linkToken)).rejects.toMatchObject({status:404});
+      await expect(ladder.confirm(r.linkToken,{decision:'SEND',text:'Hello'})).rejects.toMatchObject({status:404});
+      expect(n8n.callWebhook).not.toHaveBeenCalled();
+    }finally{clock.mockRestore();}
+  });
+  it('Hoang review: absent, short or reused link key fails closed',async()=>{
+    const r=await reminder();
+    try{
+      delete process.env.LADDER_LINK_SECRET;
+      await expect(ladder.link(r.id)).rejects.toThrow('LADDER_LINK_SECRET');
+      await expect(ladder.preview(r.linkToken)).rejects.toMatchObject({status:404});
+      process.env.LADDER_LINK_SECRET='short';await expect(ladder.link(r.id)).rejects.toThrow('LADDER_LINK_SECRET');
+      process.env.LADDER_LINK_SECRET=linkSecret;process.env.WEBHOOK_SECRET=linkSecret;
+      await expect(ladder.link(r.id)).rejects.toThrow('phải khác WEBHOOK_SECRET');
+    }finally{process.env.LADDER_LINK_SECRET=linkSecret;process.env.WEBHOOK_SECRET=secret;}
+  });
+  it('Hoang review: preview works inside a read-only PostgreSQL transaction',async()=>{
+    const r=await reminder();const runner=db.createQueryRunner();await runner.connect();await runner.startTransaction();
+    try{
+      await runner.query('SET TRANSACTION READ ONLY');
+      const readDb={manager:runner.manager,transaction:async(fn:any)=>fn(runner.manager)} as unknown as DataSource;
+      const reader=new LadderService(readDb,n8n as any,notify as any);
+      expect(await reader.preview(r.linkToken)).toMatchObject({state:'OPEN'});
+    }finally{await runner.rollbackTransaction();await runner.release();}
   });
 });

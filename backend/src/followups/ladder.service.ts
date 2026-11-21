@@ -12,6 +12,8 @@ import { N8nService } from '../n8n/n8n.service';
 import { LeadsService } from '../leads/leads.service';
 
 const lease = 30 * 60_000;
+const LINK_TTL_SECONDS = 7 * 24 * 60 * 60;
+const LINK_PURPOSE = 'ladder-email-approval';
 export const isLadderType = (type: string) => ['LADDER_REACH','LADDER_QUIET','LADDER_STALE','LADDER_EMAIL'].includes(type);
 interface Approval { decision: 'SEND'|'SKIP'; text?: string; dispatched?: boolean; dispatchUntil?: number }
 interface Result extends FollowupResult { approval?: Approval; parentTaskId?: number; assigneeId?: number | null; assignedAt?: string | null; cancelled?: boolean }
@@ -211,27 +213,38 @@ export class LadderService {
       task.result={...task.result,suggestion};await m.getRepository(FollowupTask).save(task);return {ok:true};
     });
   }
-  private secret() { const secret=process.env.WEBHOOK_SECRET;if(!secret)throw new Error('Thiếu WEBHOOK_SECRET');return secret; }
+  private secret() {
+    const secret=process.env.LADDER_LINK_SECRET;
+    if(!secret || Buffer.byteLength(secret,'utf8')<32)throw new Error('LADDER_LINK_SECRET phải là khóa riêng ngẫu nhiên, ít nhất 32 byte');
+    if(secret===process.env.WEBHOOK_SECRET)throw new Error('LADDER_LINK_SECRET phải khác WEBHOOK_SECRET');
+    return secret;
+  }
   private decode(token:string) {
     try {
       const [body,signature,...rest]=token.split('.');if(rest.length || !/^[A-Za-z0-9_-]+$/.test(body) || !/^[A-Za-z0-9_-]{43}$/.test(signature))throw new Error();
       const expected=createHmac('sha256',this.secret()).update(body).digest();const actual=Buffer.from(signature,'base64url');
       if(actual.length!==expected.length || !timingSafeEqual(actual,expected))throw new Error();
       const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
-      if(!Number.isSafeInteger(payload.t)||payload.t<1)throw new Error();return payload.t as number;
+      const now=Math.floor(Date.now()/1000);
+      if(!Number.isSafeInteger(payload.t)||payload.t<1 || payload.p!==LINK_PURPOSE ||
+        !Number.isSafeInteger(payload.exp)||payload.exp<=now||payload.exp>now+LINK_TTL_SECONDS)throw new Error();
+      return payload.t as number;
     } catch { throw new NotFoundException('Liên kết không hợp lệ'); }
   }
   async link(id:number) {
     const task=await this.db.getRepository(FollowupTask).findOneBy({id});
     if(!task || !['LADDER_REACH','LADDER_QUIET'].includes(task.type))throw new NotFoundException('Tác vụ không tồn tại');
-    const body=Buffer.from(JSON.stringify({t:id})).toString('base64url');
+    const body=Buffer.from(JSON.stringify({t:id,p:LINK_PURPOSE,exp:Math.floor(Date.now()/1000)+LINK_TTL_SECONDS})).toString('base64url');
     const token=body+'.'+createHmac('sha256',this.secret()).update(body).digest('base64url');
     return {approveUrl:`${(process.env.PUBLIC_WEB_URL||'http://localhost:3000').replace(/\/$/,'')}/duyet-thu/${token}`};
   }
   async preview(token:string) {
     const id=this.decode(token);
-    return this.db.transaction(async m=>{
-      const task=await this.locked(m,id);if(!['LADDER_REACH','LADDER_QUIET'].includes(task.type))throw new NotFoundException('Liên kết không hợp lệ');
+    // Informational GET: do not acquire lead/task write locks for email scanners.
+    // confirm/claim/start remain authoritative and re-check under their write locks.
+    const m=this.db.manager;
+      const task=await m.getRepository(FollowupTask).findOneBy({id});
+      if(!task||!['LADDER_REACH','LADDER_QUIET'].includes(task.type))throw new NotFoundException('Liên kết không hợp lệ');
       const s=await this.snapshot(m,task.leadId);const approval=resultOf(task).approval;
       const email=approval?.decision==='SEND'?await m.getRepository(FollowupTask).findOneBy({taskKey:`LADDER_EMAIL:${id}`}):null;
       const deliveryStarted=!!email&&email.state!=='FAILED';
@@ -241,7 +254,6 @@ export class LadderService {
       return {state,refusal,leadName:s.name,leadStatus:s.status,assigneeName:s.assignee_name,
         kind:task.type==='LADDER_REACH'?'REACH':'QUIET',step:this.candidate(task).step,propertyName:s.property_name,suggestion,
         canSend:state==='OPEN'&&!refusal&&suggestion.action!=='WAIT'};
-    });
   }
   async confirm(token:string,dto:ConfirmLadderDto) {
     const id=this.decode(token);

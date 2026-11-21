@@ -44,7 +44,7 @@ HTTP/AI/email thử 3 lần. Không biết gửi ngoài đã thành công hay ch
 
 ## 6. Triển khai lên server
 
-Import tắt, workflow ID `luong9FollowupLadder`. Cần backend FE-45, FE-43/44, bảng feedback_work và các credential/sub-workflow sẵn có. Không thêm biến bắt buộc; `PUBLIC_WEB_URL`, `WEBHOOK_SECRET` của backend cần đúng. Có thể dùng `MANAGER_EMAIL` trên n8n; mặc định email quản lý giống bộ luồng hiện tại.
+Import tắt, workflow ID `luong9FollowupLadder`. Cần backend FE-45, FE-43/44, bảng feedback_work và các credential/sub-workflow sẵn có. Backend cần `PUBLIC_WEB_URL`, `WEBHOOK_SECRET` và khóa ký link riêng `LADDER_LINK_SECRET` (ngẫu nhiên >=32 byte, khác WEBHOOK_SECRET; không cấp key này cho n8n/web). Link hết hạn sau 7 ngày. Có thể dùng `MANAGER_EMAIL` trên n8n; mặc định email quản lý giống bộ luồng hiện tại.
 
 Thứ tự: nền/schema → backend → FE-56 → import L9 tắt → L2 với selector FE-45 (hoặc FE-46 đã tích hợp) → test bằng dữ liệu demo → bật L9. Chưa bật khi L2 cũ còn nhánh chăm khách im lặng. Chi tiết VPS thuộc Hoàng/CH-12; chưa thực hiện trong lượt phát triển local này.
 

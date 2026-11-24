@@ -18,6 +18,7 @@ import { NORMALIZED_PHONE_SQL } from './intake-rules';
 import { User } from '../users/entities/user.entity';
 import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 import { manualLostReason, planContactAttempt, planContactMark } from './contact.rules';
+import { assertSaleFreeForApproval } from '../viewings/booking-rules';
 
 // Khách đang DEPOSIT có hợp đồng còn hiệu lực và căn đang "Đang giữ cọc". Đóng lead lúc này thì hợp đồng
 // vẫn còn và căn bị khoá. Quản lý phải từ chối hợp đồng trước: lead tự về VIEWED, căn tự về "Đang bán" (BF-06).
@@ -277,6 +278,8 @@ export class LeadsService {
     if (lead.automationStatus === 'PENDING') {
       throw new BadRequestException('AI chưa chấm điểm xong, chưa duyệt được');
     }
+    // FE-53: sale phụ trách bận ở căn khác trong 90 phút thì chặn trước khi gọi n8n, kể cả quản lý duyệt thay
+    await assertSaleFreeForApproval(this.leadRepository.manager, id);
 
     // Cách 1: bấm link duyệt của lần chạy n8n đang chờ (giống nút trong email)
     if (lead.approvalUrl) {

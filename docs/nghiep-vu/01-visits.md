@@ -19,7 +19,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Sale, quản lý làm | Sale duyệt hoặc đổi giờ | Sale gọi lại khi khách xin đổi | Sale điểm danh. Quản lý nhận báo khi quên điểm danh |
 | Hệ thống tự động | Kiểm tra khung giờ, khoá theo căn, thư "đã nhận", báo sale có nút Duyệt; quá giờ chưa duyệt thì đóng `EXPIRED` | Thư chốt lịch, nhắc lịch trước 24 giờ | Nhắc điểm danh sau 2 giờ, báo quản lý sau 24 giờ; thư mời hẹn lại khi vắng |
 | Luồng n8n | L1, L1b, L6 (đặt hộ), L2 | L1b, L2 | L2 |
-| Tình trạng | **[Đang chạy]**; chống trùng lịch theo sale **[Sắp làm FE-53]** | **[Đang chạy]**; bỏ nhắc thừa **[Sắp làm FE-54]** | **[Đang chạy]**; thư mời hẹn lại **[Sắp làm FE-46]** |
+| Tình trạng | **[Đang chạy]**; chống trùng lịch theo sale **[Đang chạy]** | **[Đang chạy]**; bỏ nhắc thừa **[Sắp làm FE-54]** | **[Đang chạy]**; thư mời hẹn lại **[Sắp làm FE-46]** |
 
 ```
  Khách chọn khung giờ
@@ -50,7 +50,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Khách và bot đặt trước giờ hẹn | Ít nhất 3 giờ làm việc (08:00–21:00), làm tròn lên giờ chẵn | `BOOKING_LEAD_HOURS` (cùng file) |
 | Khách và bot đặt xa nhất | 14 ngày | `BOOKING_MAX_DAYS` (cùng file) |
 | Hai lịch xem cùng căn phải cách nhau | 60 phút | `BOOKING_GAP_MINUTES` trong `backend/src/viewings/booking-rules.ts` |
-| Hai buổi xem của **cùng một sale** ở hai căn khác nhau phải cách nhau | 90 phút (60 phút xem + 30 phút di chuyển) **[Sắp làm FE-53]** | `SALE_GAP_MINUTES` (cùng file) |
+| Hai buổi xem của **cùng một sale** ở hai căn khác nhau phải cách nhau | 90 phút (60 phút xem + 30 phút di chuyển) **[Đang chạy]** | `SALE_GAP_MINUTES` (cùng file) |
 | Giới hạn đặt lịch mỗi IP | 5 lần / 10 phút | Biến môi trường `BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS` |
 | Nút Duyệt / Đổi giờ trong thông báo dùng được | Tới giờ hẹn | Link do backend cấp, kiểm tra lại lúc bấm |
 | Nhắc lịch cho khách | Trong vòng 24 giờ trước giờ hẹn, một lần cho mỗi giờ hẹn | Luồng 2 (chạy mỗi giờ) |
@@ -136,7 +136,7 @@ Mỗi khách có **tối đa một buổi xem đang mở**; buổi đã xem, kh�
 
 Giữ nguyên người phụ trách, nguồn, tên và đồng ý nhận tin của lead cũ; email, ngân sách, nhu cầu còn thiếu thì lấy từ form.
 
-### 1.6. Chống trùng lịch theo sale **[Sắp làm FE-53]**
+### 1.6. Chống trùng lịch theo sale **[Đang chạy]**
 
 **Vì sao:** một sale chỉ ở được một nơi tại một thời điểm, và đi giữa hai căn cần thời gian. Hiện hệ thống chỉ chống trùng theo căn, nên một sale có thể bị xếp 09:00 ở Sơn Trà và 09:00 ở Hải Châu (LH-24).
 
@@ -156,6 +156,8 @@ Buổi đã điểm danh "Khách đã đến" **vẫn tính bận**: bận theo 
 
 Kiểm tra chạy trong transaction có khoá theo sale (giống khoá theo căn), để hai lượt duyệt hay chuyển cùng lúc không lọt cả hai.
 
+**Chuyển sale khi sale cũ đang dẫn buổi xem:** hệ thống không lưu ai dẫn buổi đã điểm danh, mà tính bận theo người phụ trách lead hiện tại. Nên lead có buổi "Khách đã đến" mà giờ hẹn mới qua chưa tới 90 phút thì **không chuyển được**: "Sale … đang dẫn buổi xem căn … lúc …. Chuyển người phụ trách sau …". Quá 90 phút buổi này không còn ảnh hưởng lịch nào nên chuyển bình thường.
+
 **Vì sao chuyển sale bị chặn, không chỉ cảnh báo:** quản lý thấy xung đột ngay lúc ra quyết định và chọn được sale khác. Nếu chỉ cảnh báo, lead vẫn chuyển được và trùng lịch chỉ lộ ra vào ngày xem. Lead không có buổi xem mở thì chuyển như cũ.
 
 Ví dụ với sale An:
@@ -174,14 +176,14 @@ Ví dụ với sale An:
 
 - Sale bấm **Duyệt** trong thông báo hoặc trên trang chi tiết lead. Cả hai đường đều đi qua luồng 1b.
 - Chỉ duyệt được lead "Mới" và AI đã chấm xong. Chưa xong: "AI chưa chấm điểm xong, chưa duyệt được".
-- Sale phụ trách đang bận ở căn khác trong vòng 90 phút thì không duyệt được (mục 1.6, **[Sắp làm FE-53]**).
+- Sale phụ trách đang bận ở căn khác trong vòng 90 phút thì không duyệt được (mục 1.6).
 - Duyệt xong: lead "Đã chốt lịch", khách nhận **thư chốt lịch** có giờ xem và **link quản lý lịch** `/lich/<mã>`.
 - Nút trong thông báo dùng được **tới giờ hẹn**. Trang xác nhận từ chối khi khách đã huỷ, lịch đã duyệt, khách đã có buổi xem mới hơn, hoặc đã tới giờ hẹn.
 
 ### 2.2. Đổi giờ
 
 - Sale bấm **Đổi giờ** trong thông báo: hệ thống ghi "Nhân viên yêu cầu đổi giờ", sale liên hệ khách rồi đặt giờ mới trên web admin.
-- Đổi được khi lead "Mới" hoặc "Đã chốt lịch" và buổi xem còn "Chờ xem". Giờ mới qua kiểm tra cách 60 phút như lúc đặt, và từ FE-53 qua cả kiểm tra lịch của sale (mục 1.6).
+- Đổi được khi lead "Mới" hoặc "Đã chốt lịch" và buổi xem còn "Chờ xem". Giờ mới qua kiểm tra cách 60 phút như lúc đặt, và qua cả kiểm tra lịch của sale (mục 1.6).
 - Lead "Đã chốt lịch": khách nhận thư báo giờ mới (luồng 1b). Lead "Mới": chưa gửi gì, khách nhận giờ mới trong thư chốt lịch khi được duyệt.
 - Giờ cũ và người đổi được ghi vào nhật ký. Đổi giờ thành công mà gửi thư lỗi: giờ mới vẫn được lưu, sale tự báo khách.
 
@@ -208,11 +210,11 @@ Lead "Đã chốt lịch" có giờ xem trong 24 giờ tới và khách có emai
 | Sale đổi giờ lúc 16:00 sang 10:00 sáng mai | Nhắc lúc 17:00, một giờ sau thư báo giờ mới | Không nhắc: thư báo giờ mới đã là lời nhắc |
 | Chốt lịch thứ Hai, thứ Ba sale đổi sang 09:00 thứ Sáu | Nhắc 09:00 thứ Năm theo giờ mới | Như cũ |
 
-Quy tắc: **không nhắc** khi luồng 1 hoặc 1b đã gửi thư chốt lịch hay thư báo giờ mới cho **đúng buổi xem và đúng giờ hẹn đó**, vào lúc giờ hẹn còn dưới 24 giờ. Thư đó tự nó đã là lời nhắc. Các trường hợp khác nhắc đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
+Quy tắc: **không nhắc** khi luồng 1b đã gửi thư chốt lịch hay thư báo giờ mới cho **đúng buổi xem và đúng giờ hẹn đó**, vào lúc giờ hẹn còn dưới 24 giờ. Thư đó tự nó đã là lời nhắc. Các trường hợp khác nhắc đúng như hiện tại: một lần, khi giờ hẹn còn dưới 24 giờ.
 
 | Câu hỏi | Trả lời |
 |---|---|
-| Biết thư đã gửi bằng gì | Sự kiện `VIEWING_CONFIRMATION_SENT` ("Đã gửi thư xác nhận lịch"). Luồng 1 và 1b ghi sự kiện này **sau khi gửi thư thành công** (FE-50), ghi chú dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>` |
+| Biết thư đã gửi bằng gì | Sự kiện `VIEWING_CONFIRMATION_SENT` ("Đã gửi thư xác nhận lịch"). Luồng 1b ghi sự kiện này **sau khi gửi thư chốt lịch hoặc thư báo giờ mới thành công** (FE-50 **[Đang chạy]**; luồng 1 không ghi vì thư "đã nhận yêu cầu" chưa chốt lịch, nên khách đặt sát giờ vẫn nhận lời nhắc sau khi sale duyệt), ghi chú dạng `viewing=<mã buổi xem>;time=<giờ hẹn ISO UTC>` |
 | Vì sao không dựa vào "Nhân viên duyệt lịch" hay "Đổi giờ xem nhà" | Hai sự kiện này ghi **trước** khi gọi n8n: thư có thể chưa đi hoặc gửi lỗi, khách sẽ không nhận được cả thư chốt lẫn lời nhắc |
 | Thư chốt gửi lỗi | Không có sự kiện, nên khách vẫn nhận lời nhắc như hiện tại |
 | Đổi giờ sau khi đã có sự kiện | Sự kiện cũ ghi giờ cũ nên không còn khớp. Giờ mới được xét lại theo thư báo giờ mới |

@@ -4,7 +4,7 @@ Vế **Lead follow-up** của đề tài. Theo thông lệ của các CRM bất 
 
 Thuộc hành trình: **giai đoạn 3 (cố liên hệ)**, phần sau của **6 (hỏi cảm nhận, theo dõi phản hồi)**, **7 (tìm tiếp, làm sau)** và **12 (nuôi hoặc đóng)**. Bản đồ hành trình và cách đọc nhãn: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md) mục 1. Kế hoạch đầy đủ: [../ke-hoach-hanh-trinh-va-luong-n8n.md](../ke-hoach-hanh-trinh-va-luong-n8n.md); thiết kế và đặc tả: change OpenSpec `journey-followup-ladder`.
 
-Cập nhật lần cuối: 18/11/2026.
+Cập nhật lần cuối: 20/11/2026 (FE-45 local, chưa phát hành).
 
 ## Tóm tắt các giai đoạn
 
@@ -17,7 +17,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Sale, quản lý làm | Sale gọi, ghi kết quả từng lần | Sale ghi kết quả gọi. Quản lý nhận báo khi quá hạn, khi cảm nhận tiêu cực | Sale đọc gợi ý AI, sửa và duyệt thư. Quản lý nhận báo khi lead bị đóng | |
 | Hệ thống tự động | Nhắc sale ngày 1, 3, 7 kèm gợi ý AI | Gửi link cảm nhận, AI phân tích, tạo việc có hạn, nhắc sale, báo quản lý | Nhắc sale kèm gợi ý AI và nháp thư; tự đóng `STALE` | Mautic gửi chuỗi email |
 | Luồng n8n | L9 | L2, L5, L5b | L9 | L7, L8 |
-| Tình trạng | **[Sắp làm FE-43, FE-44, FE-45]** | **[Đang chạy]** | **[Sắp làm FE-45]**; hiện chỉ có nhắc HOT (mục 4.1) | **[Mở rộng]** |
+| Tình trạng | **[FE-43 có nền; FE-44/45 triển khai local, chưa phát hành]** | **[Đang chạy]** | **[FE-45 triển khai local, chưa phát hành]**; chưa bật server | **[Mở rộng]** |
 
 ```
            Lead được giao (GĐ1)
@@ -50,23 +50,23 @@ Cập nhật lần cuối: 18/11/2026.
 
 | Mốc | Giá trị | Ở đâu | Tình trạng |
 |---|---|---|---|
-| Bậc nhắc lead chưa liên hệ được | Ngày 1, 3, 7 sau lúc giao (ngày 0 là hạn 2 giờ đã có) | `LADDER_REACH_DAYS` trong `backend/src/followups/followup-policy.ts` | [Sắp làm FE-45] |
-| Nhắc lead im lặng | 7 ngày không có hoạt động | `LADDER_QUIET_DAYS` (cùng file) | [Sắp làm FE-45] |
-| Tự đóng lead im lặng | 14 ngày không có hoạt động | `LADDER_STALE_DAYS` (cùng file) | [Sắp làm FE-45] |
-| Giờ L9 được nhắc sale | 08:00–20:00 giờ Việt Nam, chạy mỗi giờ | Trigger lịch của luồng 9 | [Sắp làm FE-45] |
+| Bậc nhắc lead chưa liên hệ được | Ngày 1, 3, 7 sau lúc giao (ngày 0 là hạn 2 giờ đã có) | `LADDER_REACH_DAYS` trong `backend/src/followups/followup-policy.ts` | [FE-45 triển khai local, chưa phát hành] |
+| Nhắc lead im lặng | 7 ngày không có hoạt động | `LADDER_QUIET_DAYS` (cùng file) | [FE-45 triển khai local, chưa phát hành] |
+| Tự đóng lead im lặng | 14 ngày không có hoạt động | `LADDER_STALE_DAYS` (cùng file) | [FE-45 triển khai local, chưa phát hành] |
+| Giờ L9 được nhắc sale | 08:00–20:00 giờ Việt Nam, chạy mỗi giờ | Trigger lịch của luồng 9 | [FE-45 triển khai local, chưa phát hành] |
 | Hỏi cảm nhận | Đã qua giờ hẹn 2 giờ, khách đã được điểm danh "có đến" | Luồng 2 (chạy mỗi giờ) | [Đang chạy] |
 | Hạn sale xử lý phản hồi | 2 giờ làm việc từ lúc nhận phản hồi; quá hạn nhắc sale, thêm 2 giờ báo quản lý | Theo dõi phản hồi (L5b) | [Đang chạy] |
 | Nhắc sale gọi khách HOT im lặng | 3 ngày sau khi hỏi cảm nhận mà chưa trả lời | Luồng 2 | [Đang chạy], bỏ ở FE-45 |
 | Thử lại một việc của luồng 2 bị lỗi | Sau 6 giờ | `followup-sql.ts` | [Đang chạy] |
 | Ngưỡng điểm Mautic báo sale | 20 điểm | `pointThreshold` trong luồng 8 | [Mở rộng] |
 
-## 1. Cố liên hệ khách **[Sắp làm FE-43, FE-44, FE-45]**
+## 1. Cố liên hệ khách **[FE-43 có nền; FE-44/45 triển khai local, chưa phát hành]**
 
 Ngành coi đây là giai đoạn **mất khách nhiều nhất**: sale gọi một lần không nghe rồi quên. Hiện hệ thống chỉ có hạn 2 giờ cho thao tác đầu tiên; ghi một dòng ghi chú là hết nhắc, dù sale chưa nói chuyện được với khách (LH-21).
 
 ### 1.1. Đánh dấu "Đã liên hệ được" và ghi lần gọi (FE-43 dữ liệu, FE-44 nút)
 
-**FE-44 đã triển khai local, chưa merge/chưa nghiệm thu server.** Hồ sơ khách có khối "Liên hệ khách" cho người phụ trách và quản lý; người khác chỉ xem. Lead `LOST` hoặc `SIGNED` không nhận thao tác liên hệ mới. Hai API, mốc và nhật ký đã kiểm với PostgreSQL thật; QA component trên Chrome headless 375px đã đạt (callback giả); chưa thay thế nghiệm thu trang admin/API cùng chạy trên server. Bậc nhắc L9 vẫn thuộc FE-45, chưa triển khai.
+**FE-44 đã triển khai local, chưa merge/chưa nghiệm thu server.** Hồ sơ khách có khối "Liên hệ khách" cho người phụ trách và quản lý; người khác chỉ xem. Lead `LOST` hoặc `SIGNED` không nhận thao tác liên hệ mới. Hai API, mốc và nhật ký đã kiểm với PostgreSQL thật; QA component trên Chrome headless 375px đã đạt (callback giả); chưa thay thế nghiệm thu trang admin/API cùng chạy trên server. Bậc nhắc L9 đã triển khai local ở FE-45, chưa bật server.
 
 | Thao tác trên trang lead | Quy tắc |
 |---|---|
@@ -150,19 +150,9 @@ Mỗi phản hồi mới tạo **một việc** cho sale, có hạn, có nhắc,
 
 ## 4. Lead im lặng và đóng lead
 
-### 4.1. Hiện tại: chỉ khách HOT được nhắc **[Đang chạy, bỏ ở FE-45]**
+Bản local FE-45 thay nhắc HOT/WARM/COLD im lặng bằng luồng 9; SQL selector L2 đã đồng bộ, các node Mautic cũ chưa gỡ (FE-46). Bản server cũ chưa được thay trong lượt này. Chi tiết nghiệm thu và giới hạn: [FE-45](../fe-45-cham-khach-theo-bac.md).
 
-**Khi nào:** khách đã được hỏi cảm nhận hơn 3 ngày mà chưa trả lời, lead vẫn "Đã xem nhà", khách **đã tick đồng ý nhận tin**.
-
-| Mức khách | Hệ thống làm |
-|---|---|
-| HOT | Luồng 2 nhắc sale gọi khách qua Telegram, ghi "Đã nhắc sale gọi khách HOT". Không gửi thư cho khách |
-| WARM | **[Mở rộng]** Gắn tag Mautic `nuoi-warm` kèm đoạn nhắc do AI viết, Mautic chạy chuỗi email |
-| COLD | **[Mở rộng]** Gắn tag `ban-tin-hang-thang`, Mautic đưa vào bản tin hằng tháng |
-
-**Lỗ hổng (LH-20, LH-21):** khách WARM, COLD hoặc không tick đồng ý nhận tin thì sau buổi xem không có việc tự động nào; lead "Đang tư vấn" và "Đã xem nhà" không có hạn xử lý, nằm vô thời hạn. FE-45 thay toàn bộ bảng trên bằng mục 4.2 và gỡ ba loại nhắc này khỏi bộ chọn của luồng 2 (giữ mã trong code để lịch sử cũ vẫn hiện).
-
-### 4.2. Nhắc sau 7 ngày, đóng sau 14 ngày **[Sắp làm FE-45]**
+### 4.2. Nhắc sau 7 ngày, đóng sau 14 ngày **[FE-45 triển khai local, chưa phát hành]**
 
 | Quy tắc | Nội dung |
 |---|---|
@@ -183,7 +173,7 @@ Hai ngưỡng 7 và 14 ngày là hằng số, chỉnh theo thực tế; không c
 
 **Hạn chế đã biết:** lead "Đang tư vấn" không có việc chăm sóc thì không hẹn gọi lại xa hơn 7 ngày được; sale phải ghi chú lại, không thì lead bị nhắc ngày 7 và đóng ngày 14. Sau này có thể thêm ô "ngày liên hệ tiếp" trên lead.
 
-### 4.3. AI gợi ý và sale duyệt thư **[Sắp làm FE-45]**
+### 4.3. AI gợi ý và sale duyệt thư **[FE-45 triển khai local, chưa phát hành]**
 
 Mỗi lời nhắc của luồng 9 (bậc liên hệ ở mục 1.2 và nhắc im lặng ở mục 4.2) đi qua các bước:
 
@@ -204,7 +194,7 @@ Vì sao không gửi thẳng cho khách: đề bài yêu cầu bước người 
 
 Sale đóng lead bằng tay chỉ chọn được: **Giá cao**, **Chọn căn khác**, **Đã mua nơi khác**, **Không liên lạc được**, **Hết nhu cầu**, **Lý do khác**. Các lý do **Khách không đến**, **Khách tự huỷ lịch**, **Quá hạn không xử lý**, **Lead nguội (`STALE`)** chỉ hệ thống được ghi; gửi tay bị từ chối. Mã và nhãn: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md) mục 5.1. Báo cáo chia mất khách theo các nhóm này ([04-sales-analytics.md](04-sales-analytics.md) mục 4).
 
-### 4.5. Luồng 9 theo khung của môn **[Sắp làm FE-45]**
+### 4.5. Luồng 9 theo khung của môn **[FE-45 triển khai local, chưa phát hành]**
 
 | Bước | Nội dung |
 |---|---|
@@ -222,7 +212,7 @@ Khách chọn "muốn xem căn khác": hiện sale gợi ý căn bằng tay (m�
 
 ## 6. Chống gửi trùng và xử lý lỗi **[Đang chạy]**
 
-Luồng 2 chạy mỗi giờ nên một việc có thể bị chọn nhiều lần. Bảng `followup_tasks` giữ mỗi việc một dòng. Luồng 9 dùng lại đúng cơ chế này **[Sắp làm FE-45]**.
+Luồng 2 chạy mỗi giờ nên một việc có thể bị chọn nhiều lần. Bảng `followup_tasks` giữ mỗi việc một dòng. Luồng 9 dùng lại đúng cơ chế này **[FE-45 triển khai local, chưa phát hành]**.
 
 | Trạng thái việc | Nghĩa |
 |---|---|

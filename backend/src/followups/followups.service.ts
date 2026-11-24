@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { FollowupTask, MAUTIC_FOLLOWUPS, SCHEDULED_FOLLOWUPS, type FollowupType } from './followup-task.entity';
@@ -10,6 +10,7 @@ import { LeadsService } from '../leads/leads.service';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { FOLLOWUP_SNAPSHOT_SQL } from './followup-sql';
 import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
+import { isLadderType, LadderService } from './ladder.service';
 
 const LEASE_MS = 30 * 60_000;
 const RETRY_MS = 6 * 3_600_000;
@@ -25,7 +26,7 @@ const EVENTS: Record<FollowupType, string> = {
 @Injectable()
 export class FollowupsService {
   private readonly logger = new Logger(FollowupsService.name);
-  constructor(private readonly db: DataSource, private readonly leads: LeadsService) {}
+  constructor(private readonly db: DataSource, private readonly leads: LeadsService, @Optional() private readonly ladder?: LadderService) {}
 
   private async snapshot(m: EntityManager, leadId: number, type: FollowupType, viewingId: number): Promise<(FollowupSnapshot & { viewing_id: number }) | undefined> {
     const rows = await m.query(FOLLOWUP_SNAPSHOT_SQL, [leadId, type + ':%', viewingId]);
@@ -33,6 +34,10 @@ export class FollowupsService {
   }
 
   async claim(dto: ClaimFollowupDto) {
+    if (isLadderType(dto.type)) {
+      if (!this.ladder) throw new BadRequestException('Ladder chưa được cấu hình');
+      return this.ladder.claim(dto);
+    }
     if (dto.type !== 'STAFF_NUDGE' && dto.viewingId === 0) throw new BadRequestException('viewingId=0 chỉ dùng cho hạn phản hồi theo phiên nhận khách');
     const result = await this.db.transaction(async m => {
       // Every operation locks the lead before the task: two executions cannot acquire the same work.
@@ -102,6 +107,7 @@ export class FollowupsService {
   }
 
   async start(id: number, token: string) {
+    if (this.ladder && await this.ladder.owns(id)) return this.ladder.start(id,token);
     return this.db.transaction(async m => {
       const task = await this.locked(m, id, token);
       if (task.state !== 'CLAIMED' || task.leaseUntil <= new Date()) return { allowed: false, reason: task.state };
@@ -116,12 +122,13 @@ export class FollowupsService {
   }
 
   async actionDone(id: number, dto: ActionDoneDto) {
+    if (this.ladder && await this.ladder.owns(id)) return this.ladder.actionDone(id,dto);
     return this.db.transaction(async m => {
       const task = await this.locked(m, id, dto.token);
       if (task.state === 'ACTION_DONE' || task.state === 'COMPLETED') return { ok: true };
       if (task.state !== 'ACTION_STARTED') throw new ConflictException('Tác vụ chưa bắt đầu gửi');
       if (MAUTIC_FOLLOWUPS.includes(task.type) && !dto.mauticContactId) throw new ConflictException('Thiếu contactId Mautic');
-      task.result = dto.mauticContactId ? { mauticContactId: dto.mauticContactId } : {};
+      task.result = { ...task.result, ...(dto.mauticContactId ? { mauticContactId: dto.mauticContactId } : {}) };
       task.state = 'ACTION_DONE';
       await m.getRepository(FollowupTask).save(task);
       return { ok: true };
@@ -129,6 +136,7 @@ export class FollowupsService {
   }
 
   async complete(id: number, token: string) {
+    if (this.ladder && await this.ladder.owns(id)) return this.ladder.complete(id,token);
     const result = await this.db.transaction(async m => {
       const task = await this.locked(m, id, token);
       if (task.state === 'COMPLETED') return { ok: true, leadId: task.leadId, statusChanged: false };
@@ -147,6 +155,7 @@ export class FollowupsService {
   }
 
   async fail(id: number, dto: FailFollowupDto) {
+    if (this.ladder && await this.ladder.owns(id)) return this.ladder.fail(id,dto);
     return this.db.transaction(async m => {
       const task = await this.locked(m, id, dto.token);
       if (task.state === 'COMPLETED') return { state: task.state };
@@ -162,6 +171,7 @@ export class FollowupsService {
 
   // Operator uses this only after checking the external provider's delivery history.
   async resolve(id: number, dto: ResolveFollowupDto) {
+    if (this.ladder && await this.ladder.owns(id)) return this.ladder.resolve(id,dto);
     await this.db.transaction(async m => {
       const task = await this.locked(m, id, dto.token);
       if (task.state !== 'REVIEW') throw new ConflictException('Chỉ xử lý thủ công tác vụ REVIEW');

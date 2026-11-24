@@ -513,6 +513,19 @@ Chỉ đổi ba file JSON của n8n, không có SQL, không có biến `.env` m�
    - Gây lỗi một luồng (ví dụ tắt SMTP rồi duyệt lịch): quản lý nhận email `[LỖI]` và nhóm Telegram nhận tin cùng nội dung.
 5. Hoàn tác: import lại ba file bản trước từ git.
 
+## 9h. Chăm khách theo bậc FE-45 (chưa phát hành)
+
+Code và JSON L9 mới chỉ nghiệm thu local. Chưa thực hiện bước nào dưới đây trên VPS.
+
+1. Sao lưu theo mục 6; nền FE-43 và bảng feedback_work phải có trước backend FE-45. Nhánh FE-45 hiện kế thừa FE-44, cần tích hợp đúng base trước release.
+2. Deploy backend có API ladder và kiểm tra `PUBLIC_WEB_URL`, `WEBHOOK_SECRET`. Tạo `LADDER_LINK_SECRET` riêng ngẫu nhiên >=32 byte, khác WEBHOOK_SECRET; Compose local/prod chỉ truyền key này vào backend. Không đưa key thật vào repo; env example để trống. Có thể tạo mỗi key bằng `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` rồi điền riêng tại môi trường triển khai. Nếu dùng WEBHOOK_SECRET mẫu đã công khai thì thay key webhook và credential Header Auth của n8n. Không thêm SQL/schema mới cho FE-45. Token ladder cũ bị vô hiệu; link mới có hạn 7 ngày, cấp lại qua API secret khi cần.
+3. Import `luong-9-follow-up-bac.json` ở trạng thái **tắt**. Chọn lại Header Auth, Gemini, SMTP, sub-workflow `thongBaoNhanVien` và Error workflow `errorWfRealestat` nếu ID trên server khác repo.
+4. Import L2 với selector FE-45 (hoặc bản FE-46 đã tích hợp). Bản FE-45 giữ nguyên các node và connection khác, gồm lời gọi worker phản hồi; chỉ loại HOT_NUDGE/WARM_NUDGE/COLD_NURTURE và checkpoint L9 khỏi SQL chọn việc. Không bật L9 khi L2 cũ vẫn chọn lead im lặng.
+5. Kiểm thử bằng lead demo/hộp thư test: các bậc, QUIET, STALE, FE-56 chỉnh thư/hai tab, rút consent, SMTP hỏng, REVIEW/resolve và khôi phục ACTION_DONE. Sau đó mới publish L9. Lịch là 08h–20h giờ Việt Nam.
+6. Rollback luồng: tắt L9, khôi phục JSON L2 trước release. Không hạ backend về image trước FE-43 tùy tiện: cảnh báo mất cột ở mục 9f vẫn áp dụng. Tác vụ REVIEW phải đối chiếu lịch sử gửi trước resolve, không xóa checkpoint để gửi lại.
+
+Kết quả local: 350 test backend PASS; n8n 2.42.4 cô lập + DB thật + SMTP giả đã đạt các ca chính và lỗi SMTP/Error workflow. Gemini và sub-workflow thông báo dùng fixture; chưa nghiệm thu Gemini/Telegram thật, UI FE-56 tích hợp hoặc VPS. Chi tiết: [FE-45](fe-45-cham-khach-theo-bac.md), [luồng 9](luong/luong-9-follow-up-bac.md).
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

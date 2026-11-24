@@ -7,6 +7,8 @@ export class ClaimFollowupDto {
   @IsISO8601() viewingTime: string;
   @IsIn(FOLLOWUP_TYPES) type: FollowupType;
   @IsString() @MinLength(1) @MaxLength(120) owner: string;
+  @IsOptional() @IsInt() @IsIn([1,3,7]) step?: number;
+  @IsOptional() @IsInt() @Min(1) ladderTaskId?: number;
 }
 export class TaskTokenDto {
   @IsString() @MinLength(32) @MaxLength(64) token: string;

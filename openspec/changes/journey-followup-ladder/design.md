@@ -38,6 +38,8 @@ Why: the claim / lease / retry / REVIEW machinery, its tests and the n8n calling
 
 ### D3. "Activity" is an allow-list of event types
 
+Migration safety (FE-45 local verification): include `leads.contacted_at` itself in the activity maximum too. FE-43 backfills this field from attended viewings without inserting a CONTACTED event; an old lead reached recently must not be closed using its creation date simply because its legacy event is missing.
+
 The quiet-period anchor is the latest of: `leads.created_at` and `lead_events` of the types `NOTE_ADDED`, `CONTACTED`, `CONTACT_ATTEMPTED`, `STATUS_CHANGED`, `LEAD_ASSIGNED`, `LEAD_REASSIGNED`, `LEAD_REOPENED`, `FEEDBACK_RECEIVED`, `APPROVED`, `VIEWING_NO_SHOW`, `VIEWING_CANCELLED`, `VIEWING_RESCHEDULED`, `CUSTOMER_RESCHEDULE_REQUESTED`, `FEEDBACK_WORK_UPDATED` (a sale recording a call result in PR #79's feedback follow-up), `LADDER_APPROVED`. An allow-list means a future automated event can never silently reset the clock. *Alternative:* "everything except automated types". Rejected for that reason.
 
 ### D4. Steps and thresholds are constants
@@ -59,6 +61,8 @@ Reminders run only 08:00 to 20:00 Asia/Ho_Chi_Minh (the schedule trigger is `0 8
 
 ### D5. AI proposes, a signed link approves
 
+Hoàng review (21/11): ladder links now use a dedicated backend-only LADDER_LINK_SECRET (random >=32 bytes, distinct from WEBHOOK_SECRET), a purpose field and signed seven-day expiry. No fallback to the webhook key or working secret in env examples. Preview performs only SELECTs without a write-lock transaction; confirm/claim/start retain their write locks and authoritative checks. FE-56 treats tokens as opaque strings. Old `{t}` tokens signed with the webhook key are rejected; reissue through the secret endpoint when needed.
+
 Per due item flow 9 claims the task, builds context (lead, last events, viewings), asks Gemini for a structured result `{action: CALL | SEND_EMAIL | OFFER_VIEWING | WAIT, reason, emailDraft}`, runs a guardrail Code node (same style as flow 2's "Kiểm tra nội dung AI"; rules in the spec), and stores the result in `followup_tasks.result.suggestion` (the column is jsonb; only its TypeScript type widens). The sale is notified through "Thông báo nhân viên" with a link.
 
 The link follows FE-35: HMAC-signed token over `{taskId}` (one link, two buttons; the decision `SEND` or `SKIP` is in the confirm body), public `GET` preview and `POST` confirm under `/api/followups/ladder-links/:token` (shape fixed in `docs/api-contract.md` §3.10), page `web/src/app/duyet-thu/[token]/page.tsx`. Confirm re-checks the conditions (lead open, step current, not already sent, customer has email and consent), stores the edited text (max 1500 characters, plain text, escaped when rendered), then the backend calls flow 9's second entry, a webhook that sends the email and completes the `LADDER_EMAIL` task. One workflow, two entry points; the same pattern as flow 1b.
@@ -68,6 +72,8 @@ The link follows FE-35: HMAC-signed token over `{taskId}` (one link, two buttons
 *Alternatives:* (a) send automatically to consenting customers and only notify the sale. Rejected: no human approval, and the course topic asks for one. (b) approve from the lead page with a button. Rejected for now: the sale would need to open the web app from Telegram anyway, and a link needs no login; the lead page can show the pending suggestion later.
 
 ### D6. Stale closing happens inside `claim()`
+
+Recovery safety (FE-45 local verification): expired ACTION_STARTED checkpoints must be selected even when a later note/contact/status change makes the original step no longer due. They become REVIEW rather than being silently abandoned; L9 reports this through Error workflow. This does not permit a duplicate send.
 
 `LADDER_STALE` follows `EXPIRE_LEAD`: `claim()` sets `LOST` with `lostReason = 'STALE'` and writes `LEAD_STALE_CLOSED` in one transaction, guarded by "no open viewing, no live contract, no open `feedback_work` row (status not `COMPLETED`)". The same open-`feedback_work` guard applies to `LADDER_QUIET`: a sale who recorded "needs more time" with a next call 21 days away is followed by PR #79's deadline, reminder and manager alert, so the ladder stays silent instead of reminding at day 7 and closing at day 14. Completing the task writes `FEEDBACK_WORK_UPDATED`, which is in the D3 allow-list, so the quiet period restarts from that moment. Flow 9 then alerts the manager through `action-done`. The manual status endpoints reject `STALE`, `NO_SHOW`, `EXPIRED` and `CUSTOMER_CANCELLED` (new `MANUAL_LOST_REASONS` constant); only code paths that own those reasons set them.
 

@@ -15,6 +15,7 @@ export interface FollowupSnapshot {
 export const LADDER_REACH_DAYS = [1, 3, 7];
 export const LADDER_QUIET_DAYS = 7;
 export const LADDER_STALE_DAYS = 14;
+export { isLadderDue } from './ladder-policy';
 
 export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date): boolean {
   if (type === 'STAFF_NUDGE') return !s.cooling_down && ['CONSULTING','NEW','CONFIRMED','VIEWED'].includes(s.status) &&

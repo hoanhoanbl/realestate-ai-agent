@@ -148,6 +148,26 @@ const url = process.env.FE33_TEST_DATABASE_URL;
       expect((await stored()).firstResponseAt).toBeNull();
     } finally { await removeRejectEvent(); }
   });
+  it('Hoang review: notifies contact changes only after commit, without duplicate no-op marks',async()=>{
+    const committedReads:Promise<void>[]=[];
+    const changed=jest.spyOn(service as any,'fireLeadChanged').mockImplementation((...args:unknown[])=>{
+      const saved=args[0] as Lead;
+      committedReads.push(stored().then(row=>{expect(row.contactedAt).toEqual(saved.contactedAt);expect(row.firstResponseAt).toEqual(saved.firstResponseAt);}));
+    });
+    try{
+      await service.markContacted(lead.id,owner);
+      expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({id:lead.id}),'contacted');
+      await service.markContacted(lead.id,owner);expect(changed).toHaveBeenCalledTimes(1);
+      await service.recordContactAttempt(lead.id,'BUSY',owner);
+      expect(changed).toHaveBeenLastCalledWith(expect.objectContaining({id:lead.id}),'contact_attempted');
+      expect(changed).toHaveBeenCalledTimes(2);await Promise.all(committedReads);
+    }finally{changed.mockRestore();}
+  });
+  it('Hoang review: rollback never emits a contact change notification',async()=>{
+    const changed=jest.spyOn(service as any,'fireLeadChanged');await rejectEvent('CONTACTED');
+    try{await expect(service.markContacted(lead.id,owner)).rejects.toThrow();expect(changed).not.toHaveBeenCalled();}
+    finally{await removeRejectEvent();changed.mockRestore();}
+  });
 
   it('attendance atomically reaches the customer once, keeps an earlier time, and rejects a duplicate attendance', async () => {
     const viewing = await scheduled();

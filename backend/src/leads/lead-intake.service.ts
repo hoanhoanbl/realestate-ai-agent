@@ -16,6 +16,7 @@ import { Property } from '../properties/entities/property.entity';
 import { Viewing } from '../viewings/entities/viewing.entity';
 import { closeFeedbackWork } from '../feedback/feedback-work.lifecycle';
 import { formatVn } from '../viewings/viewing-time';
+import { assertNotMidVisit, assertSaleFree, findSaleConflict, lockSale } from '../viewings/booking-rules';
 import type { AuthUser } from '../auth/auth.types';
 import { AssignLeadDto, CreateLeadDto } from './dto/create-lead.dto';
 import {
@@ -35,6 +36,12 @@ export interface IntakeOptions {
   status?: 'NEW' | 'CONSULTING';
   // Đặt buổi xem (POST /viewings): gắn buổi xem vào lead cũ nếu khách chưa có buổi nào đang mở.
   booking?: boolean;
+  // FE-53: giờ và căn khách chọn; chia sale lần lượt bỏ qua sale đang bận lúc đó (sale bị bỏ qua giữ lượt).
+  slot?: IntakeSlot;
+}
+export interface IntakeSlot {
+  time: Date;
+  propertyId: number;
 }
 
 @Injectable()
@@ -126,7 +133,7 @@ export class LeadIntakeService {
           ? await em.findOneBy(User, { id: previous })
           : null;
         if (!owner || !owner.acceptingLeads) {
-          const assigned = await this.chooseOwner(em);
+          const assigned = await this.chooseOwner(em, undefined, options.slot);
           this.setOwner(existing, assigned.id);
           await this.event(
             em,
@@ -189,6 +196,7 @@ export class LeadIntakeService {
     const owner = await this.chooseOwner(
       em,
       options.actor ? (dto.assignedUserId ?? options.actor.id) : undefined,
+      options.slot,
     );
     const lead = repo.create({
       name: dto.name.trim(),
@@ -226,9 +234,11 @@ export class LeadIntakeService {
   }
 
   // Người được chia lâu nhất nhận lượt tiếp; nhập tay cũng cập nhật lượt. Khoá chung bảo vệ nhiều request đồng thời.
+  // Có `slot` (khách đặt buổi xem): bỏ qua sale đang bận ở căn khác trong 90 phút; ai cũng bận thì chia như cũ (FE-53).
   private async chooseOwner(
     em: EntityManager,
     requestedId?: number,
+    slot?: IntakeSlot,
   ): Promise<User> {
     const users = em.getRepository(User);
     let owner: User | null;
@@ -240,12 +250,26 @@ export class LeadIntakeService {
         );
       }
     } else {
-      owner = await users
+      const queue = users
         .createQueryBuilder('u')
         .where('u.role = :role AND u.acceptingLeads = true', { role: 'SALE' })
         .orderBy('u.lastAssignedAt', 'ASC', 'NULLS FIRST')
-        .addOrderBy('u.id', 'ASC')
-        .getOne();
+        .addOrderBy('u.id', 'ASC');
+      if (slot) {
+        const candidates = await queue.getMany();
+        owner = null;
+        for (const candidate of candidates) {
+          // Khoá từng ứng viên rồi mới kiểm: khoá chia sale (1002) không chặn lượt đổi giờ đang chạy song song
+          await lockSale(em, candidate.id);
+          if (!(await findSaleConflict(em, candidate.id, slot.time, { propertyId: slot.propertyId }))) {
+            owner = candidate;
+            break;
+          }
+        }
+        owner ??= candidates[0] ?? null;
+      } else {
+        owner = await queue.getOne();
+      }
       owner ??= await users.findOne({
         where: { role: 'MANAGER' },
         order: { id: 'ASC' },
@@ -280,7 +304,9 @@ export class LeadIntakeService {
       const lead = await this.lockLead(em, id);
       if (lead.assignedUserId === dto.assignedUserId) return lead; // Không gia hạn bằng cách chọn lại cùng người.
       const previous = lead.assignedUserId;
+      await assertNotMidVisit(em, lead.id, previous); // FE-53: không kéo lịch bận của sale đang dẫn buổi xem
       const owner = await this.chooseOwner(em, dto.assignedUserId);
+      await this.assertNewOwnerFree(em, lead, owner.id);
       this.setOwner(lead, owner.id);
       await em.save(Lead, lead);
       await this.event(
@@ -292,6 +318,26 @@ export class LeadIntakeService {
       );
       return lead;
     });
+  }
+
+  // FE-53: sale mới không được bận với buổi xem đang mở nào của lead. Lỗi thì transaction rollback cả lượt chia.
+  private async assertNewOwnerFree(em: EntityManager, lead: Lead, saleId: number) {
+    if (!['NEW', 'CONFIRMED'].includes(lead.status)) return;
+    const open = await em.getRepository(Viewing).find({
+      where: { leadId: lead.id, status: 'NEW' },
+      order: { viewingTime: 'ASC' },
+    });
+    if (!open.length) return;
+    await lockSale(em, saleId);
+    for (const v of open) {
+      await assertSaleFree(
+        em,
+        saleId,
+        v.viewingTime,
+        { propertyId: v.propertyId, excludeViewingId: v.id },
+        'reassign',
+      );
+    }
   }
 
   async addNote(id: number, note: string, actor: AuthUser): Promise<LeadEvent> {

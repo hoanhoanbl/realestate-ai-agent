@@ -267,6 +267,7 @@ Chặn đặt trùng và lạm dụng cho `POST /api/viewings` (khách, bot):
 - Request có header `X-Webhook-Secret` đúng (luồng 6) được miễn giới hạn `429`, vì mọi khách Telegram đi chung IP của n8n.
 - IP khách là `req.ip` sau khi backend tin `TRUST_PROXY_HOPS` proxy (mặc định 1). Đặt sai số này thì mọi khách bị tính chung một IP, hoặc IP bị giả được.
 - `PUT /api/viewings/{id}` (đổi giờ) cũng kiểm tra `409` khung 60 phút, bỏ qua chính buổi xem đó.
+- Chống trùng lịch theo sale (FE-53): sale phụ trách lead không được có buổi xem ở **căn khác** cách giờ mới dưới 90 phút (`SALE_GAP_MINUTES`; buổi huỷ và khách không đến không tính, buổi đã đến vẫn tính). Đặt lịch (`POST /api/viewings`) không bao giờ bị từ chối vì việc này: chia sale bỏ qua sale đang bận. Các thao tác sau trả `409` `Sale <tên> đã có lịch xem căn <căn> lúc <giờ>. Hãy đổi giờ hoặc nhờ quản lý chuyển sale.` và không đổi gì: `PUT /api/viewings/{id}`, ghi "không đến" kèm hẹn lại (`PUT /api/viewings/{id}/attendance`), `POST /api/viewings/staff-links/{token}/confirm` với link duyệt, `POST /api/leads/{id}/approve`, và `POST /api/feedback-work/{id}/result` với `NEXT_VIEWING`. `PUT /api/leads/{id}/assignee` trả `409` `Sale <tên> đã có lịch xem căn <căn> lúc <giờ>; chọn sale khác hoặc đổi giờ trước.` khi sale mới bận với một buổi xem đang mở của lead, hoặc khi lead có buổi đã điểm danh "Có đến" mà giờ hẹn mới qua chưa tới 90 phút (`Sale <tên> đang dẫn buổi xem căn <căn> lúc <giờ>. Chuyển người phụ trách sau <giờ>.`).
 
 ### 3.2. Link Duyệt / Đổi giờ cho nhân viên (FE-35)
 

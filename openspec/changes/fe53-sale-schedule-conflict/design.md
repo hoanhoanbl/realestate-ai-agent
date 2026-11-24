@@ -59,6 +59,9 @@ Duyệt không đổi giờ hay chủ lead nên không thay đổi tập buổi 
 ### D5. Chuyển sale: kiểm tra mọi buổi xem mở của lead
 Trong `reassign`, sau khi khoá lead và trước `setOwner`, lấy các buổi xem `NEW` của lead (lead đang `NEW` hoặc `CONFIRMED`) và kiểm tra sale mới với từng buổi, loại chính buổi đó. Chuyển cho chính người đang phụ trách vẫn trả sớm như cũ. Ném 409 với thông báo riêng của chuyển sale ("chọn sale khác hoặc đổi giờ trước"), nên `assertSaleFree` nhận tham số `context: 'approve' | 'reassign'` chọn câu chữ.
 
+### D5b. Chuyển sale khi sale cũ đang dẫn buổi đã điểm danh
+Buổi `ATTENDED` không lưu ai dẫn, và `findSaleConflict` tính theo `leads.assigned_user_id` hiện tại. Nếu cho chuyển lead ngay sau điểm danh thì lịch bận của sale cũ chuyển theo lead sang sale mới (review của Hậu trên PR #90). Vì buổi chỉ ảnh hưởng lịch trong 90 phút kể từ giờ hẹn (giờ mới luôn ở tương lai), `reassign` chặn bằng `assertNotMidVisit` tới hết khoảng đó, không cần cột mới. *Phương án khác:* cột `viewings.led_by_user_id` ghi người điểm danh; chính xác hơn nhưng cần SQL và đổi luồng điểm danh, để làm sau nếu cần. Giới hạn còn lại: đường mở lại lead `LOST` mà chủ cũ ngừng nhận khách cũng đổi người phụ trách, nhưng trường hợp này cần lead đã đóng trong vòng 90 phút sau buổi xem nên chưa xử lý.
+
 ### D6. Web không đổi màn hình
 Backend trả 409 với `message`; các trang duyệt (`/duyet/<mã>`), Lịch xem, Chi tiết lead và Đội sale đã hiển thị `message` của lỗi. Việc phải làm ở web chỉ là kiểm chứng (task 6), không thêm UI.
 

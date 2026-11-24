@@ -137,7 +137,7 @@ Mỗi phản hồi mới tạo **một việc** cho sale, có hạn, có nhắc,
 | Đã liên hệ (`CONTACTED`) | Ghi nội dung; tick hoàn tất nếu không cần gọi tiếp, không thì đặt hạn mới | Hoàn tất hoặc đang xử lý |
 | Cần thêm thời gian (`NEEDS_TIME`) | Lý do + hạn liên hệ tiếp | Đang xử lý |
 | Chưa liên hệ được (`UNREACHABLE`) | Ghi lần gọi + hạn thử lại | Đang xử lý |
-| Hẹn xem tiếp (`NEXT_VIEWING`) | Chọn căn đang bán và giờ trong 08:00–19:00 (quy tắc giờ của nhân viên); từ FE-53 kiểm tra cả lịch của sale ([01-visits.md](01-visits.md) mục 1.6) | Tạo buổi xem thật, lead "Mới" chờ duyệt, hoàn tất việc |
+| Hẹn xem tiếp (`NEXT_VIEWING`) | Chọn căn đang bán và giờ trong 08:00–19:00 (quy tắc giờ của nhân viên); kiểm tra cả lịch của sale ([01-visits.md](01-visits.md) mục 1.6) | Tạo buổi xem thật, lead "Mới" chờ duyệt, hoàn tất việc |
 | Không mua (`NOT_BUYING`) | Lý do; bị chặn nếu lead đang làm hợp đồng hoặc còn hợp đồng hiệu lực | Lead "Không mua" (hiện ghi lý do `NOT_INTERESTED`), huỷ lịch đang chờ, hoàn tất các việc còn mở |
 
 Đóng lead hoặc ký hợp đồng ở các luồng khác cũng kết thúc việc còn mở; khách quay lại không làm sống lại việc cũ. Phản hồi đến sau khi lead đã đóng hoặc đã ký được lưu nhưng việc kết thúc ngay.

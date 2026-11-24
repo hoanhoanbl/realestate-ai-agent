@@ -23,6 +23,7 @@ import { UpdateAutomationStatusDto } from './dto/update-automation-status.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { CreateLeadEventDto } from './dto/create-lead-event.dto';
 import { AdminStatusDto } from './dto/admin-status.dto';
+import { ContactAttemptDto } from './dto/contact-attempt.dto';
 import { UpdateMauticDto } from './dto/update-mautic.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthUser } from '../auth/auth.types';
@@ -80,6 +81,18 @@ export class LeadsController {
   }
 
   // --- Cho người dùng đăng nhập (web admin, app) ---
+
+  @Post(':id/contacted')
+  @UseGuards(JwtAuthGuard)
+  contacted(@Param('id', ParseIntPipe) id: number, @Req() req: { user: AuthUser }) {
+    return this.leadsService.markContacted(id, req.user);
+  }
+
+  @Post(':id/contact-attempts')
+  @UseGuards(JwtAuthGuard)
+  contactAttempt(@Param('id', ParseIntPipe) id: number, @Body() dto: ContactAttemptDto, @Req() req: { user: AuthUser }) {
+    return this.leadsService.recordContactAttempt(id, dto.result, req.user);
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)

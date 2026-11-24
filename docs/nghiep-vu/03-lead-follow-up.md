@@ -66,6 +66,8 @@ Ngành coi đây là giai đoạn **mất khách nhiều nhất**: sale gọi m�
 
 ### 1.1. Đánh dấu "Đã liên hệ được" và ghi lần gọi (FE-43 dữ liệu, FE-44 nút)
 
+**FE-44 đã triển khai local, chưa merge/chưa nghiệm thu server.** Hồ sơ khách có khối "Liên hệ khách" cho người phụ trách và quản lý; người khác chỉ xem. Lead `LOST` hoặc `SIGNED` không nhận thao tác liên hệ mới. Hai API, mốc và nhật ký đã kiểm với PostgreSQL thật; QA component trên Chrome headless 375px đã đạt (callback giả); chưa thay thế nghiệm thu trang admin/API cùng chạy trên server. Bậc nhắc L9 vẫn thuộc FE-45, chưa triển khai.
+
 | Thao tác trên trang lead | Quy tắc |
 |---|---|
 | **Đã liên hệ được** | Lần bấm đầu lưu giờ và người bấm (cột `leads.contacted_at`, sự kiện `CONTACTED`). Bấm lại không đổi giờ đã lưu. Lead "Không mua" thì bị từ chối |
@@ -198,7 +200,7 @@ Mỗi lời nhắc của luồng 9 (bậc liên hệ ở mục 1.2 và nhắc im
 
 Vì sao không gửi thẳng cho khách: đề bài yêu cầu bước người duyệt (Human Approval), và thư do AI viết gửi khách mà không ai xem là rủi ro.
 
-### 4.4. Lý do "Không mua" chi tiết **[Sắp làm FE-43, FE-44]**
+### 4.4. Lý do "Không mua" chi tiết **[FE-43 đã có; FE-44 đã triển khai local, chưa merge]**
 
 Sale đóng lead bằng tay chỉ chọn được: **Giá cao**, **Chọn căn khác**, **Đã mua nơi khác**, **Không liên lạc được**, **Hết nhu cầu**, **Lý do khác**. Các lý do **Khách không đến**, **Khách tự huỷ lịch**, **Quá hạn không xử lý**, **Lead nguội (`STALE`)** chỉ hệ thống được ghi; gửi tay bị từ chối. Mã và nhãn: [vai-tro-va-trang-thai.md](vai-tro-va-trang-thai.md) mục 5.1. Báo cáo chia mất khách theo các nhóm này ([04-sales-analytics.md](04-sales-analytics.md) mục 4).
 

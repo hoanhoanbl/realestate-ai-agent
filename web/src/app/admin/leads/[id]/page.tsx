@@ -5,6 +5,7 @@ import { BackLink, Icon } from "@/components/ui";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import ContactButtons from "@/components/ContactButtons";
+import { LeadContactSection } from "@/components/LeadContactPanel";
 import LeadActions from "@/components/LeadActions";
 import LeadAssignmentPanel from "@/components/LeadAssignmentPanel";
 import LeadChatHistory from "@/components/LeadChatHistory";
@@ -164,6 +165,7 @@ function LeadDetailContent() {
           </div>
 
           <LeadActions lead={lead} onChanged={() => setVersion((v) => v + 1)} />
+          <LeadContactSection lead={lead} onChanged={() => setVersion((v) => v + 1)} />
           <FeedbackWorkPanel key={`${lead.id}:${lead.assignedUserId}`} leadId={lead.id} ownerId={lead.assignedUserId} onChanged={() => setVersion(v => v+1)} />
           <LeadAssignmentPanel key={lead.id} lead={lead} onChanged={() => setVersion((v) => v + 1)} />
 

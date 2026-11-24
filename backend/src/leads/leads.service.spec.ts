@@ -35,7 +35,7 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
       findOne: async () => viewing,
       update: async (...args: unknown[]) => { viewingUpdates.push(args); },
     };
-    (leadRepo as any).manager = { transaction: async (fn: any) => fn({ getRepository: (entity: any) => entity.name === 'Lead' ? leadRepo : eventRepo }) };
+    (leadRepo as any).manager = { transaction: async (fn: any) => fn({ getRepository: (entity: any) => entity.name === 'Lead' ? leadRepo : entity.name === 'Viewing' ? viewingRepo : eventRepo }) };
     service = new LeadsService(leadRepo as any, eventRepo as any, viewingRepo as any, {} as any, {} as any);
   });
 
@@ -54,9 +54,9 @@ describe('BF-06: không chuyển sang Không mua khi đang đặt cọc', () => 
   it('vẫn cho hợp đồng bị từ chối đưa khách về VIEWED, và vẫn đóng được khách VIEWED', async () => {
     await service.updateStatus(4, { status: 'VIEWED', note: 'Từ chối hợp đồng #1' });
     expect(lead.status).toBe('VIEWED');
-    await service.adminSetStatus(4, { status: 'LOST', reason: 'NOT_INTERESTED' }, user);
+    await service.adminSetStatus(4, { status: 'LOST', reason: 'NO_LONGER_NEEDED' }, user);
     expect(lead.status).toBe('LOST');
-    expect(lead.lostReason).toBe('NOT_INTERESTED');
+    expect(lead.lostReason).toBe('NO_LONGER_NEEDED');
   });
 
   it('chỉ chặn đúng cặp DEPOSIT -> LOST', () => {

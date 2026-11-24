@@ -342,7 +342,7 @@ Việc chăm sóc sau phản hồi có trang riêng `/admin/theo-doi-phan-hoi` (
 | Lead | Một khách, nhận ra bằng số điện thoại; có thể có nhiều buổi xem |
 | Giai đoạn (GĐ) | Một chặng trong hành trình khách (mục 1.2) |
 | Chạm đầu tiên | Thao tác đầu tiên của sale trên lead mới; hạn 2 giờ làm việc |
-| Đã liên hệ được | Sale đã nói chuyện được với khách (khác với "đã gọi") |
+| Đã liên hệ được | Sale đã nói chuyện được với khách (khác với "đã gọi"). FE-44 local ghi mốc đầu tiên `contacted_at` và `CONTACTED`; giữ mốc khi bấm lại, tự ghi khi điểm danh "Có đến". Chưa merge/chưa lên server |
 | Bậc nhắc | Lời nhắc sale ở ngày 1, 3, 7 khi lead chưa liên hệ được |
 | Lead nguội | Lead "Đang tư vấn" hoặc "Đã xem nhà" không có hoạt động trong 7 ngày; 14 ngày thì tự đóng `STALE` |
 | Duyệt lịch | Nhân viên xác nhận giờ xem với khách, lead chuyển "Đã chốt lịch" |

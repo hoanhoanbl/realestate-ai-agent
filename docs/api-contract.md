@@ -143,6 +143,7 @@ Chung cho mọi callback:
 
 - `status`: `CONSULTING` | `NEW` | `CONFIRMED` | `VIEWED` | `DEPOSIT` | `SIGNED` | `LOST`. Giá trị khác: `400`.
 - `note`: tùy chọn.
+- FE-44 (đã triển khai local, chưa merge): khi đóng `LOST`, nhận `lostReason?` và chỉ chấp nhận `MANUAL_LOST_REASONS`; bỏ trống là `OTHER`. `STALE`, `NO_SHOW`, `EXPIRED`, `CUSTOMER_CANCELLED`, mã cũ `NOT_INTERESTED` và giá trị lạ trả `400` trước khi đổi lead/lịch. Các đường xử lý hệ thống tự ghi lý do của chúng trong transaction riêng.
 - Backend lưu `leads.status` và **tự ghi** một dòng `lead_events` với `type = STATUS_CHANGED`, `note = "<cũ> -> <mới>: <note>"`.
 - Nếu trạng thái mới **trùng** trạng thái cũ: không đổi gì, không ghi `STATUS_CHANGED`, vẫn trả `200`.
 - Lead đang `DEPOSIT` không chuyển thẳng sang `LOST` được: trả `400` (BF-06). Quản lý phải từ chối hợp đồng trước, lead tự về `VIEWED`. Áp dụng cả cho `PUT /api/leads/{leadId}/admin-status` của web admin.
@@ -307,6 +308,8 @@ Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md).
 | GET | `/api/leads/lookup?phone=` | JWT | Tra khách theo số điện thoại; trả `{lead}` (`null` nếu chưa có) |
 | PUT | `/api/leads/{id}/assignee` | Quản lý | `{assignedUserId, note?}`: chuyển khách sang sale khác |
 | POST | `/api/leads/{id}/notes` | JWT | `{note}`: ghi chú kết quả liên hệ vào dòng thời gian |
+| POST | `/api/leads/{id}/contacted` | JWT, người phụ trách hoặc quản lý | FE-44 local: body rỗng, trả lead có `contactedAt`; lặp lại giữ mốc và không thêm `CONTACTED` lần nữa |
+| POST | `/api/leads/{id}/contact-attempts` | JWT, người phụ trách hoặc quản lý | FE-44 local: `{result: NO_ANSWER \| BUSY \| CALL_BACK \| WRONG_NUMBER}`; trả lead, ghi `CONTACT_ATTEMPTED`, không đặt `contactedAt` |
 | POST | `/api/leads/{id}/approve` | JWT | Duyệt lịch từ web admin (gọi luồng 1b) |
 | PUT | `/api/leads/{id}/admin-status` | JWT | Đổi trạng thái từ web admin; cùng quy tắc mục 2.3 |
 | GET | `/api/users` | Quản lý | Danh sách tài khoản |
@@ -316,6 +319,8 @@ Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](nghiep-vu/00-tiep-nhan.md).
 | PUT | `/api/users/{id}/routing` | JWT | `{acceptingLeads?, telegramChatId?}`; chỉ sửa được của mình, quản lý sửa được của người khác (FE-39) |
 | POST | `/api/users/me/push-token` | JWT | Lưu push token của app (trả `200`) |
 | DELETE | `/api/users/me/push-token` | JWT | Xoá push token (trả `200`) |
+
+**Ghi nhận liên hệ FE-44 (local, chưa merge):** hai route mới trả `201`; thiếu JWT `401`, sale khác người phụ trách `403`, lead không tồn tại `404`, kết quả không hợp lệ hoặc lead `LOST`/`SIGNED` trả `400`. Actor và thời điểm lấy ở server, không nhận từ body. Cả hai ghi `firstResponseAt` khi đang trống. Khoá dòng lead và lưu mốc/event trong cùng transaction. Điểm danh `ATTENDED` tự ghi mốc liên hệ nếu chưa có, cùng transaction đổi trạng thái buổi xem; `NO_SHOW` không đánh dấu đã liên hệ. `admin-status` dùng trường `reason`, cũng chỉ chấp nhận sáu lý do thủ công như `lostReason` của `PUT status`; lịch đang mở được huỷ trong cùng transaction khi đóng lead, và giữ chặn `DEPOSIT -> LOST`.
 
 ### 3.6. Hợp đồng đặt cọc (luồng 3)
 

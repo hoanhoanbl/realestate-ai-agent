@@ -526,6 +526,15 @@ Code và JSON L9 mới chỉ nghiệm thu local. Chưa thực hiện bước nà
 
 Kết quả local: 350 test backend PASS; n8n 2.42.4 cô lập + DB thật + SMTP giả đã đạt các ca chính và lỗi SMTP/Error workflow. Gemini và sub-workflow thông báo dùng fixture; chưa nghiệm thu Gemini/Telegram thật, UI FE-56 tích hợp hoặc VPS. Chi tiết: [FE-45](fe-45-cham-khach-theo-bac.md), [luồng 9](luong/luong-9-follow-up-bac.md).
 
+## 9i. Bỏ nhắc lịch thừa FE-54 (chưa nghiệm thu server)
+
+1. Bảo đảm FE-43 và FE-50 đã triển khai: luồng 1b ghi `VIEWING_CONFIRMATION_SENT` sau thư chốt/đổi giờ thành công. Luồng 1 không ghi sự kiện này.
+2. Deploy backend FE-54 trước, rồi import bản `luong-2-follow-up.json` cùng phiên bản (giữ credential PostgreSQL/Header Auth/SMTP và workflow phụ trợ). SQL node selector đã đồng bộ với backend; không thêm SQL migration hay biến môi trường.
+3. Dùng lead demo và hộp thư test: thư chốt lúc còn dưới 24 giờ thì không nhắc; không có thư chốt thành công thì nhắc một lần; đổi giờ thì thư chốt cũ không chặn nhắc giờ mới. Kiểm lại khi xác nhận đến giữa claim và start. Không bật luồng chăm khách cũ trùng với L9.
+4. Chỉ bật/publish sau khi kiểm tra. Rollback về bản backend/L2 đồng bộ trước FE-54; giữ nguyên checkpoint gửi thư, không xoá để gửi lại. Không hạ về image trước FE-43 vì cảnh báo mất cột ở mục 9f.
+
+Kết quả và giới hạn: [bàn giao FE-54](fe-54-bo-nhac-lich-thua.md). Chưa thực hiện các bước này trên VPS.
+
 ## 10. Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |

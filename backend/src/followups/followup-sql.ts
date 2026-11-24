@@ -11,10 +11,15 @@ const legacy = (
  AND (e.note IS NULL OR e.note NOT LIKE 'L2 %') AND e.created_at>=COALESCE(
  (SELECT max(r.created_at) FROM lead_events r WHERE r.lead_id=l.id AND r.type='VIEWING_RESCHEDULED'),'-infinity'::timestamptz))`;
 
+// statement_timestamp() xét cả sự kiện đã commit trong lúc claim/start chờ khóa;
+// now() bị cố định từ đầu transaction nên có thể bỏ sót chính thư chốt vừa gửi.
 export const FOLLOWUP_BASE_SQL = `SELECT l.id AS lead_id,l.name,l.email,l.phone,l.needs,l.status,l.level,l.consent_marketing,l.created_at,l.lost_reason,
  l.assigned_user_id,l.assigned_at,l.response_due_at,l.first_response_at,l.mautic_contact_id,
  COALESCE(v.id,0) AS viewing_id,v.property_id,v.viewing_time,v.status AS viewing_status,
  (${completed('REMINDER')} OR ${legacy('REMINDER_SENT')}) AS reminder_sent,
+ EXISTS(SELECT 1 FROM lead_events e WHERE e.lead_id=l.id AND e.type='VIEWING_CONFIRMATION_SENT'
+ AND e.note='viewing='||v.id::text||';time='||to_char(date_trunc('milliseconds',v.viewing_time) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+ AND e.created_at>v.viewing_time-interval '24 hours' AND e.created_at<=statement_timestamp()) AS confirmation_covers_reminder,
  (${completed('FEEDBACK')} OR ${legacy('FEEDBACK_ASKED')}) AS feedback_asked,
  (SELECT max(e.created_at) FROM lead_events e WHERE e.lead_id=l.id AND e.type='FEEDBACK_ASKED' AND (
  (v.id=(SELECT min(first_v.id) FROM viewings first_v WHERE first_v.lead_id=l.id) AND (e.note IS NULL OR e.note NOT LIKE 'L2 %'))
@@ -49,7 +54,7 @@ export const FOLLOWUP_SELECTOR_SQL = `WITH snapshots AS MATERIALIZED (${FOLLOWUP
  SELECT s.*,k.type FROM snapshots s CROSS JOIN (VALUES ('REMINDER'),('FEEDBACK'),('EXPIRE_LEAD'),('ATTENDANCE_CHECK'),('ATTENDANCE_ESCALATE')) k(type)
  WHERE s.viewing_id>0 AND (k.type IN ('REMINDER','EXPIRE_LEAD','ATTENDANCE_CHECK','ATTENDANCE_ESCALATE')
  OR s.viewing_id=(SELECT max(latest_v.id) FROM viewings latest_v WHERE latest_v.lead_id=s.lead_id)) AND CASE k.type
- WHEN 'REMINDER' THEN s.status='CONFIRMED' AND s.viewing_status='NEW' AND s.email IS NOT NULL AND s.viewing_time BETWEEN now() AND now()+interval '24 hours' AND NOT s.reminder_sent
+ WHEN 'REMINDER' THEN s.status='CONFIRMED' AND s.viewing_status='NEW' AND s.email IS NOT NULL AND s.viewing_time BETWEEN now() AND now()+interval '24 hours' AND NOT s.reminder_sent AND NOT s.confirmation_covers_reminder
  WHEN 'FEEDBACK' THEN s.status='VIEWED' AND s.viewing_status='ATTENDED' AND s.email IS NOT NULL AND s.viewing_time<now()-interval '2 hours' AND NOT s.feedback_asked AND NOT s.has_feedback
  WHEN 'WARM_NUDGE' THEN s.status='VIEWED' AND s.viewing_status='ATTENDED' AND s.level='WARM' AND s.email IS NOT NULL AND s.consent_marketing AND NOT s.nurture_started AND NOT s.has_feedback AND s.feedback_asked_at<now()-interval '3 days'
  WHEN 'HOT_NUDGE' THEN s.status='VIEWED' AND s.viewing_status='ATTENDED' AND s.level='HOT' AND s.consent_marketing AND NOT s.hot_nudged AND NOT s.has_feedback AND s.feedback_asked_at<now()-interval '3 days'

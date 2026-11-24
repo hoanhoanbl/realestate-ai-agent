@@ -24,6 +24,12 @@ describe('Follow-up eligibility', () => {
     expect(isFollowupDue(snapshot({ reminder_sent: true }), 'REMINDER', now)).toBe(false);
     expect(isFollowupDue(snapshot({ viewing_time: new Date(now.getTime() - 1) }), 'REMINDER', now)).toBe(false);
   });
+  it('FE-54: suppresses only reminders covered by a successful confirmation of this schedule', () => {
+    expect(isFollowupDue(snapshot({ confirmation_covers_reminder: true }), 'REMINDER', now)).toBe(false);
+    expect(isFollowupDue(snapshot({ confirmation_covers_reminder: false }), 'REMINDER', now)).toBe(true);
+    // Các snapshot cũ không có bằng chứng thư chốt vẫn giữ hành vi nhắc hiện tại.
+    expect(isFollowupDue(snapshot(), 'REMINDER', now)).toBe(true);
+  });
   it('asks feedback and excludes an already submitted response', () => {
     const s = snapshot({ status: 'VIEWED', viewing_status: 'ATTENDED', viewing_time: new Date(now.getTime() - 3 * 3600000) });
     expect(isFollowupDue(s, 'FEEDBACK', now)).toBe(true);
@@ -125,6 +131,14 @@ describe('Follow-up task lifecycle', () => {
     expect(b).toEqual(a);
     expect((await service.claim({ ...dto, owner: 'execution-2' })).claimed).toBe(false);
     expect(tasks).toHaveLength(1);
+  });
+  it('FE-54: rechecks confirmation after claim, before starting the reminder', async () => {
+    const claim = await service.claim(dto);
+    expect(claim.claimed).toBe(true);
+    current.confirmation_covers_reminder = true;
+    expect((await service.start(claim.taskId!, claim.token!)).allowed).toBe(false);
+    expect(tasks[0].state).toBe('CLAIMED');
+    expect(events).toHaveLength(0);
   });
   it('closes an expired lead atomically at claim, then sends only one manager notice', async () => {
     leadStatus = 'NEW';

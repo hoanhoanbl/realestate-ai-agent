@@ -2,19 +2,19 @@
 
 > **Lõi và mở rộng trong cùng một luồng.** Nhắc lịch, nhắc điểm danh, hỏi cảm nhận, nhắc sale gọi khách HOT là phần lõi (vế Lead follow-up). Nhánh nuôi khách WARM và COLD qua Mautic (tag `nuoi-warm`, `ban-tin-hang-thang`) là **mở rộng Marketing Automation, đóng băng từ 13/11**.
 >
-> **Sắp thay đổi** (tài liệu này sửa trong cùng PR sửa JSON): FE-45 bỏ nhắc khách HOT im lặng, chuyển sang luồng 9; FE-46 xoá các node Mautic và thêm thư mời hẹn lại khi khách không đến; FE-54 (chờ chốt) bỏ nhắc lịch thừa. Quy tắc đích: [nghiệp vụ 03 mục 4](../nghiep-vu/03-lead-follow-up.md), [01 mục 3.1 và 4.3](../nghiep-vu/01-visits.md).
+> **Sắp thay đổi** (tài liệu này sửa trong cùng PR sửa JSON): FE-45 đã chuyển selector chăm khách im lặng sang luồng 9; FE-54 đã kiểm local việc bỏ nhắc lịch thừa, chưa nghiệm thu server. FE-46 tiếp tục xoá các node Mautic và thêm thư mời hẹn lại khi khách không đến. Quy tắc đích: [nghiệp vụ 03 mục 4](../nghiep-vu/03-lead-follow-up.md), [01 mục 3.1 và 4.3](../nghiep-vu/01-visits.md).
 
 File: `n8n-workflows/luong-2-follow-up.json` (52 node, không tính ghi chú; id `luong2Realestat0`).
 Kích hoạt: **mỗi giờ** (node `Mỗi giờ`) hoặc nút `Chạy tay` trong n8n. Không có webhook.
 Backend API: `/api/followups/*`, bảo vệ bằng `X-Webhook-Secret`.
 
-Khung chung của các tài liệu luồng: [README.md](README.md). Các mục từ "Chín loại tác vụ" trở xuống là phần chi tiết riêng của luồng này.
+Khung chung của các tài liệu luồng: [README.md](README.md). Các mục từ "Các loại tác vụ" trở xuống là phần chi tiết riêng của luồng này.
 
 > Bổ sung 12/11: node `Nhắc việc sau phản hồi` gọi workflow phụ trợ độc lập từ `Cấu hình`, dùng checkpoint riêng `feedback_work_alerts`; không thêm loại vào chín tác vụ cũ. Xem [bàn giao L5](luong-5-theo-doi-sau-phan-hoi.md). Lỗi workflow phụ trợ không chặn nhánh L2 hiện có.
 
 ## 1. Làm gì trong thực tế
 
-Sau khi khách đặt lịch, nhiều việc nhỏ dễ bị quên: nhắc khách trước giờ xem, hỏi cảm nhận sau buổi xem, nhắc sale ghi nhận khách có đến không, nhắc sale duyệt, đóng lead hẹn quá giờ mà không ai xử lý, chăm lại khách im lặng. Luồng 2 chạy mỗi giờ, tìm các việc đến hạn (chín loại, xem bảng bên dưới) và làm **mỗi việc đúng một lần**: gửi email, chuyển khách sang Mautic để nuôi dưỡng, hoặc nhắc nhân viên. Cuối mỗi lượt, một báo cáo tổng hợp gửi quản lý.
+Sau khi khách đặt lịch, nhiều việc nhỏ dễ bị quên: nhắc khách trước giờ xem, hỏi cảm nhận sau buổi xem, nhắc sale ghi nhận khách có đến không, nhắc sale duyệt, đóng lead hẹn quá giờ mà không ai xử lý, chăm lại khách im lặng. Luồng 2 chạy mỗi giờ, tìm sáu loại việc đến hạn (selector FE-45; ba nhánh chăm khách cũ còn node nhưng không được chọn mới) và làm **mỗi việc đúng một lần**: gửi email, chuyển khách sang Mautic để nuôi dưỡng, hoặc nhắc nhân viên. Cuối mỗi lượt, một báo cáo tổng hợp gửi quản lý.
 
 Quy tắc nghiệp vụ: [nghiep-vu/00-tiep-nhan.md](../nghiep-vu/00-tiep-nhan.md) mục 7.2 (hạn phản hồi), [nghiep-vu/01-visits.md](../nghiep-vu/01-visits.md) mục 2.3, 3 và 4, [nghiep-vu/03-lead-follow-up.md](../nghiep-vu/03-lead-follow-up.md) mục 2, 3, 4.1 và 6.
 
@@ -65,17 +65,21 @@ Hiện trạng:
 - **Đã kiểm:** hai script `check-followup-workflow.cjs`, `check-followup-report.cjs`, kiểm thử backend `test:followups`, và ca thử local ở mục "Ca kiểm thử FE-30" bên dưới.
 - **Chưa kiểm trên server:** cả luồng với Mautic server thật. Hướng dẫn từng bước: mục "Cập nhật local/server" bên dưới.
 
+FE-54 (24/11/2026): backend policy/snapshot và SQL của node `Lấy lead cần follow-up` đã đồng bộ. Các node, connection, credential và worker phản hồi khác giữ nguyên. Deploy backend rồi import lại L2; chạy ca xác nhận sát giờ và ca đổi giờ bằng hộp thư test trước khi bật. Không có SQL migration hay biến môi trường mới. Chưa chạy nghiệm thu FE-54 trên VPS. Chi tiết: [bàn giao FE-54](../fe-54-bo-nhac-lich-thua.md).
+
 ## 7. Cách chạy thử
 
 1. Chạy hai script kiểm tra cấu trúc và SQL ở mục "Kiểm tra trong repo" bên dưới (không gửi email, không sửa dữ liệu).
 2. Nạp dữ liệu mẫu bằng `backend/sql/demo-follow-up.sql`, rồi trong n8n bấm `Chạy tay` của luồng 2 trên bản n8n **local**, không bật lịch.
 3. Làm theo "Ca kiểm thử FE-30 theo từng bước" để thử nhắc duyệt, đóng quá hạn, khách im lặng và báo cáo.
 
-## Chín loại tác vụ sau FE-30
+## Các loại tác vụ và nhánh cũ sau FE-30
+
+Selector hiện chọn REMINDER, FEEDBACK, STAFF_NUDGE, EXPIRE_LEAD, ATTENDANCE_CHECK, ATTENDANCE_ESCALATE. HOT_NUDGE/WARM_NUDGE/COLD_NURTURE trong bảng là nhánh cũ còn node để FE-46 dọn, không còn được selector chọn mới.
 
 | Loại | Điều kiện | Hành động |
 |---|---|---|
-| REMINDER | CONFIRMED + buổi xem NEW, giờ xem trong 24 giờ tới | Email nhắc lịch; HOT/WARM/COLD đều được |
+| REMINDER | CONFIRMED + buổi xem NEW, giờ xem trong 24 giờ tới; xét bằng chứng thư chốt theo [01 mục 3.1](../nghiep-vu/01-visits.md) | Email nhắc lịch; HOT/WARM/COLD đều được |
 | FEEDBACK | VIEWED + buổi xem ATTENDED, giờ xem qua hơn 2 giờ, chưa hỏi và chưa phản hồi | Email có link cảm nhận; không tự đổi trạng thái khách |
 | WARM_NUDGE | WARM + VIEWED + buổi xem ATTENDED + đồng ý tiếp thị + được hỏi cảm nhận hơn 3 ngày + chưa phản hồi + chưa nuôi | Tìm contact đúng email, tạo/cập nhật ai_nudge_text và tag nuoi-warm |
 | STAFF_NUDGE | FE-38: quá responseDueAt, chưa firstResponseAt, khách còn đang xử lý; không cần buổi xem/email/điểm | Báo email quản lý, ghi RESPONSE_OVERDUE |

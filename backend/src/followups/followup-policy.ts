@@ -4,6 +4,8 @@ export interface FollowupSnapshot {
   status: string; level: string | null; consent_marketing: boolean;
   created_at: string | Date; viewing_time: string | Date; viewing_status: string;
   reminder_sent: boolean; feedback_asked: boolean; feedback_asked_at: string | Date | null;
+  // FE-54: thư chốt đúng lịch đã gửi khi còn dưới 24 giờ; SQL tính từ sự kiện gửi thành công.
+  confirmation_covers_reminder?: boolean;
   has_feedback: boolean; nurture_started: boolean; staff_nudged: boolean; cooling_down: boolean;
   attendance_check_sent: boolean; attendance_check_at: string | Date | null; attendance_escalated: boolean;
   hot_nudged?: boolean; cold_nurture_started?: boolean;
@@ -29,7 +31,7 @@ export function isFollowupDue(s: FollowupSnapshot, type: FollowupType, now: Date
     !s.has_feedback && s.feedback_asked_at !== null &&
     now.getTime() - new Date(s.feedback_asked_at).getTime() > 72 * hour;
   switch (type) {
-    case 'REMINDER': return s.status === 'CONFIRMED' && s.viewing_status === 'NEW' && elapsed <= 0 && elapsed >= -24 * hour && !s.reminder_sent;
+    case 'REMINDER': return s.status === 'CONFIRMED' && s.viewing_status === 'NEW' && elapsed <= 0 && elapsed >= -24 * hour && !s.reminder_sent && !s.confirmation_covers_reminder;
     case 'FEEDBACK': return !s.feedback_asked && !s.has_feedback &&
       s.status === 'VIEWED' && s.viewing_status === 'ATTENDED' && elapsed > 2 * hour;
     case 'WARM_NUDGE': return silent && s.level === 'WARM' && !s.nurture_started;

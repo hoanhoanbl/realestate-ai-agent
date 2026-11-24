@@ -67,6 +67,10 @@ Local 20/11: 57 nodes including 6 sticky notes, imported/exported through isolat
 - [ ] 7.3 `REBOOK_INVITE` is not due when the lead is `DEPOSIT` or `SIGNED`, or the viewing's property is not `AVAILABLE`; `start()` re-checks; a skipped invitation writes an event. Verify: unit tests for each exclusion.
 - [ ] 7.2 Docs: update the `docs/luong/` page for flow 2, `docs/nghiep-vu/01-visits.md` §4.3 (no-show invitation: "Sắp làm FE-46" to "Đang chạy") and the "Mautic is an extension" note in `docs/tong-quan-du-an.md`. Verify: no remaining text says flow 2 enrols WARM or COLD customers in Mautic.
 
+## 7b. Reminder confirmation evidence (FE-54) — Hậu
+
+- [x] Share the matching confirmation evidence in the selector and claim/start snapshot, suppress reminders only for a confirmation sent less than 24 hours before the exact viewing/time, and preserve ACTION_DONE finalization. SQL preview and L2 selector are synchronized. Unit and real PostgreSQL tests cover the 24-hour boundary, wrong/malformed evidence, rescheduling, timezone independence and evidence arriving before claim/start. No server acceptance is claimed.
+
 ## 8. Integration and wrap-up
 
 - [ ] 8.1 Run three end-to-end journeys locally: (a) bot lead never reached, (b) viewed customer silent for 14 days, (c) no-show then new booking. Verify: lead history reads correctly on the lead page in each case and nothing is sent twice.

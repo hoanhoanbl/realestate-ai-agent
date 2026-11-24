@@ -19,7 +19,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Sale, quản lý làm | Sale duyệt hoặc đổi giờ | Sale gọi lại khi khách xin đổi | Sale điểm danh. Quản lý nhận báo khi quên điểm danh |
 | Hệ thống tự động | Kiểm tra khung giờ, khoá theo căn, thư "đã nhận", báo sale có nút Duyệt; quá giờ chưa duyệt thì đóng `EXPIRED` | Thư chốt lịch, nhắc lịch trước 24 giờ | Nhắc điểm danh sau 2 giờ, báo quản lý sau 24 giờ; thư mời hẹn lại khi vắng |
 | Luồng n8n | L1, L1b, L6 (đặt hộ), L2 | L1b, L2 | L2 |
-| Tình trạng | **[Đang chạy]**; chống trùng lịch theo sale **[Đang chạy]** | **[Đang chạy]**; bỏ nhắc thừa **[Sắp làm FE-54]** | **[Đang chạy]**; thư mời hẹn lại **[Sắp làm FE-46]** |
+| Tình trạng | **[Đang chạy]**; chống trùng lịch theo sale **[Đang chạy]** | **[Đang chạy]**; bỏ nhắc thừa **[Đã kiểm local FE-54, chưa nghiệm thu server]** | **[Đang chạy]**; thư mời hẹn lại **[Sắp làm FE-46]** |
 
 ```
  Khách chọn khung giờ
@@ -54,7 +54,7 @@ Cập nhật lần cuối: 18/11/2026.
 | Giới hạn đặt lịch mỗi IP | 5 lần / 10 phút | Biến môi trường `BOOKING_RATE_LIMIT`, `BOOKING_RATE_TTL_MS` |
 | Nút Duyệt / Đổi giờ trong thông báo dùng được | Tới giờ hẹn | Link do backend cấp, kiểm tra lại lúc bấm |
 | Nhắc lịch cho khách | Trong vòng 24 giờ trước giờ hẹn, một lần cho mỗi giờ hẹn | Luồng 2 (chạy mỗi giờ) |
-| Bỏ nhắc lịch khi thư chốt lịch vừa gửi | Thư chốt lịch hoặc thư báo giờ mới gửi khi giờ hẹn còn **dưới 24 giờ** thì không gửi nhắc nữa **[Sắp làm FE-54]** (đề xuất, chờ chốt) | `followup-policy.ts`, `followup-sql.ts` |
+| Bỏ nhắc lịch khi thư chốt lịch vừa gửi | Thư chốt lịch hoặc thư báo giờ mới gửi khi giờ hẹn còn **dưới 24 giờ** thì không gửi nhắc nữa **[Đã kiểm local FE-54, chưa nghiệm thu server]** | `followup-policy.ts`, `followup-sql.ts` |
 | Được điểm danh | Từ 30 phút trước giờ hẹn | `ATTENDANCE_GRACE_MS` trong `viewing-time.ts` |
 | Nhắc sale điểm danh | 2 giờ sau giờ hẹn | Luồng 2 |
 | Báo quản lý khi vẫn chưa điểm danh | 24 giờ sau lời nhắc | Luồng 2 |
@@ -200,9 +200,9 @@ Ví dụ với sale An:
 
 Lead "Đã chốt lịch" có giờ xem trong 24 giờ tới và khách có email: khách nhận thư nhắc lịch, một lần cho mỗi giờ hẹn. Đổi giờ sau khi đã nhắc thì nhắc lại theo giờ mới. **[Đang chạy]**
 
-**Bỏ nhắc khi thư chốt lịch vừa gửi [Sắp làm FE-54]**. Hiện luồng 2 không xét thư chốt lịch gửi lúc nào, nên khách đặt sát giờ nhận hai thư gần giống nhau trong vòng một giờ:
+**Bỏ nhắc khi thư chốt lịch vừa gửi [Đã kiểm local FE-54, chưa nghiệm thu server]**. Selector của luồng 2 và backend khi claim/start cùng kiểm bằng chứng thư chốt đã gửi. Hành vi trước và sau FE-54:
 
-| Trường hợp | Đang chạy (code trên `dev`) | Sau khi làm FE-54 (dự kiến, chưa có code) |
+| Trường hợp | Trước FE-54 | Code FE-54 đã kiểm local |
 |---|---|---|
 | Đặt trước 3 ngày: chốt lịch thứ Hai, xem 09:00 thứ Năm | Nhắc 09:00 thứ Tư | Như cũ |
 | Đặt sáng xem chiều: chốt 09:30, xem 14:00 | Nhắc lúc 10:00, 30 phút sau thư chốt | Không nhắc: thư chốt đã là lời nhắc |
@@ -218,6 +218,8 @@ Quy tắc: **không nhắc** khi luồng 1b đã gửi thư chốt lịch hay th
 | Vì sao không dựa vào "Nhân viên duyệt lịch" hay "Đổi giờ xem nhà" | Hai sự kiện này ghi **trước** khi gọi n8n: thư có thể chưa đi hoặc gửi lỗi, khách sẽ không nhận được cả thư chốt lẫn lời nhắc |
 | Thư chốt gửi lỗi | Không có sự kiện, nên khách vẫn nhận lời nhắc như hiện tại |
 | Đổi giờ sau khi đã có sự kiện | Sự kiện cũ ghi giờ cũ nên không còn khớp. Giờ mới được xét lại theo thư báo giờ mới |
+| Biên 24 giờ | Thư gửi đúng 24 giờ trước hẹn không được miễn nhắc; chỉ miễn khi ít hơn 24 giờ. Sự kiện ở tương lai không được dùng |
+| Thư chốt đến sau khi đã nhận việc | Backend kiểm lại trước khi bắt đầu gửi. Nếu đã có checkpoint thư nhắc gửi xong thì chỉ hoàn tất nhật ký, không gửi lại |
 
 ### 3.2. Link quản lý lịch
 

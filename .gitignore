@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Cho phep file mau, van chan .env that
 !.env.example
+
+# FE-24: các lần chạy thử của phép đo chấm điểm AI (đặt --out ...tmp...)
+eval/lead-scoring/results/*.tmp.*

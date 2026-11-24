@@ -140,3 +140,20 @@ Hiện trạng:
 5. Trên web admin, lead có điểm AI và mức HOT, WARM hoặc COLD, và sự kiện `AI_SCORED` trong lịch sử.
 6. Bấm Duyệt, mở link, xác nhận: lead chuyển "Đã chốt lịch" và khách nhận thư chốt lịch (luồng 1b).
 7. Để thử nhánh lỗi, tắt SMTP (hoặc đổi khoá Gemini sai) rồi đặt lịch: lead có `automationStatus = FAILED`.
+
+## 8. Đo lường
+
+Bước AI chấm điểm (mục 3, bước 2) được đo trên bộ 20 lead có nhãn (6 HOT, 8 WARM, 6 COLD): đúng mức, lệch một bậc, lỗi nghiêm trọng HOT↔COLD, độ trễ. Rubric gán nhãn, cách chuẩn bị môi trường và hạn chế của phép đo nằm ở [do-luong-cham-diem-ai.md](../do-luong-cham-diem-ai.md); số đo sẽ ghi vào đó và vào [nghiep-vu/04-sales-analytics.md](../nghiep-vu/04-sales-analytics.md) sau khi chạy thật. **Chưa có số đo thật.**
+
+Chạy từ thư mục gốc repo:
+
+```bash
+# Kiểm bộ lead và phần tính số, không cần stack, không gọi mạng
+node scripts/check-lead-scoring-eval.cjs
+node scripts/eval-lead-scoring.cjs --dry-run
+
+# Đo thật trên stack local (luồng 1 bật, SMTP của n8n đã trỏ vào Mailpit; các bước ở mục 5 của tài liệu đo)
+node scripts/eval-lead-scoring.cjs --repeat 3
+```
+
+Phép đo thật tạo lead thật trên DB local và gọi Gemini 60 lần (20 lead × 3), nên chỉ chạy sau khi làm đủ phần chuẩn bị; runner từ chối địa chỉ không phải local.

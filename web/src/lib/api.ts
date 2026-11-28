@@ -969,7 +969,8 @@ export interface LadderLinkInfo {
   step: 1 | 3 | 7 | null;
   propertyName: string | null;
   suggestion: { action: LadderSuggestionAction; reason: string; emailDraft: string | null };
-  // true khi state là OPEN và không có refusal; false thì trang chỉ hiện gợi ý và nút "Bỏ qua"
+  // true khi state là OPEN và không có refusal; false thì trang chỉ hiện gợi ý và nút "Bỏ qua".
+  // Khi suggestion.action là WAIT, trang luôn coi như không gửi được; backend (FE-45) cũng nên trả canSend=false và từ chối SEND.
   canSend: boolean;
 }
 
